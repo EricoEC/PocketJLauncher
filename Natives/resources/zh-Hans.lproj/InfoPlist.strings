@@ -1,0 +1,4 @@
+/* Simplified Chinese app name */
+"CFBundleDisplayName" = "掌上Java启动器";
+"NSLocalNetworkUsageDescription" = "掌上Java启动器使用本地网络与 AltServer 和局域网游戏服务器通信。";
+"NSMicrophoneUsageDescription" = "掌上Java启动器使用麦克风为受支持的语音聊天模组提供输入。";

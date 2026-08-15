@@ -1,0 +1,4 @@
+/* Localized versions of Info.plist keys */
+"CFBundleDisplayName" = "PocketJ Launcher";
+"NSLocalNetworkUsageDescription" = "PocketJ Launcher uses the local network to communicate with AltServer and LAN game servers.";
+"NSMicrophoneUsageDescription" = "PocketJ Launcher uses the microphone for supported voice chat mods.";

@@ -1,0 +1,48 @@
+name: PocketJLauncher
+options:
+  minimumXcodeGenVersion: 2.40.0
+  deploymentTarget:
+    iOS: "14.0"
+settings:
+  base:
+    CODE_SIGN_STYLE: Automatic
+    IPHONEOS_DEPLOYMENT_TARGET: "14.0"
+    SUPPORTED_PLATFORMS: iphoneos
+    SUPPORTS_MACCATALYST: NO
+    TARGETED_DEVICE_FAMILY: "1,2"
+    ARCHS: arm64
+targets:
+  PocketJ Launcher:
+    type: application
+    platform: iOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: XcodeRunner
+        excludes:
+          - build_pocketj.sh
+          - Info.plist
+          - PocketJLauncher.entitlements
+    settings:
+      base:
+        PRODUCT_NAME: PocketJLauncher
+        PRODUCT_BUNDLE_IDENTIFIER: com.Erico.PocketJLauncher
+        INFOPLIST_FILE: XcodeRunner/Info.plist
+        CODE_SIGN_ENTITLEMENTS: XcodeRunner/PocketJLauncher.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        ENABLE_DEBUG_DYLIB: NO
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: NO
+    postBuildScripts:
+      - name: Build and embed PocketJ Launcher
+        path: XcodeRunner/build_pocketj.sh
+        basedOnDependencyAnalysis: false
+schemes:
+  PocketJ Launcher:
+    build:
+      targets:
+        PocketJ Launcher: all
+    run:
+      config: Debug
+    archive:
+      config: Release

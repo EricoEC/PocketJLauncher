@@ -1,0 +1,17 @@
+/packages
+/artifacts
+/Release
+/build
+/JavaApp/.gradle
+/JavaApp/build
+/JavaApp/local_out
+/Natives/build
+/Natives/external/UnzipKit
+.DS_Store
+xcshareddata/
+xcuserdata/
+project.xcworkspace/
+*.xcuserstate
+/depends
+/Natives/config.h
+entitlements.codesign.xml

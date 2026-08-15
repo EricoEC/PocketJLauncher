@@ -1,0 +1,330 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		CAC80538E7FDA62E9A702056 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 7CC2BE563442E074ABB5739D /* main.m */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		7CC2BE563442E074ABB5739D /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		88FC7E066ABC77DBF9382C8D /* PocketJ Launcher.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "PocketJ Launcher.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		4ABEF279AA678E41FC4ED6A5 = {
+			isa = PBXGroup;
+			children = (
+				78D4320913FC17BDB0BF6B58 /* XcodeRunner */,
+				689A67A4FF878795BADBABCC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		689A67A4FF878795BADBABCC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				88FC7E066ABC77DBF9382C8D /* PocketJ Launcher.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		78D4320913FC17BDB0BF6B58 /* XcodeRunner */ = {
+			isa = PBXGroup;
+			children = (
+				7CC2BE563442E074ABB5739D /* main.m */,
+			);
+			path = XcodeRunner;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		C1CB9A95487E022997F710C1 /* PocketJ Launcher */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C59BE712392A01D9BB650808 /* Build configuration list for PBXNativeTarget "PocketJ Launcher" */;
+			buildPhases = (
+				7BD423E79E5DF9EF809DB729 /* Sources */,
+				A557DD92E1E8FDFCEAAFE235 /* Build and embed PocketJ Launcher */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "PocketJ Launcher";
+			packageProductDependencies = (
+			);
+			productName = "PocketJ Launcher";
+			productReference = 88FC7E066ABC77DBF9382C8D /* PocketJ Launcher.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5FF2C83EF70E432391048157 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					C1CB9A95487E022997F710C1 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 8359EF448B4F27ADB774FBC2 /* Build configuration list for PBXProject "PocketJLauncher" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 4ABEF279AA678E41FC4ED6A5;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 689A67A4FF878795BADBABCC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C1CB9A95487E022997F710C1 /* PocketJ Launcher */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A557DD92E1E8FDFCEAAFE235 /* Build and embed PocketJ Launcher */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build and embed PocketJ Launcher";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "#!/bin/zsh\nset -euo pipefail\n\n# Xcode launched from Finder does not inherit the interactive shell PATH.\n# upstream Makefile requires these Homebrew-provided build tools.\nexport PATH=\"/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin\"\n\nSOURCE_ROOT=\"${SRCROOT}\"\nWORK_ROOT=\"/tmp/PocketJLauncher-XcodeBuild\"\nBOOT_JDK_CACHE=\"/tmp/PocketJLauncher-BootJDK8\"\nPRODUCT_APP=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}\"\nPAYLOAD_APP=\"${WORK_ROOT}/artifacts/Payload/PocketJLauncher.app\"\n\nmkdir -p \"${WORK_ROOT}\"\nrsync -a --delete \\\n  --exclude \".git\" \\\n  --exclude \"artifacts\" \\\n  --exclude \"depends\" \\\n  --exclude \"Natives/build\" \\\n  \"${SOURCE_ROOT}/\" \"${WORK_ROOT}/\"\n\n# Natives/build is intentionally excluded from rsync because it is large.\n# Remove the staged app explicitly so an old Assets.car or AppIcon PNG can\n# never survive into a new install.\nrm -rf \"${WORK_ROOT}/Natives/build/PocketJLauncher.app\"\n\nBOOT_JDK=\"\"\nJAVA8_HOME=$(/usr/libexec/java_home -v 1.8 2>/dev/null || true)\nCACHED_JAVA8=$(find \"${BOOT_JDK_CACHE}\" -path \"*/Contents/Home/bin/javac\" -print -quit 2>/dev/null || true)\nif [[ -x \"${JAVA8_HOME}/bin/javac\" ]] &&\n   \"${JAVA8_HOME}/bin/javac\" -version 2>&1 | /usr/bin/grep -q \"javac 1.8\"; then\n  BOOT_JDK=\"${JAVA8_HOME}/bin\"\nelif [[ -n \"${CACHED_JAVA8}\" ]] &&\n     \"${CACHED_JAVA8}\" -version 2>&1 | /usr/bin/grep -q \"javac 1.8\"; then\n  BOOT_JDK=\"${CACHED_JAVA8%/javac}\"\nelse\n  mkdir -p \"${BOOT_JDK_CACHE}\"\n  ARCHIVE=\"${BOOT_JDK_CACHE}/jdk8.tar.gz\"\n  curl -L --fail --retry 3 \\\n    \"https://api.adoptium.net/v3/binary/latest/8/ga/mac/x64/jdk/hotspot/normal/eclipse\" \\\n    -o \"${ARCHIVE}\"\n  tar -xzf \"${ARCHIVE}\" -C \"${BOOT_JDK_CACHE}\"\n  JDK_HOME=$(find \"${BOOT_JDK_CACHE}\" -path \"*/Contents/Home/bin/javac\" -print -quit)\n  BOOT_JDK=\"${JDK_HOME%/javac}\"\nfi\n\ncd \"${WORK_ROOT}\"\n/opt/homebrew/bin/gmake payload \\\n  JOBS=8 \\\n  PLATFORM=2 \\\n  RELEASE=$([[ \"${CONFIGURATION}\" == \"Release\" ]] && echo 1 || echo 0) \\\n  BRANCH=main \\\n  COMMIT=local \\\n  BOOTJDK=\"${BOOT_JDK}\" \\\n  VERBOSE=0\n\nif [[ ! -x \"${PAYLOAD_APP}/PocketJLauncher\" ]]; then\n  echo \"error: PocketJ Launcher payload was not generated\"\n  exit 1\nfi\n\nrsync -a --delete \\\n  --exclude \"_CodeSignature\" \\\n  --exclude \"embedded.mobileprovision\" \\\n  \"${PAYLOAD_APP}/\" \"${PRODUCT_APP}/\"\n\n/usr/libexec/PlistBuddy -c \"Set :CFBundleIdentifier ${PRODUCT_BUNDLE_IDENTIFIER}\" \\\n  \"${PRODUCT_APP}/Info.plist\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleExecutable ${EXECUTABLE_NAME}\" \\\n  \"${PRODUCT_APP}/Info.plist\"\n\nif [[ \"${EXECUTABLE_NAME}\" != \"PocketJLauncher\" ]]; then\n  mv \"${PRODUCT_APP}/PocketJLauncher\" \"${PRODUCT_APP}/${EXECUTABLE_NAME}\"\nfi\n\nSIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY:--}\"\nfind \"${PRODUCT_APP}\" -type f | while IFS= read -r ITEM; do\n  if file \"${ITEM}\" | /usr/bin/grep -q \"Mach-O\"; then\n    /usr/bin/codesign --force --sign \"${SIGN_IDENTITY}\" \\\n      --timestamp=none \"${ITEM}\"\n  fi\ndone\n\necho \"PocketJ Launcher engine embedded into ${PRODUCT_APP}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		7BD423E79E5DF9EF809DB729 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CAC80538E7FDA62E9A702056 /* main.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		172BBBDF762B8CFA272406D2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = XcodeRunner/PocketJLauncher.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_DEBUG_DYLIB = NO;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = XcodeRunner/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher;
+				PRODUCT_NAME = PocketJLauncher;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		1BAA5F37D012FC961E5B1A34 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = XcodeRunner/PocketJLauncher.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_DEBUG_DYLIB = NO;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = XcodeRunner/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher;
+				PRODUCT_NAME = PocketJLauncher;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		244CE9CA46B745B90E5FF90A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		EE6ADB4D5451BC1E0EC70093 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8359EF448B4F27ADB774FBC2 /* Build configuration list for PBXProject "PocketJLauncher" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EE6ADB4D5451BC1E0EC70093 /* Debug */,
+				244CE9CA46B745B90E5FF90A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C59BE712392A01D9BB650808 /* Build configuration list for PBXNativeTarget "PocketJ Launcher" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				172BBBDF762B8CFA272406D2 /* Debug */,
+				1BAA5F37D012FC961E5B1A34 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5FF2C83EF70E432391048157 /* Project object */;
+}
