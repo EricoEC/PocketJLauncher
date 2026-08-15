@@ -48,7 +48,7 @@
 ## 📱 系统要求
 
 - iOS / iPadOS 14.0 或更高版本
-- 已为最新的 iOS27 准备好 🎉
+- 已为最新的 iOS / iPadOS 27 准备好 🎉
 - 64 位 arm64 设备
 - 推荐使用较新的 iPhone 或 iPad，以获得更稳定的图形和内存表现
 - 运行现代 Minecraft 通常需要可用的 JIT
@@ -171,7 +171,7 @@ Offline accounts can download and play Minecraft, but cannot join Minecraft Real
 ## 📱 Requirements
 
 - iOS or iPadOS 14.0 and later
-- Ready for the latest iOS 27 🎉
+- Ready for the latest iOS / iPadOS 27 🎉
 - A 64-bit arm64 device
 - A newer iPhone or iPad is recommended for better graphics and memory performance
 - Modern Minecraft versions generally require working JIT support
