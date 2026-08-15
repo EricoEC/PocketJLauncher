@@ -1,5 +1,6 @@
 <div align="center">
-  <img src="Natives/Assets.xcassets/AppIcon-Light.appiconset/PocketJ-Light.png" width="152" alt="PocketJ Launcher icon">
+  <img src="icon1.png" width="96" alt="PocketJ Launcher Icon">
+  <img src="icon2.png" alt="PocketJ Launcher Banner">
   <h1>PocketJ Launcher</h1>
   <p><strong>专为iPhone和iPad设计：掌上 Java，随时开玩。</strong><br>Apple-native Minecraft: Java Edition launcher for iPhone and iPad.</p>
 
