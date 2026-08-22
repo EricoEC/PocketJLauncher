@@ -17,6 +17,9 @@
 - (void)pause;
 - (void)resume;
 
+/// Returns matching immutable snapshots for progress UI consumption.
+- (void)snapshotFileList:(NSArray **)files progressList:(NSArray **)progresses;
+
 - (void)downloadVersion:(NSDictionary *)version;
 - (void)downloadModpackFromAPI:(ModpackAPI *)api detail:(NSDictionary *)modDetail atIndex:(NSUInteger)selectedVersion;
 

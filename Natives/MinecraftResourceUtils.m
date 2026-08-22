@@ -123,9 +123,40 @@
         return;
     }
     json[@"arguments"][@"jvm_processed"] = [[NSMutableArray alloc] init];
+
+    /*
+     * Forge/NeoForge 1.17+ pass library and module paths through java.net.URI.
+     * Their bootstrap currently rejects an otherwise valid iOS container path
+     * when "Application Support" is present.  Keep the real instance layout
+     * untouched and expose it through a short, URI-safe symlink used only by
+     * the processed modern-loader JVM arguments.
+     */
+    NSString *gameDirectory = @(getenv("POJAV_GAME_DIR"));
+    NSString *loaderGameDirectory = gameDirectory;
+    NSString *pojavHome = @(getenv("POJAV_HOME"));
+    if (pojavHome.length && gameDirectory.length) {
+        NSString *aliasPath = [pojavHome stringByAppendingPathComponent:@".pocketj-loader-runtime"];
+        NSFileManager *fileManager = NSFileManager.defaultManager;
+        NSString *existingTarget = [fileManager destinationOfSymbolicLinkAtPath:aliasPath error:nil];
+        if (![existingTarget isEqualToString:gameDirectory]) {
+            NSDictionary *attributes = [fileManager attributesOfItemAtPath:aliasPath error:nil];
+            if ([attributes.fileType isEqualToString:NSFileTypeSymbolicLink]) {
+                [fileManager removeItemAtPath:aliasPath error:nil];
+            }
+            if (![fileManager fileExistsAtPath:aliasPath]) {
+                [fileManager createSymbolicLinkAtPath:aliasPath
+                                  withDestinationPath:gameDirectory
+                                                error:nil];
+            }
+        }
+        if ([[fileManager destinationOfSymbolicLinkAtPath:aliasPath error:nil]
+                isEqualToString:gameDirectory]) {
+            loaderGameDirectory = aliasPath;
+        }
+    }
     NSDictionary *varArgMap = @{
         @"${classpath_separator}": @":",
-        @"${library_directory}": [NSString stringWithFormat:@"%s/libraries", getenv("POJAV_GAME_DIR")],
+        @"${library_directory}": [loaderGameDirectory stringByAppendingPathComponent:@"libraries"],
         @"${version_name}": json[@"id"]
     };
     int argsToSkip = 0;
@@ -137,6 +168,10 @@
             NSString *argStr = arg;
             for (NSString *key in varArgMap.allKeys) {
                 argStr = [argStr stringByReplacingOccurrencesOfString:key withString:varArgMap[key]];
+            }
+            if (![loaderGameDirectory isEqualToString:gameDirectory]) {
+                argStr = [argStr stringByReplacingOccurrencesOfString:gameDirectory
+                                                            withString:loaderGameDirectory];
             }
             [json[@"arguments"][@"jvm_processed"] addObject:argStr];
         } else {

@@ -98,30 +98,30 @@ jobs:
       - name: Upload regular ipa
         uses: actions/upload-artifact@main
         with:
-          name: com.Erico.PocketJLauncher-${{ matrix.platform_name }}.ipa
-          path: artifacts/com.Erico.PocketJLauncher-*-${{ matrix.platform_name }}.ipa
+          name: org.angelauramc.amethyst-${{ matrix.platform_name }}.ipa
+          path: artifacts/org.angelauramc.amethyst-*-${{ matrix.platform_name }}.ipa
 
       - name: Upload regular tipa
         uses: actions/upload-artifact@main
         with:
-          name: com.Erico.PocketJLauncher-${{ matrix.platform_name }}-trollstore.tipa
-          path: artifacts/com.Erico.PocketJLauncher-*-${{ matrix.platform_name }}-trollstore.tipa
+          name: org.angelauramc.amethyst-${{ matrix.platform_name }}-trollstore.tipa
+          path: artifacts/org.angelauramc.amethyst-*-${{ matrix.platform_name }}-trollstore.tipa
 
       - name: Upload slimmed ipa
         uses: actions/upload-artifact@main
         with:
-          name: com.Erico.PocketJLauncher.slimmed-${{ matrix.platform_name }}.ipa
-          path: artifacts/com.Erico.PocketJLauncher.slimmed-*-${{ matrix.platform_name }}.ipa
+          name: org.angelauramc.amethyst.slimmed-${{ matrix.platform_name }}.ipa
+          path: artifacts/org.angelauramc.amethyst.slimmed-*-${{ matrix.platform_name }}.ipa
 
       - name: Upload slimmed tipa
         uses: actions/upload-artifact@main
         with:
-          name: com.Erico.PocketJLauncher.slimmed-${{ matrix.platform_name }}-trollstore.tipa
-          path: artifacts/com.Erico.PocketJLauncher.slimmed-*-${{ matrix.platform_name }}-trollstore.tipa
+          name: org.angelauramc.amethyst.slimmed-${{ matrix.platform_name }}-trollstore.tipa
+          path: artifacts/org.angelauramc.amethyst.slimmed-*-${{ matrix.platform_name }}-trollstore.tipa
 
-      - name: Upload PocketJLauncher.dSYM
+      - name: Upload PojavLauncher.dSYM
         uses: actions/upload-artifact@main
         if: matrix.platform_name == 'ios'
         with:
-          name: PocketJLauncher.dSYM
-          path: artifacts/PocketJLauncher.dSYM
+          name: AngelAuraAmethyst.dSYM
+          path: artifacts/AngelAuraAmethyst.dSYM

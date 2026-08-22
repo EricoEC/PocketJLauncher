@@ -7,9 +7,60 @@
 #import "ModernLaunchViewController.h"
 #import "ModernSettingsViewController.h"
 #import "ModernUITheme.h"
+#import "stikdebug/StikDebugViewController.h"
 #import "utils.h"
 
 @implementation ModernRootTabBarController
+
+- (void)openJITSettingsWithConfigurationPrompt:(BOOL)showPrompt {
+    if (self.viewControllers.count < 5) return;
+    self.selectedIndex = 4;
+    UINavigationController *settings =
+        (UINavigationController *)self.viewControllers[4];
+    if (![settings isKindOfClass:UINavigationController.class]) return;
+
+    void (^openPage)(void) = ^{
+        UIViewController *top = settings.topViewController;
+        if (![top isKindOfClass:StikDebugViewController.class]) {
+            [settings pushViewController:[StikDebugViewController new]
+                                animated:YES];
+        }
+    };
+    if (!showPrompt) {
+        openPage();
+        return;
+    }
+
+    UIAlertController *alert = [UIAlertController
+        alertControllerWithTitle:localize(@"JIT 等待配置", nil)
+        message:localize(@"开始游戏前，请先导入本机配对文件并开启 LocalDevVPN。", nil)
+        preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:localize(@"去配置", nil)
+        style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            openPage();
+        }]];
+    [settings.topViewController presentViewController:alert
+                                             animated:YES
+                                           completion:nil];
+}
+
+- (BOOL)shouldAutorotate {
+    return YES;
+}
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+    return UIInterfaceOrientationMaskPortrait |
+        UIInterfaceOrientationMaskLandscapeLeft |
+        UIInterfaceOrientationMaskLandscapeRight;
+}
+
+- (UIViewController *)childViewControllerForStatusBarHidden {
+    return self.selectedViewController;
+}
+
+- (UIViewController *)childViewControllerForStatusBarStyle {
+    return self.selectedViewController;
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];

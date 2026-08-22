@@ -27,6 +27,7 @@ include_directories(
   "external/ballpa1n"
   "external/ballpa1n/wrapped"
   "external/mach"
+  "stikdebug"
 )
 
 # For cacio support library
@@ -91,6 +92,13 @@ add_library(PocketJAccountJNI SHARED
   authenticator/MinecraftAccountJNI.m
 )
 target_link_libraries(PocketJAccountJNI)
+
+# LWJGL 3.4.1 moved callback dispatch from Callback to Upcalls. Keep the
+# proven iOS libffi/native core and provide only the new callback entry point.
+add_library(lwjgl341compat SHARED
+  lwjgl341_compat.c
+)
+target_link_libraries(lwjgl341compat)
 
 # PocketJ Launcher
 add_executable(PocketJLauncher
@@ -157,10 +165,13 @@ add_executable(PocketJLauncher
   MinecraftOptionUtils.m
   MinecraftResourceDownloadTask.m
   MinecraftResourceUtils.m
+  ModManagerViewController.m
     ModernRootTabBarController.m
     ModernLaunchViewController.m
     ModernSettingsViewController.m
-    ModernUITheme.m
+  ModernUITheme.m
+  stikdebug/StikDebugEngine.m
+  stikdebug/StikDebugViewController.m
   PickTextField.m
   PLLogOutputView.m
   PLPickerView.m
@@ -199,9 +210,13 @@ target_link_libraries(PocketJLauncher
   "-framework CoreMotion"
   "-framework GameController"
   "-framework IOKit"
+  "-framework Metal"
   "-framework QuartzCore"
   "-framework UIKit"
   "-framework UniformTypeIdentifiers"
+  "${CMAKE_CURRENT_LIST_DIR}/stikdebug/libidevice_ffi.a"
+  "-framework Security"
+  "-framework SystemConfiguration"
   "-framework UnzipKit"
   "-framework WebKit"
   "-weak_framework SafariServices"

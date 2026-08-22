@@ -8,14 +8,18 @@ export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/
 SOURCE_ROOT="${SRCROOT}"
 WORK_ROOT="/tmp/PocketJLauncher-XcodeBuild"
 BOOT_JDK_CACHE="/tmp/PocketJLauncher-BootJDK8"
+CUSTOM_JDK8="${POCKETJ_BOOT_JDK8:-}"
 PRODUCT_APP="${TARGET_BUILD_DIR}/${WRAPPER_NAME}"
 PAYLOAD_APP="${WORK_ROOT}/artifacts/Payload/PocketJLauncher.app"
+COORDINATOR_FRAMEWORK="${BUILT_PRODUCTS_DIR}/PocketJJITCoordinator.framework"
+JIT_HELPER="${BUILT_PRODUCTS_DIR}/PocketJJITHelper.appex"
 
 mkdir -p "${WORK_ROOT}"
 rsync -a --delete \
   --exclude ".git" \
   --exclude "artifacts" \
   --exclude "depends" \
+  --exclude "JavaApp/build" \
   --exclude "Natives/build" \
   "${SOURCE_ROOT}/" "${WORK_ROOT}/"
 
@@ -26,13 +30,13 @@ rm -rf "${WORK_ROOT}/Natives/build/PocketJLauncher.app"
 
 BOOT_JDK=""
 JAVA8_HOME=$(/usr/libexec/java_home -v 1.8 2>/dev/null || true)
-CACHED_JAVA8=$(find "${BOOT_JDK_CACHE}" -path "*/Contents/Home/bin/javac" -print -quit 2>/dev/null || true)
 if [[ -x "${JAVA8_HOME}/bin/javac" ]] &&
    "${JAVA8_HOME}/bin/javac" -version 2>&1 | /usr/bin/grep -q "javac 1.8"; then
   BOOT_JDK="${JAVA8_HOME}/bin"
-elif [[ -n "${CACHED_JAVA8}" ]] &&
-     "${CACHED_JAVA8}" -version 2>&1 | /usr/bin/grep -q "javac 1.8"; then
-  BOOT_JDK="${CACHED_JAVA8%/javac}"
+elif [[ -n "${CUSTOM_JDK8}" && -x "${CUSTOM_JDK8}/bin/javac" ]]; then
+  BOOT_JDK="${CUSTOM_JDK8}/bin"
+elif [[ -x "${BOOT_JDK_CACHE}/Contents/Home/bin/javac" ]]; then
+  BOOT_JDK="${BOOT_JDK_CACHE}/Contents/Home/bin"
 else
   mkdir -p "${BOOT_JDK_CACHE}"
   ARCHIVE="${BOOT_JDK_CACHE}/jdk8.tar.gz"
@@ -59,10 +63,36 @@ if [[ ! -x "${PAYLOAD_APP}/PocketJLauncher" ]]; then
   exit 1
 fi
 
+# The Swift compiler generates the host extension-point definition directly
+# in the wrapper's Extensions directory. Preserve it while the native payload
+# replaces that wrapper; without it ExtensionFoundation reports
+# "Failed to add observer".
+APPEXT_BACKUP="${WORK_ROOT}/host-extension-points"
+rm -rf "${APPEXT_BACKUP}"
+mkdir -p "${APPEXT_BACKUP}"
+find "${PRODUCT_APP}/Extensions" -maxdepth 1 -type f -name "*.appexpt" \
+  -exec cp -p {} "${APPEXT_BACKUP}/" \; 2>/dev/null || true
+
 rsync -a --delete \
   --exclude "_CodeSignature" \
   --exclude "embedded.mobileprovision" \
   "${PAYLOAD_APP}/" "${PRODUCT_APP}/"
+
+mkdir -p "${PRODUCT_APP}/Extensions"
+if find "${APPEXT_BACKUP}" -maxdepth 1 -type f -name "*.appexpt" -print -quit | /usr/bin/grep -q .; then
+  cp -p "${APPEXT_BACKUP}"/*.appexpt "${PRODUCT_APP}/Extensions/"
+else
+  echo "error: host extension-point definition (.appexpt) was not generated"
+  exit 1
+fi
+
+# Restore Xcode-built helper products after the native payload replaces the
+# wrapper. Generic ExtensionFoundation extensions live in Extensions/.
+mkdir -p "${PRODUCT_APP}/Frameworks" "${PRODUCT_APP}/Extensions"
+rsync -a --delete "${COORDINATOR_FRAMEWORK}/" \
+  "${PRODUCT_APP}/Frameworks/PocketJJITCoordinator.framework/"
+rsync -a --delete "${JIT_HELPER}/" \
+  "${PRODUCT_APP}/Extensions/PocketJJITHelper.appex/"
 
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier ${PRODUCT_BUNDLE_IDENTIFIER}" \
   "${PRODUCT_APP}/Info.plist"
@@ -80,5 +110,15 @@ find "${PRODUCT_APP}" -type f | while IFS= read -r ITEM; do
       --timestamp=none "${ITEM}"
   fi
 done
+
+# Re-seal nested bundles after their Mach-O files have been signed.
+/usr/bin/codesign --force --sign "${SIGN_IDENTITY}" --timestamp=none \
+  "${PRODUCT_APP}/Frameworks/PocketJJITCoordinator.framework"
+if [[ -d "${PRODUCT_APP}/Extensions/PocketJJITHelper.appex/Frameworks/StikJIT.framework" ]]; then
+  /usr/bin/codesign --force --sign "${SIGN_IDENTITY}" --timestamp=none \
+    "${PRODUCT_APP}/Extensions/PocketJJITHelper.appex/Frameworks/StikJIT.framework"
+fi
+/usr/bin/codesign --force --sign "${SIGN_IDENTITY}" --timestamp=none \
+  "${PRODUCT_APP}/Extensions/PocketJJITHelper.appex"
 
 echo "PocketJ Launcher engine embedded into ${PRODUCT_APP}"

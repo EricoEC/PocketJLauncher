@@ -11,6 +11,7 @@ FOUNDATION_EXPORT NSNotificationName const
 @property(nonatomic) UILabel* progressText;
 
 - (void)enterModInstallerWithPath:(NSString *)path hitEnterAfterWindowShown:(BOOL)hitEnter;
+- (void)enterModInstallerWithPath:(NSString *)path hitEnterAfterWindowShown:(BOOL)hitEnter requiredJavaVersion:(int)requiredJavaVersion;
 - (void)fetchLocalVersionList;
 - (void)reloadProfileList;
 - (void)setInteractionEnabled:(BOOL)enable forDownloading:(BOOL)downloading;

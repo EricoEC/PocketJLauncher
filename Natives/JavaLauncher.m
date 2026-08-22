@@ -22,6 +22,99 @@
 
 extern char **environ;
 
+static void PocketJDisableUnsupportedDesktopInputMods(NSString *gameDirectory) {
+    NSString *modsDirectory = [gameDirectory stringByAppendingPathComponent:@"mods"];
+    NSArray<NSString *> *entries = [fm contentsOfDirectoryAtPath:modsDirectory error:nil];
+    for (NSString *entry in entries) {
+        NSString *lowercase = entry.lowercaseString;
+        if (![lowercase hasSuffix:@".jar"] ||
+            (![lowercase containsString:@"imblocker"] &&
+             ![lowercase containsString:@"inputmethodblocker"])) {
+            continue;
+        }
+
+        NSString *source = [modsDirectory stringByAppendingPathComponent:entry];
+        NSString *destination = [source stringByAppendingString:@".disabled"];
+        NSUInteger duplicateIndex = 2;
+        while ([fm fileExistsAtPath:destination]) {
+            destination = [source stringByAppendingFormat:@".%lu.disabled",
+                (unsigned long)duplicateIndex++];
+        }
+        NSError *error = nil;
+        [fm moveItemAtPath:source toPath:destination error:&error];
+        if (error) {
+            NSLog(@"[PocketJ Mod Compatibility] Failed to disable %@: %@",
+                entry, error.localizedDescription);
+            continue;
+        }
+        NSLog(@"[PocketJ Mod Compatibility] Disabled desktop-only input-method mod %@; its macOS JNA library cannot run inside an iOS app.", entry);
+    }
+}
+
+static NSString *PocketJConfigureModernForgeGameRoot(NSString *versionID) {
+    const char *currentRoot = getenv("POJAV_GAME_DIR");
+    const char *savedRoot = getenv("POCKETJ_REAL_GAME_DIR");
+    NSString *realRoot = savedRoot ? @(savedRoot) : (currentRoot ? @(currentRoot) : nil);
+    if (!savedRoot && realRoot.length) {
+        setenv("POCKETJ_REAL_GAME_DIR", realRoot.UTF8String, 1);
+    }
+
+    NSString *lowercase = versionID.lowercaseString;
+    BOOL modernForge = [lowercase containsString:@"forge"];
+    if (!modernForge || !realRoot.length) {
+        if (realRoot.length) setenv("POJAV_GAME_DIR", realRoot.UTF8String, 1);
+        return realRoot;
+    }
+
+    const char *homeValue = getenv("POJAV_HOME");
+    if (!homeValue) return realRoot;
+    NSString *alias = [@(homeValue) stringByAppendingPathComponent:@".pocketj-loader-runtime"];
+    NSString *target = [fm destinationOfSymbolicLinkAtPath:alias error:nil];
+    if (![target isEqualToString:realRoot]) {
+        if ([[fm attributesOfItemAtPath:alias error:nil].fileType
+                isEqualToString:NSFileTypeSymbolicLink]) {
+            [fm removeItemAtPath:alias error:nil];
+        }
+        if (![fm fileExistsAtPath:alias]) {
+            [fm createSymbolicLinkAtPath:alias withDestinationPath:realRoot error:nil];
+        }
+    }
+    if ([[fm destinationOfSymbolicLinkAtPath:alias error:nil] isEqualToString:realRoot]) {
+        setenv("POJAV_GAME_DIR", alias.UTF8String, 1);
+        NSLog(@"[Forge Compatibility] Using URI-safe game root %@", alias);
+        return alias;
+    }
+    setenv("POJAV_GAME_DIR", realRoot.UTF8String, 1);
+    return realRoot;
+}
+
+static NSString *PocketJConfigureModernForgeInstanceRoot(NSString *versionID,
+                                                         NSString *gameDirectory) {
+    if (![versionID.lowercaseString containsString:@"forge"] || !gameDirectory.length) {
+        return gameDirectory;
+    }
+
+    const char *homeValue = getenv("POJAV_HOME");
+    if (!homeValue) return gameDirectory;
+    NSString *alias = [@(homeValue) stringByAppendingPathComponent:@".pocketj-instance-runtime"];
+    NSString *target = [fm destinationOfSymbolicLinkAtPath:alias error:nil];
+    if (![target isEqualToString:gameDirectory]) {
+        if ([[fm attributesOfItemAtPath:alias error:nil].fileType
+                isEqualToString:NSFileTypeSymbolicLink]) {
+            [fm removeItemAtPath:alias error:nil];
+        }
+        if (![fm fileExistsAtPath:alias]) {
+            [fm createSymbolicLinkAtPath:alias withDestinationPath:gameDirectory error:nil];
+        }
+    }
+    if ([[fm destinationOfSymbolicLinkAtPath:alias error:nil]
+            isEqualToString:gameDirectory]) {
+        NSLog(@"[Forge Compatibility] Using URI-safe instance root %@", alias);
+        return alias;
+    }
+    return gameDirectory;
+}
+
 BOOL validateVirtualMemorySpace(size_t size) {
     size <<= 20; // convert to MB
     void *map = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -99,6 +192,72 @@ void init_loadCustomJvmFlags(int* argc, const char** argv) {
     }
 }
 
+static int PocketJJavaVersionFromMetadata(NSDictionary *metadata) {
+    NSDictionary *javaVersion = [metadata[@"javaVersion"] isKindOfClass:NSDictionary.class]
+        ? metadata[@"javaVersion"] : nil;
+    int major = [javaVersion[@"majorVersion"] intValue];
+    if (major <= 0) major = [javaVersion[@"version"] intValue];
+    return major;
+}
+
+int PocketJRequiredJavaVersionForMinecraft(NSString *versionID) {
+    if (versionID.length == 0) return 8;
+
+    if ([versionID isEqualToString:@"latest-release"]) {
+        versionID = getPrefObject(@"internal.latest_version.release") ?: versionID;
+    } else if ([versionID isEqualToString:@"latest-snapshot"]) {
+        versionID = getPrefObject(@"internal.latest_version.snapshot") ?: versionID;
+    }
+
+    NSFileManager *manager = NSFileManager.defaultManager;
+    NSMutableArray<NSString *> *roots = [NSMutableArray array];
+    const char *gameDir = getenv("POJAV_GAME_DIR");
+    if (gameDir) [roots addObject:@(gameDir)];
+    const char *home = getenv("POJAV_HOME");
+    if (home) [roots addObject:[NSString stringWithFormat:@"%s/instances/%@", home,
+        getPrefObject(@"general.game_directory") ?: @"default"]];
+
+    for (NSString *root in roots) {
+        NSString *path = [NSString stringWithFormat:@"%@/versions/%@/%@.json",
+            root, versionID, versionID];
+        if (![manager fileExistsAtPath:path]) continue;
+        int major = PocketJJavaVersionFromMetadata(parseJSONFromFile(path));
+        if (major > 0) {
+            NSLog(@"[JavaResolver] %@ requires Java %d from Mojang metadata",
+                versionID, major);
+            return major;
+        }
+    }
+
+    NSString *lower = versionID.lowercaseString;
+    NSRegularExpression *expression = [NSRegularExpression
+        regularExpressionWithPattern:@"^(\\d+)(?:\\.(\\d+))?" options:0 error:nil];
+    NSTextCheckingResult *match = [expression firstMatchInString:lower options:0
+        range:NSMakeRange(0, lower.length)];
+    NSInteger majorVersion = 0;
+    NSInteger minorVersion = 0;
+    if (match.numberOfRanges > 1) {
+        majorVersion = [[lower substringWithRange:[match rangeAtIndex:1]] integerValue];
+        if (match.numberOfRanges > 2 && [match rangeAtIndex:2].location != NSNotFound) {
+            minorVersion = [[lower substringWithRange:[match rangeAtIndex:2]] integerValue];
+        }
+    }
+
+    int required = 8;
+    if (majorVersion >= 26) {
+        required = 25;
+    } else if (majorVersion == 1 && minorVersion >= 20) {
+        NSArray<NSString *> *parts = [lower componentsSeparatedByString:@"."];
+        NSInteger patch = parts.count > 2 ? [parts[2] integerValue] : 0;
+        required = (minorVersion > 20 || patch >= 5) ? 21 : 17;
+    } else if (majorVersion == 1 && minorVersion >= 17) {
+        required = 17;
+    }
+    NSLog(@"[JavaResolver] %@ requires Java %d from version-era fallback",
+        versionID, required);
+    return required;
+}
+
 int launchJVM(NSString *username, id launchTarget, int width, int height, int minVersion) {
     NSLog(@"[JavaLauncher] Beginning JVM launch");
 
@@ -153,7 +312,14 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     NSString *defaultJRETag;
     NSCAssert(launchTarget, @"Unexpected nil launchTarget");
     if ([launchTarget isKindOfClass:NSDictionary.class]) {
-        // Get preferred Java version from current profile
+        // Keep automatic selection identical to the instance editor. Mojang's
+        // metadata is authoritative when present; custom loader manifests may
+        // omit it, so fall back to the instance's underlying Minecraft version.
+        NSString *minecraftVersion = PLProfiles.current.selectedProfile[@"pocketjMinecraftVersion"];
+        if (!minecraftVersion.length) minecraftVersion = launchTarget[@"id"];
+        PocketJConfigureModernForgeGameRoot(launchTarget[@"id"]);
+        int automaticJavaVersion = PocketJRequiredJavaVersionForMinecraft(minecraftVersion);
+        minVersion = MAX(MAX(minVersion, 8), automaticJavaVersion);
         int preferredJavaVersion = [PLProfiles resolveKeyForCurrentProfile:@"javaVersion"].intValue;
         if (preferredJavaVersion > 0) {
             if (minVersion > preferredJavaVersion) {
@@ -171,13 +337,26 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
 
         // Setup POJAV_RENDERER
         NSString *renderer = [PLProfiles resolveKeyForCurrentProfile:@"renderer"];
+        if ([renderer isEqualToString:@"auto"] && automaticJavaVersion >= 25) {
+            renderer = @ RENDERER_NAME_MTL_ANGLE;
+            NSLog(@"[JavaLauncher] Auto-selected ANGLE for Minecraft %@ (required Java %d)",
+                minecraftVersion, automaticJavaVersion);
+        }
         NSLog(@"[JavaLauncher] RENDERER is set to %@\n", renderer);
         setenv("POJAV_RENDERER", renderer.UTF8String, 1);
+        BOOL needsAngle26TextureBufferWorkaround = automaticJavaVersion >= 25 &&
+            [renderer isEqualToString:@ RENDERER_NAME_MTL_ANGLE];
+        setenv("POCKETJ_ANGLE_26_TEXTURE_BUFFER_WORKAROUND",
+            needsAngle26TextureBufferWorkaround ? "1" : "0", 1);
         // Setup gameDir
         gameDir = [NSString stringWithFormat:@"%s/instances/%@/%@",
             getenv("POJAV_HOME"), getPrefObject(@"general.game_directory"),
             [PLProfiles resolveKeyForCurrentProfile:@"gameDir"]]
             .stringByStandardizingPath;
+        gameDir = PocketJConfigureModernForgeInstanceRoot(launchTarget[@"id"], gameDir);
+        if (automaticJavaVersion >= 17) {
+            PocketJDisableUnsupportedDesktopInputMods(gameDir);
+        }
     } else {
         defaultJRETag = @"execute_jar";
         gameDir = @(getenv("POJAV_GAME_DIR"));
@@ -214,6 +393,37 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     } else {
         allocmem = getPrefInt(@"java.allocated_memory");
     }
+    BOOL isLegacyCompatibilityRuntime = NO;
+    if (!launchJar && getPrefBool(@"general.legacy_compatibility")) {
+        NSString *versionID = [launchTarget[@"id"] lowercaseString] ?: @"";
+        NSString *versionType = [launchTarget[@"type"] lowercaseString] ?: @"";
+        BOOL isClassic = [versionID hasPrefix:@"rd-"] ||
+            [versionID hasPrefix:@"c0."] || [versionID hasPrefix:@"inf-"] ||
+            [versionID hasPrefix:@"indev-"] || [versionID hasPrefix:@"in-"];
+        BOOL isEarlyAlpha = [versionType isEqualToString:@"old_alpha"] ||
+            [versionID hasPrefix:@"a1."];
+        BOOL isLegacyBeta = [versionType isEqualToString:@"old_beta"] ||
+            [versionID hasPrefix:@"b1."];
+        if (isClassic || isEarlyAlpha || isLegacyBeta) {
+            isLegacyCompatibilityRuntime = YES;
+            // These releases need very little Java heap, while HotSpot, GL and
+            // the iOS JIT mapping still consume native address space. Keeping
+            // a 1 GiB heap left too little room for the Java 8 code cache.
+            int compatibilityLimit = 192;
+            if (allocmem > compatibilityLimit) {
+                NSLog(@"[Legacy Compatibility] Capping %@ from %d MB to %d MB",
+                    versionID, allocmem, compatibilityLimit);
+                allocmem = compatibilityLimit;
+            }
+        }
+    }
+    BOOL isLoaderInstaller = launchJar &&
+        [NSUserDefaults.standardUserDefaults stringForKey:@"PocketJPendingLoaderKind"].length > 0;
+    if (isLoaderInstaller && allocmem > 768) {
+        NSLog(@"[Loader Installer] Capping installer heap from %d MB to 768 MB",
+            allocmem);
+        allocmem = 768;
+    }
     NSLog(@"[JavaLauncher] Max RAM allocation is set to %d MB", allocmem);
     if (!validateVirtualMemorySpace(allocmem)) {
         UIKit_returnToSplitView();
@@ -236,8 +446,21 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     if (!launchJar) {
         margv[++margc] = "-Djava.system.class.loader=net.kdt.pojavlaunch.PojavClassLoader";
     }
-    margv[++margc] = "-Xms128M";
+    margv[++margc] = isLegacyCompatibilityRuntime ? "-Xms64M" : "-Xms128M";
     margv[++margc] = [NSString stringWithFormat:@"-Xmx%dM", allocmem].UTF8String;
+    if (isLegacyCompatibilityRuntime) {
+        // Java 8 otherwise reserves a contiguous 128 MB compiler code heap.
+        // Very old Minecraft uses only a few MB of compiled code, while that
+        // large native reservation can fail on iOS even after -Xmx is capped.
+        margv[++margc] = "-XX:InitialCodeCacheSize=2M";
+        margv[++margc] = "-XX:ReservedCodeCacheSize=16M";
+    }
+    if (isLoaderInstaller) {
+        // Forge processors need heap, but a 128 MB HotSpot code heap can starve
+        // iOS native address space during binary patching. Installers do not
+        // need a game-sized code cache.
+        margv[++margc] = "-XX:ReservedCodeCacheSize=64M";
+    }
     margv[++margc] = [NSString stringWithFormat:@"-Djava.library.path=%@/Frameworks", NSBundle.mainBundle.bundlePath].UTF8String;
     margv[++margc] = [NSString stringWithFormat:@"-Duser.dir=%@", gameDir].UTF8String;
     margv[++margc] = [NSString stringWithFormat:@"-Duser.home=%s", getenv("POJAV_HOME")].UTF8String;
@@ -245,6 +468,9 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     margv[++margc] = [NSString stringWithFormat:@"-DUIScreen.maximumFramesPerSecond=%d", (int)UIScreen.mainScreen.maximumFramesPerSecond].UTF8String;
     margv[++margc] = "-Dorg.lwjgl.glfw.checkThread0=false";
     margv[++margc] = "-Dorg.lwjgl.system.allocator=system";
+    // Minecraft 26.2 loads LWJGL SPVC. Reuse the SPIRV-Cross C library already
+    // signed and embedded in the app instead of extracting desktop natives.
+    margv[++margc] = "-Dorg.lwjgl.spvc.libname=spirv-cross-c-shared.0";
     //margv[++margc] = "-Dorg.lwjgl.util.NoChecks=true";
     margv[++margc] = "-Dlog4j2.formatMsgNoLookups=true";
 
@@ -362,7 +588,18 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     init_loadCustomJvmFlags(&margc, (const char **)margv);
     NSLog(@"[Init] Found JLI lib");
 
-    NSString *classpath = [NSString stringWithFormat:@"%@/*", librariesPath];
+    NSMutableArray<NSString *> *classpathEntries = [NSMutableArray array];
+    NSArray<NSString *> *bundledLibraries = [[NSFileManager.defaultManager
+        contentsOfDirectoryAtPath:librariesPath error:nil]
+        sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
+    BOOL useModernLWJGL = !launchJar && minVersion >= 25;
+    for (NSString *library in bundledLibraries) {
+        if (![library.pathExtension.lowercaseString isEqualToString:@"jar"]) continue;
+        if ([library isEqualToString:@"lwjgl.jar"] && useModernLWJGL) continue;
+        if ([library isEqualToString:@"lwjgl341.jar"] && !useModernLWJGL) continue;
+        [classpathEntries addObject:[librariesPath stringByAppendingPathComponent:library]];
+    }
+    NSString *classpath = [classpathEntries componentsJoinedByString:@":"];
     if (launchJar) {
         classpath = [classpath stringByAppendingFormat:@":%@", launchTarget];
     }

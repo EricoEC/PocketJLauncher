@@ -52,7 +52,7 @@
     if (!response) {
         return;
     }
-    NSArray<NSString *> *names = [response valueForKey:@"name"];
+    NSMutableArray<NSString *> *names = [NSMutableArray new];
     NSMutableArray<NSString *> *mcNames = [NSMutableArray new];
     NSMutableArray<NSString *> *urls = [NSMutableArray new];
     NSMutableArray<NSString *> *hashes = [NSMutableArray new];
@@ -60,11 +60,14 @@
     [response enumerateObjectsUsingBlock:
   ^(NSDictionary *version, NSUInteger i, BOOL *stop) {
         NSDictionary *file = [version[@"files"] firstObject];
-        mcNames[i] = [version[@"game_versions"] firstObject];
-        sizes[i] = file[@"size"];
-        urls[i] = file[@"url"];
+        NSString *mcVersion = [version[@"game_versions"] firstObject];
+        if (!file[@"url"] || !mcVersion.length) return;
+        [names addObject:version[@"name"] ?: version[@"version_number"] ?: @""];
+        [mcNames addObject:mcVersion];
+        [sizes addObject:file[@"size"] ?: @0];
+        [urls addObject:file[@"url"]];
         NSDictionary *hashesMap = file[@"hashes"];
-        hashes[i] = hashesMap[@"sha1"] ?: [NSNull null];
+        [hashes addObject:hashesMap[@"sha1"] ?: @""];
     }];
     item[@"versionNames"] = names;
     item[@"mcVersionNames"] = mcNames;
@@ -89,7 +92,6 @@
         return;
     }
 
-    downloader.progress.totalUnitCount = [indexDict[@"files"] count];
     for (NSDictionary *indexFile in indexDict[@"files"]) {
 /*
         if ([indexFile[@"downloads"] count] > 1) {
@@ -103,11 +105,8 @@
         NSUInteger size = [indexFile[@"fileSize"] unsignedLongLongValue];
         NSURLSessionDownloadTask *task = [downloader createDownloadTask:url size:size sha:sha altName:nil toPath:path];
         if (task) {
-            [downloader.fileList addObject:indexFile[@"path"]];
             [task resume];
-        } else if (!downloader.progress.cancelled) {
-            downloader.progress.completedUnitCount++;
-        } else {
+        } else if (downloader.progress.cancelled) {
             return; // cancelled
         }
     }
@@ -124,29 +123,58 @@
         return;
     }
 
-    // Delete package cache
-    [NSFileManager.defaultManager removeItemAtPath:packagePath error:nil];
+    // Preserve the verified package cache so retries can rebuild the task list
+    // and skip every dependency that is already valid on disk.
 
     // Download dependency client json (if available)
     NSDictionary<NSString *, NSString *> *depInfo = [ModpackUtils infoForDependencies:indexDict[@"dependencies"]];
     if (depInfo[@"json"]) {
         NSString *jsonPath = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("POJAV_GAME_DIR"), depInfo[@"id"]];
-        NSURLSessionDownloadTask *task = [downloader createDownloadTask:depInfo[@"json"] size:0 sha:nil altName:nil toPath:jsonPath];
+        // Reserve a progress unit immediately. With an unknown size the task
+        // would otherwise be attached only after its response arrives, leaving
+        // a small window where the whole modpack appears complete too early.
+        NSURLSessionDownloadTask *task = [downloader createDownloadTask:depInfo[@"json"] size:1 sha:nil altName:nil toPath:jsonPath];
         [task resume];
     }
     // TODO: automation for Forge
 
-    // Create profile
+    // Finish the profile that was registered before the homepage download.
     NSString *tmpIconPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"icon.png"];
-    PLProfiles.current.profiles[indexDict[@"name"]] = @{
-        @"gameDir": [NSString stringWithFormat:@"./custom_gamedir/%@", destPath.lastPathComponent],
-        @"name": indexDict[@"name"],
-        @"lastVersionId": depInfo[@"id"],
-        @"icon": [NSString stringWithFormat:@"data:image/png;base64,%@",
-            [[NSData dataWithContentsOfFile:tmpIconPath]
-            base64EncodedStringWithOptions:0]]
-    }.mutableCopy;
-    PLProfiles.current.selectedProfileName = indexDict[@"name"];
+    NSMutableDictionary *profile = PLProfiles.current.selectedProfile;
+    if ([profile isKindOfClass:NSMutableDictionary.class]) {
+        NSDictionary *dependencies = indexDict[@"dependencies"];
+        NSString *minecraftVersion = dependencies[@"minecraft"] ?: @"";
+        NSString *loader = @"vanilla";
+        NSString *loaderVersion = @"";
+        BOOL loaderPending = NO;
+        if ([dependencies[@"forge"] length]) {
+            loader = @"forge";
+            loaderVersion = dependencies[@"forge"];
+            loaderPending = YES;
+        } else if ([dependencies[@"neoforge"] length]) {
+            loader = @"neoforge";
+            loaderVersion = dependencies[@"neoforge"];
+            loaderPending = YES;
+        } else if ([dependencies[@"fabric-loader"] length]) {
+            loader = @"fabric";
+            loaderVersion = dependencies[@"fabric-loader"];
+        } else if ([dependencies[@"quilt-loader"] length]) {
+            loader = @"quilt";
+            loaderVersion = dependencies[@"quilt-loader"];
+        }
+        profile[@"lastVersionId"] = loaderPending
+            ? minecraftVersion : (depInfo[@"id"] ?: minecraftVersion);
+        profile[@"pocketjMinecraftVersion"] = minecraftVersion;
+        profile[@"pocketjLoader"] = loader;
+        profile[@"pocketjLoaderVersion"] = loaderVersion;
+        profile[@"pocketjLoaderInstallPending"] = @(loaderPending);
+        NSData *iconData = [NSData dataWithContentsOfFile:tmpIconPath];
+        if (iconData.length) {
+            profile[@"icon"] = [NSString stringWithFormat:@"data:image/png;base64,%@",
+                [iconData base64EncodedStringWithOptions:0]];
+        }
+        [PLProfiles.current save];
+    }
 }
 
 @end

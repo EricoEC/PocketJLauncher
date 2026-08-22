@@ -498,6 +498,11 @@ public class GLFW
     /* volatile */ public static GLFWWindowPosCallback mGLFWWindowPosCallback;
     /* volatile */ public static GLFWWindowRefreshCallback mGLFWWindowRefreshCallback;
     /* volatile */ public static GLFWWindowSizeCallback mGLFWWindowSizeCallback;
+    // GLFW 3.4.1 IME callbacks. UIKit owns text composition on iOS, but the
+    // Java methods must exist because Minecraft 26.2 installs them at startup.
+    private static GLFWPreeditCallbackI mGLFWPreeditCallback;
+    private static GLFWIMEStatusCallbackI mGLFWIMEStatusCallback;
+    private static GLFWPreeditCandidateCallbackI mGLFWPreeditCandidateCallback;
 
     volatile public static int mGLFWWindowWidth, mGLFWWindowHeight;
 
@@ -700,6 +705,33 @@ public class GLFW
         return lastCallback;
     }
 
+    public static long nglfwSetPreeditCallback(long window, long ptr) {
+        return 0L;
+    }
+
+    public static GLFWPreeditCallback glfwSetPreeditCallback(long window, @Nullable GLFWPreeditCallbackI cbfun) {
+        mGLFWPreeditCallback = cbfun;
+        return null;
+    }
+
+    public static long nglfwSetIMEStatusCallback(long window, long ptr) {
+        return 0L;
+    }
+
+    public static GLFWIMEStatusCallback glfwSetIMEStatusCallback(long window, @Nullable GLFWIMEStatusCallbackI cbfun) {
+        mGLFWIMEStatusCallback = cbfun;
+        return null;
+    }
+
+    public static long nglfwSetPreeditCandidateCallback(long window, long ptr) {
+        return 0L;
+    }
+
+    public static GLFWPreeditCandidateCallback glfwSetPreeditCandidateCallback(long window, @Nullable GLFWPreeditCandidateCallbackI cbfun) {
+        mGLFWPreeditCandidateCallback = cbfun;
+        return null;
+    }
+
     public static GLFWMonitorCallback glfwSetMonitorCallback(@Nullable @NativeType("GLFWmonitorfun") GLFWMonitorCallbackI cbfun) {
         GLFWMonitorCallback lastCallback = mGLFWMonitorCallback;
         if (cbfun == null) mGLFWMonitorCallback = null;
@@ -807,6 +839,23 @@ public class GLFW
 
     public static int glfwGetPlatform() {
         return GLFW_PLATFORM_X11;
+    }
+
+    /**
+     * GLFW 3.4 platform capability query.
+     *
+     * PocketJ's UIKit bridge intentionally exposes the X11-compatible path to
+     * Minecraft while forwarding window and input operations to iOS. Newer
+     * Minecraft clients call this method before glfwInit; keeping the answer
+     * consistent with glfwGetPlatform avoids using desktop Cocoa/Wayland code.
+     */
+    public static boolean glfwPlatformSupported(int platform) {
+        return platform == GLFW_PLATFORM_X11;
+    }
+
+    /** Returns the UIKit display name expected by the GLFW 3.4 monitor API. */
+    public static String glfwGetMonitorName(long monitor) {
+        return "PocketJ iOS Display";
     }
 
     @NativeType("GLFWwindow *")
@@ -1088,7 +1137,11 @@ public class GLFW
     public static void glfwPostEmptyEvent() {}
 
     public static int glfwGetInputMode(@NativeType("GLFWwindow *") long window, int mode) {
-        return internalGetWindow(window).inputModes.get(mode);
+        // GLFW 3.4 added IME-related input modes which Minecraft 26.2 queries
+        // before it has explicitly set them. A missing entry must behave like
+        // GLFW's default state rather than being unboxed from null.
+        int defaultValue = mode == GLFW_CURSOR ? GLFW_CURSOR_NORMAL : GLFW_FALSE;
+        return internalGetWindow(window).inputModes.getOrDefault(mode, defaultValue);
     }
 
     public static void glfwSetInputMode(@NativeType("GLFWwindow *") long window, int mode, int value) {

@@ -15,11 +15,16 @@
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    UIEdgeInsets insets = self.view.safeAreaInsets;
+    CGFloat availableWidth = self.view.bounds.size.width - insets.left - insets.right;
+    CGFloat availableHeight = self.view.bounds.size.height - insets.top - insets.bottom;
+    CGFloat width = MIN(availableWidth, self.preferredContentSize.width);
+    CGFloat height = MIN(availableHeight, self.preferredContentSize.height);
+    // Keep the wheel centered instead of anchoring it to the leading edge.
     CGRect frame = CGRectMake(
-        self.view.safeAreaInsets.left,
-        self.view.safeAreaInsets.top,
-        MIN(self.view.frame.size.width - self.view.safeAreaInsets.right, self.preferredContentSize.width),
-        MIN(self.view.frame.size.height - self.view.safeAreaInsets.bottom, self.preferredContentSize.height));
+        insets.left + (availableWidth - width) * 0.5,
+        insets.top + (availableHeight - height) * 0.5,
+        width, height);
     CGRect accessoryFrame = CGRectMake(frame.origin.x, frame.origin.y, frame.size.width, self.textField.inputAccessoryView.frame.size.height);
     self.textField.inputAccessoryView.frame = accessoryFrame;
     self.textField.inputView.frame =
@@ -55,11 +60,7 @@
 }
 
 - (BOOL)prefersPopoverPresentation {
-    if (self.prefersMediumSheet &&
-        self.traitCollection.horizontalSizeClass ==
-            UIUserInterfaceSizeClassCompact) {
-        return NO;
-    }
+    if (self.prefersMediumSheet) return NO;
     BOOL hasLiquidGlass = _UISolariumEnabled && _UISolariumEnabled();
     return hasLiquidGlass || NSProcessInfo.processInfo.isMacCatalystApp;
 }
@@ -78,15 +79,14 @@
 }
 
 - (BOOL)becomeFirstResponder {
-    if (self.prefersMediumSheet &&
-        self.traitCollection.horizontalSizeClass ==
-            UIUserInterfaceSizeClassCompact) {
+    if (self.prefersMediumSheet) {
         self.vc = [[PickViewController alloc] init];
         self.vc.modalPresentationStyle = UIModalPresentationPageSheet;
         self.vc.preferredContentSize =
             CGSizeMake(MIN(400, self.window.bounds.size.width), 420);
         self.vc.textField = self;
-        if (@available(iOS 15.0, *)) {
+        if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPhone) {
+          if (@available(iOS 15.0, *)) {
             UISheetPresentationController *sheet =
                 self.vc.sheetPresentationController;
             sheet.detents = @[
@@ -96,6 +96,7 @@
                 UISheetPresentationControllerDetentIdentifierMedium;
             sheet.prefersGrabberVisible = YES;
             sheet.prefersScrollingExpandsWhenScrolledToEdge = NO;
+          }
         }
         UIViewController *showingVC = (id)self.nextResponder;
         while (showingVC &&

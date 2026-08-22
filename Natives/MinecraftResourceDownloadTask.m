@@ -7,11 +7,13 @@
 #import "LauncherPreferences.h"
 #import "MinecraftResourceDownloadTask.h"
 #import "MinecraftResourceUtils.h"
+#import "PLProfiles.h"
 #import "ios_uikit_bridge.h"
 #import "utils.h"
 
 @interface MinecraftResourceDownloadTask ()
 @property AFURLSessionManager* manager;
+@property(atomic) BOOL terminalFailureDelivered;
 @end
 
 @implementation MinecraftResourceDownloadTask
@@ -21,7 +23,7 @@
     // TODO: implement background download
     NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
     configuration.timeoutIntervalForRequest = 86400;
-    //backgroundSessionConfigurationWithIdentifier:@"com.Erico.PocketJLauncher.downloadtask"];
+    //backgroundSessionConfigurationWithIdentifier:@"net.kdt.pojavlauncher.downloadtask"];
     self.manager = [[AFURLSessionManager alloc] initWithSessionConfiguration:configuration];
     self.fileList = [NSMutableArray new];
     self.progressList = [NSMutableArray new];
@@ -31,8 +33,11 @@
 // Add file to the queue
 - (NSURLSessionDownloadTask *)createDownloadTask:(NSString *)url size:(NSUInteger)size sha:(NSString *)sha altName:(NSString *)altName toPath:(NSString *)path success:(void (^)())success {
     BOOL fileExists = [NSFileManager.defaultManager fileExistsAtPath:path];
+    NSString *resumePath = [path stringByAppendingString:@".pocketj.resume"];
     // logSuccess?
     if (fileExists && [self checkSHA:sha forFile:path altName:altName]) {
+        [NSFileManager.defaultManager removeItemAtPath:resumePath error:nil];
+        NSLog(@"[MCDL] Reusing verified local file %@", altName ?: path.lastPathComponent);
         if (success) success();
         return nil;
     } else if (![self checkAccessWithDialog:YES]) {
@@ -42,33 +47,63 @@
     NSString *name = altName ?: path.lastPathComponent;
     NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
     __block NSProgress *progress;
-    __block NSURLSessionDownloadTask *task = [self.manager downloadTaskWithRequest:request progress:nil
-    destination:^NSURL * _Nonnull(NSURL * _Nonnull targetPath, NSURLResponse * _Nonnull response) {
+    __block NSURLSessionDownloadTask *task = nil;
+    NSURL *(^destination)(NSURL *, NSURLResponse *) = ^NSURL *(NSURL *targetPath, NSURLResponse *response) {
         NSLog(@"[MCDL] Downloading %@", name);
         progress = [self.manager downloadProgressForTask:task];
         if (!size && task) {
             [self addDownloadTaskToProgress:task size:response.expectedContentLength];
-            [self.fileList addObject:name];
+            @synchronized (self) {
+                [self.fileList addObject:name];
+            }
         }
         [NSFileManager.defaultManager createDirectoryAtPath:path.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil];
         [NSFileManager.defaultManager removeItemAtPath:path error:nil];
         return [NSURL fileURLWithPath:path];
-    } completionHandler:^(NSURLResponse * _Nonnull response, NSURL * _Nullable filePath, NSError * _Nullable error) {
-        if (self.progress.cancelled) {
-            // Ignore any further errors
-        } else if (error != nil) {
+    };
+    void (^completion)(NSURLResponse *, NSURL *, NSError *) =
+    ^(NSURLResponse *response, NSURL *filePath, NSError *error) {
+        if (error != nil) {
+            NSData *resumeData = error.userInfo[@"NSURLSessionDownloadTaskResumeData"];
+            if ([resumeData isKindOfClass:NSData.class] && resumeData.length > 0) {
+                [NSFileManager.defaultManager createDirectoryAtPath:
+                    resumePath.stringByDeletingLastPathComponent
+                    withIntermediateDirectories:YES attributes:nil error:nil];
+                [resumeData writeToFile:resumePath options:NSDataWritingAtomic error:nil];
+                NSLog(@"[MCDL] Saved resume data for %@ (%lu bytes)", name,
+                    (unsigned long)resumeData.length);
+            } else {
+                [NSFileManager.defaultManager removeItemAtPath:resumePath error:nil];
+            }
+            if (self.progress.cancelled) {
+                return;
+            }
             [self finishDownloadWithError:error file:name];
         } else if (![self checkSHA:sha forFile:path altName:altName]) {
+            [NSFileManager.defaultManager removeItemAtPath:resumePath error:nil];
             [self finishDownloadWithErrorString:[NSString stringWithFormat:@"Failed to verify file %@: SHA1 mismatch", path.lastPathComponent]];
         } else {
+            [NSFileManager.defaultManager removeItemAtPath:resumePath error:nil];
             progress.totalUnitCount = progress.completedUnitCount;
             if (success) success();
         }
-    }];
+    };
+
+    NSData *resumeData = [NSData dataWithContentsOfFile:resumePath];
+    if (resumeData.length > 0) {
+        NSLog(@"[MCDL] Resuming interrupted download %@", name);
+        task = [self.manager downloadTaskWithResumeData:resumeData
+            progress:nil destination:destination completionHandler:completion];
+    } else {
+        task = [self.manager downloadTaskWithRequest:request
+            progress:nil destination:destination completionHandler:completion];
+    }
 
     if (size && task) {
         [self addDownloadTaskToProgress:task size:size];
-        [self.fileList addObject:name];
+        @synchronized (self) {
+            [self.fileList addObject:name];
+        }
     }
 
     return task;
@@ -85,7 +120,9 @@
     if (size > 0) {
         progress.totalUnitCount = fileSize;
     }
-    [self.progressList addObject:progress];
+    @synchronized (self) {
+        [self.progressList addObject:progress];
+    }
     [self.progress addChild:progress withPendingUnitCount:fileSize];
     self.progress.totalUnitCount += fileSize;
     self.textProgress.totalUnitCount = self.progress.totalUnitCount;
@@ -130,6 +167,41 @@
         } else if (json[@"inheritsFrom"]) {
             version = (id)[MinecraftResourceUtils findVersion:json[@"inheritsFrom"] inList:remoteVersionList];
             path = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("POJAV_GAME_DIR"), json[@"inheritsFrom"]];
+            if (!version) {
+                // JIT activation intentionally invalidates the global version
+                // list. A Forge installer can finish before that list has been
+                // fetched again, so resolve its Mojang parent here instead of
+                // constructing a request from a nil URL.
+                NSString *parentVersion = json[@"inheritsFrom"];
+                NSURL *manifestURL = [NSURL URLWithString:
+                    @"https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"];
+                [[[NSURLSession sharedSession] dataTaskWithURL:manifestURL
+                    completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+                    NSDictionary *manifest = data.length
+                        ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
+                    NSDictionary *resolved = nil;
+                    for (NSDictionary *candidate in manifest[@"versions"] ?: @[]) {
+                        if ([candidate[@"id"] isEqualToString:parentVersion]) {
+                            resolved = candidate;
+                            break;
+                        }
+                    }
+                    if (error || !resolved[@"url"]) {
+                        [self finishDownloadWithErrorString:error.localizedDescription ?:
+                            [NSString stringWithFormat:localize(@"无法获取 Minecraft %@ 的下载信息。", nil), parentVersion]];
+                        return;
+                    }
+                    NSString *parentPath = [NSString stringWithFormat:
+                        @"%1$s/versions/%2$@/%2$@.json", getenv("POJAV_GAME_DIR"), parentVersion];
+                    NSString *resolvedURL = resolved[@"url"];
+                    NSURLSessionDownloadTask *parentTask = [self createDownloadTask:resolvedURL
+                        size:[resolved[@"size"] unsignedLongLongValue]
+                        sha:resolvedURL.stringByDeletingLastPathComponent.lastPathComponent
+                        altName:nil toPath:parentPath success:completionBlock];
+                    [parentTask resume];
+                }] resume];
+                return;
+            }
         } else {
             completionBlock();
             return;
@@ -170,15 +242,30 @@
     for (NSDictionary *library in self.metadata[@"libraries"]) {
         NSString *name = library[@"name"];
 
-        NSMutableDictionary *artifact = library[@"downloads"][@"artifact"];
-        if (artifact == nil && [name containsString:@":"]) {
+        NSMutableDictionary *artifact = [library[@"downloads"][@"artifact"] mutableCopy];
+        if ((artifact == nil || ![artifact[@"url"] length]) && [name containsString:@":"]) {
             NSLog(@"[MCDL] Unknown artifact object for %@, attempting to generate one", name);
-            artifact = [[NSMutableDictionary alloc] init];
+            artifact = artifact ?: [[NSMutableDictionary alloc] init];
             NSString *prefix = library[@"url"] == nil ? @"https://libraries.minecraft.net/" : [library[@"url"] stringByReplacingOccurrencesOfString:@"http://" withString:@"https://"];
             NSArray *libParts = [name componentsSeparatedByString:@":"];
-            artifact[@"path"] = [NSString stringWithFormat:@"%1$@/%2$@/%3$@/%2$@-%3$@.jar", [libParts[0] stringByReplacingOccurrencesOfString:@"." withString:@"/"], libParts[1], libParts[2]];
+            if (libParts.count < 3) {
+                [self finishDownloadWithErrorString:[NSString stringWithFormat:
+                    localize(@"无法解析依赖 %@。", nil), name]];
+                return nil;
+            }
+            NSString *version = [libParts[2] componentsSeparatedByString:@"@"][0];
+            NSString *extension = [libParts[2] containsString:@"@"]
+                ? [libParts[2] componentsSeparatedByString:@"@"].lastObject : @"jar";
+            NSString *classifier = libParts.count > 3 ? libParts[3] : nil;
+            NSString *filename = [NSString stringWithFormat:@"%@-%@%@.%@",
+                libParts[1], version, classifier.length ? [@"-" stringByAppendingString:classifier] : @"", extension];
+            artifact[@"path"] = [NSString stringWithFormat:@"%@/%@/%@/%@",
+                [libParts[0] stringByReplacingOccurrencesOfString:@"." withString:@"/"],
+                libParts[1], version, filename];
             artifact[@"url"] = [NSString stringWithFormat:@"%@%@", prefix, artifact[@"path"]];
-            artifact[@"sha1"] = library[@"checksums"][0];
+            if (!artifact[@"sha1"] && [library[@"checksums"] count]) {
+                artifact[@"sha1"] = library[@"checksums"][0];
+            }
         }
 
         NSString *path = [NSString stringWithFormat:@"%s/libraries/%@", getenv("POJAV_GAME_DIR"), artifact[@"path"]];
@@ -242,6 +329,9 @@
 - (void)downloadVersion:(NSDictionary *)version {
     [self prepareForDownload];
     [self downloadVersionMetadata:version success:^{
+        // Integrity-off means existing files are trusted; missing files must
+        // still be enumerated and downloaded, especially immediately after a
+        // Forge installer has produced only its version JSON.
         [self downloadAssetMetadataWithSuccess:^{
             NSArray *libTasks = [self downloadClientLibraries];
             NSArray *assetTasks = [self downloadClientAssets];
@@ -276,11 +366,34 @@
     NSString *sha = modDetail[@"versionHashes"][selectedVersion];
     NSString *name = [[modDetail[@"title"] lowercaseString] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet];
     name = [name stringByReplacingOccurrencesOfString:@" " withString:@"_"];
-    NSString *packagePath = [NSTemporaryDirectory() stringByAppendingFormat:@"/%@.zip", name];
+    NSString *cacheRoot = [@(getenv("POJAV_GAME_DIR"))
+        stringByAppendingPathComponent:@".pocketj-cache/modpacks"];
+    NSString *packagePath = [cacheRoot stringByAppendingPathComponent:
+        [name stringByAppendingPathExtension:@"zip"]];
 
     NSURLSessionDownloadTask *task = [self createDownloadTask:url size:size sha:sha altName:nil toPath:packagePath success:^{
-        NSString *path = [NSString stringWithFormat:@"%s/custom_gamedir/%@", getenv("POJAV_GAME_DIR"), name];
+        NSString *relative = PLProfiles.current.selectedProfile[@"gameDir"] ?: @"";
+        if ([relative hasPrefix:@"./"]) relative = [relative substringFromIndex:2];
+        NSString *path = relative.length
+            ? [@(getenv("POJAV_GAME_DIR")) stringByAppendingPathComponent:relative]
+            : [NSString stringWithFormat:@"%s/custom_gamedir/%@", getenv("POJAV_GAME_DIR"), name];
         [api downloader:self submitDownloadTasksFromPackage:packagePath toPath:path];
+
+        // The download plan starts with one sentinel unit so that the package
+        // download cannot finish the whole operation before its contents have
+        // been inspected. Once every dependency has been queued, remove that
+        // sentinel. The progress can now finish naturally when the remaining
+        // files complete (or immediately when all files were reused).
+        @synchronized (self) {
+            self.progress.totalUnitCount = MAX(0, self.progress.totalUnitCount - 1);
+            self.textProgress.totalUnitCount = self.progress.totalUnitCount;
+            if (self.progress.totalUnitCount == 0) {
+                self.progress.totalUnitCount = 1;
+                self.progress.completedUnitCount = 1;
+                self.textProgress.totalUnitCount = 1;
+                self.textProgress.completedUnitCount = 1;
+            }
+        }
     }];
     [task resume];
 }
@@ -300,8 +413,18 @@
     self.progress.pausable = YES;
     // Push 1 byte so it won't accidentally finish after downloading assets index
     self.progress.totalUnitCount = 1;
-    [self.fileList removeAllObjects];
-    [self.progressList removeAllObjects];
+    @synchronized (self) {
+        [self.fileList removeAllObjects];
+        [self.progressList removeAllObjects];
+    }
+}
+
+- (void)snapshotFileList:(NSArray **)files progressList:(NSArray **)progresses {
+    @synchronized (self) {
+        NSUInteger count = MIN(self.fileList.count, self.progressList.count);
+        if (files) *files = [self.fileList subarrayWithRange:NSMakeRange(0, count)];
+        if (progresses) *progresses = [self.progressList subarrayWithRange:NSMakeRange(0, count)];
+    }
 }
 
 - (void)cancel {
@@ -336,10 +459,14 @@
 }
 
 - (void)finishDownloadWithErrorString:(NSString *)error {
+    @synchronized (self) {
+        if (self.terminalFailureDelivered) return;
+        self.terminalFailureDelivered = YES;
+    }
     [self.progress cancel];
     [self.manager invalidateSessionCancelingTasks:YES resetSession:YES];
     showDialog(localize(@"Error", nil), error);
-    self.handleError();
+    if (self.handleError) self.handleError();
 }
 
 - (void)finishDownloadWithError:(NSError *)error file:(NSString *)file {

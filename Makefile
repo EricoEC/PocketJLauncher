@@ -9,7 +9,7 @@ OUTPUTDIR   := $(SOURCEDIR)/artifacts
 WORKINGDIR  := $(SOURCEDIR)/Natives/build
 DETECTPLAT  := $(shell uname -s)
 DETECTARCH  := $(shell uname -m)
-VERSION     := 1.0
+VERSION     := 1.1
 BRANCH      := $(shell git branch --show-current)
 COMMIT      := $(shell git log --oneline | sed '2,10000000d' | cut -b 1-7)
 PLATFORM    ?= 2
@@ -311,6 +311,12 @@ jre: native
 
 dep_mg:
 	echo '[PocketJ Launcher v$(VERSION)] dep_mg - start'
+	@if [ -f "$(WORKINGDIR)/mobileglues/CMakeCache.txt" ] && \
+	   ! /usr/bin/grep -Fq "CMAKE_HOME_DIRECTORY:INTERNAL=$(SOURCEDIR)/Natives/external/MobileGlues/src/main/cpp" \
+	     "$(WORKINGDIR)/mobileglues/CMakeCache.txt"; then \
+		echo '[PocketJ Launcher] Removing relocated MobileGlues CMake cache'; \
+		rm -rf "$(WORKINGDIR)/mobileglues"; \
+	fi
 	mkdir -p $(WORKINGDIR)/mobileglues
 	cd $(WORKINGDIR)/mobileglues && cmake \
 		-DMACOS="1" \
@@ -396,9 +402,9 @@ deploy:
 		else \
 			$(call METHOD_PACKAGE); \
 			if [ '$(SLIMMED_ONLY)' = '0' ]; then \
-				open $(OUTPUTDIR)/com.Erico.PocketJLauncher-$(VERSION)-$(PLATFORM_NAME).ipa; \
+				open $(OUTPUTDIR)/net.kdt.pojavlauncher-$(VERSION)-$(PLATFORM_NAME).ipa; \
 			else \
-				open $(OUTPUTDIR)/com.Erico.PocketJLauncher.slimmed-$(VERSION)-$(PLATFORM_NAME).ipa; \
+				open $(OUTPUTDIR)/net.kdt.pojavlauncher.slimmed-$(VERSION)-$(PLATFORM_NAME).ipa; \
 			fi; \
 		fi; \
 	else \

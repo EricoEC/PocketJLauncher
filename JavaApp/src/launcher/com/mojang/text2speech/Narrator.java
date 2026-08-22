@@ -1,6 +1,16 @@
 package com.mojang.text2speech;
 
 public interface Narrator {
+    class InitializeException extends Exception {
+        public InitializeException(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+        public InitializeException(String message) {
+            super(message);
+        }
+    }
+
     void say(final String msg, final boolean interrupt);
 
     void clear();

@@ -6,6 +6,7 @@
 #import "LauncherPrefContCfgViewController.h"
 #import "LauncherPrefManageJREViewController.h"
 #import "ModernUITheme.h"
+#import "stikdebug/StikDebugViewController.h"
 #import "UIKit+hook.h"
 #import "ios_uikit_bridge.h"
 #import "utils.h"
@@ -20,6 +21,7 @@ static NSString *const ModernSettingTypeAction = @"action";
 static NSString *const ModernSettingTypeInformation = @"information";
 static NSString *const ModernSettingTypeLink = @"link";
 static NSString *const PocketJGitHubURLString = @"https://github.com/EricoEC/PocketJLauncher";
+static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
 
 @interface ModernSettingsViewController ()
 @property(nonatomic) NSArray<NSDictionary *> *sections;
@@ -79,11 +81,29 @@ static NSString *const PocketJGitHubURLString = @"https://github.com/EricoEC/Poc
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeAutomatic;
     [ModernUITheme styleController:self];
     [ModernUITheme styleTableView:self.tableView];
+    static dispatch_once_t cacheOnceToken;
+    dispatch_once(&cacheOnceToken, ^{
+        PocketJCreditsImageCache = [NSCache new];
+        PocketJCreditsImageCache.countLimit = 8;
+    });
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 72.0;
     self.tableView.sectionHeaderHeight = UITableViewAutomaticDimension;
     self.tableView.sectionFooterHeight = UITableViewAutomaticDimension;
     [self buildSections];
+    [NSNotificationCenter.defaultCenter addObserver:self
+        selector:@selector(jitStateDidChange:)
+        name:@"PocketJJITStateDidChangeNotification" object:nil];
+}
+
+- (void)dealloc {
+    [NSNotificationCenter.defaultCenter removeObserver:self];
+}
+
+- (void)jitStateDidChange:(NSNotification *)notification {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.tableView reloadData];
+    });
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -153,7 +173,6 @@ static NSString *const PocketJGitHubURLString = @"https://github.com/EricoEC/Poc
                            type:ModernSettingTypeNavigation
                            icon:@"cup.and.saucer.fill"
                             key:@"runtime"];
-
     NSMutableDictionary *fluidButtonSlide =
         [[self item:@"fluid_button_slide"
              section:@"control"
@@ -162,6 +181,16 @@ static NSString *const PocketJGitHubURLString = @"https://github.com/EricoEC/Poc
     fluidButtonSlide[@"title"] = localize(@"丝滑滑入按键", nil);
     fluidButtonSlide[@"detail"] =
         localize(@"滑入即触发，跨缝不中断，并支持四向对角移动。", nil);
+
+    NSMutableDictionary *legacyCompatibility =
+        [[self item:@"legacy_compatibility"
+             section:@"general"
+                type:ModernSettingTypeSwitch
+                icon:@"clock.arrow.trianglehead.counterclockwise.rotate.90"] mutableCopy];
+    legacyCompatibility[@"title"] =
+        localize(@"preference.title.legacy_compatibility", nil);
+    legacyCompatibility[@"detail"] =
+        localize(@"preference.detail.legacy_compatibility", nil);
 
     NSMutableDictionary *logViewer =
         [[self fixedItemWithTitle:localize(@"启动与错误日志", nil)
@@ -178,6 +207,15 @@ static NSString *const PocketJGitHubURLString = @"https://github.com/EricoEC/Poc
                              key:@"shareLog"] mutableCopy];
     logShare[@"action"] = @"shareLog";
 
+    NSMutableDictionary *creator =
+        [[self fixedItemWithTitle:@"Erico"
+                           value:localize(@"PocketJ Launcher 制作者", nil)
+                            type:ModernSettingTypeLink
+                            icon:@"person.crop.circle.fill"
+                             key:@"credits_erico"] mutableCopy];
+    creator[@"url"] = @"https://github.com/EricoEC";
+    creator[@"avatarURL"] = @"https://github.com/EricoEC.png?size=128";
+
     self.sections = @[
         @{
             @"title": localize(@"运行环境", nil),
@@ -192,6 +230,7 @@ static NSString *const PocketJGitHubURLString = @"https://github.com/EricoEC/Poc
             @"title": localize(@"preference.section.general", nil),
             @"items": @[
                 [self item:@"check_sha" section:@"general" type:ModernSettingTypeSwitch icon:@"lock.shield"],
+                legacyCompatibility,
                 [self item:@"cosmetica" section:@"general" type:ModernSettingTypeSwitch icon:@"eyeglasses"],
                 [self item:@"debug_logging" section:@"general" type:ModernSettingTypeSwitch icon:@"doc.badge.gearshape"],
                 appIcon,
@@ -264,9 +303,10 @@ static NSString *const PocketJGitHubURLString = @"https://github.com/EricoEC/Poc
         @{
             @"title": localize(@"关于", nil),
             @"items": @[
-                [self fixedItemWithTitle:localize(@"版本", nil) value:@"V1.0" type:ModernSettingTypeInformation icon:@"number" key:@""],
+                [self fixedItemWithTitle:localize(@"版本", nil) value:@"V1.1" type:ModernSettingTypeInformation icon:@"number" key:@""],
                 [self fixedItemWithTitle:@"GitHub" value:PocketJGitHubURLString type:ModernSettingTypeLink icon:@"chevron.left.forwardslash.chevron.right" key:@"github"],
-                [self fixedItemWithTitle:localize(@"兼容系统", nil) value:@"iOS 14–26" type:ModernSettingTypeInformation icon:@"iphone" key:@""],
+                [self fixedItemWithTitle:localize(@"兼容系统", nil) value:@"iOS 14–27" type:ModernSettingTypeInformation icon:@"iphone" key:@""],
+                creator,
             ],
         },
     ];
@@ -389,6 +429,15 @@ static NSString *const PocketJGitHubURLString = @"https://github.com/EricoEC/Poc
     [cell.detailTextLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
                                                          forAxis:UILayoutConstraintAxisHorizontal];
     cell.imageView.image = [UIImage systemImageNamed:item[@"icon"]];
+    NSString *avatarURL = item[@"avatarURL"];
+    if (avatarURL.length) {
+        UIImage *cachedAvatar = [PocketJCreditsImageCache objectForKey:avatarURL];
+        if (cachedAvatar) {
+            cell.imageView.image = cachedAvatar;
+        } else {
+            [self loadCreditsAvatar:avatarURL atIndexPath:indexPath];
+        }
+    }
     BOOL destructive = [item[@"destructive"] boolValue];
     [ModernUITheme styleCell:cell destructive:destructive];
 
@@ -432,8 +481,30 @@ static NSString *const PocketJGitHubURLString = @"https://github.com/EricoEC/Poc
         state.textColor =
             available ? UIColor.systemGreenColor : UIColor.systemRedColor;
         [state sizeToFit];
-        cell.accessoryView = state;
-        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        if ([item[@"key"] isEqualToString:@"jit"]) {
+            UIImageView *chevron = [[UIImageView alloc] initWithImage:
+                [UIImage systemImageNamed:@"chevron.right"]];
+            chevron.tintColor = UIColor.tertiaryLabelColor;
+            chevron.contentMode = UIViewContentModeScaleAspectFit;
+            [chevron.widthAnchor constraintEqualToConstant:8.0].active = YES;
+            [chevron.heightAnchor constraintEqualToConstant:14.0].active = YES;
+            UIStackView *accessory = [[UIStackView alloc]
+                initWithArrangedSubviews:@[state, chevron]];
+            accessory.axis = UILayoutConstraintAxisHorizontal;
+            accessory.alignment = UIStackViewAlignmentCenter;
+            accessory.spacing = 8.0;
+            [accessory sizeToFit];
+            CGSize fittingSize = [accessory
+                systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
+            accessory.frame = CGRectMake(0, 0,
+                MAX(52.0, fittingSize.width), MAX(24.0, fittingSize.height));
+            cell.accessoryView = accessory;
+            cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+            cell.accessibilityHint = localize(@"打开 JIT 设置", nil);
+        } else {
+            cell.accessoryView = state;
+            cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        }
     } else if ([type isEqualToString:ModernSettingTypePicker]) {
         cell.detailTextLabel.text = [self detailForItem:item
             value:[self displayValueForPicker:item]];
@@ -474,9 +545,11 @@ static NSString *const PocketJGitHubURLString = @"https://github.com/EricoEC/Poc
             button.backgroundColor = UIColor.secondarySystemBackgroundColor;
             [ModernUITheme styleContinuousButton:button cornerRadius:22.0];
         }
-        button.accessibilityLabel = localize(@"打开 GitHub", nil);
+        button.accessibilityLabel = [NSString stringWithFormat:localize(@"打开 %@ 的 GitHub", nil),
+            [self titleForItem:item]];
+        button.accessibilityIdentifier = item[@"url"] ?: item[@"value"];
         [button addTarget:self
-                   action:@selector(openGitHub:)
+                   action:@selector(openLink:)
          forControlEvents:UIControlEventTouchUpInside];
         // UITableViewCell does not lay out an accessory view from Auto Layout
         // constraints. Give it a concrete size so it stays at the trailing edge.
@@ -495,8 +568,50 @@ static NSString *const PocketJGitHubURLString = @"https://github.com/EricoEC/Poc
     return cell;
 }
 
-- (void)openGitHub:(__unused UIButton *)sender {
-    NSURL *URL = [NSURL URLWithString:PocketJGitHubURLString];
+- (void)loadCreditsAvatar:(NSString *)URLString
+              atIndexPath:(NSIndexPath *)indexPath {
+    NSURL *URL = [NSURL URLWithString:URLString];
+    if (!URL) return;
+    NSURLRequest *request = [NSURLRequest requestWithURL:URL
+        cachePolicy:NSURLRequestReturnCacheDataElseLoad timeoutInterval:15.0];
+    [[NSURLSession.sharedSession dataTaskWithRequest:request
+        completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        if (error || data.length == 0) return;
+        UIImage *source = [UIImage imageWithData:data scale:UIScreen.mainScreen.scale];
+        if (!source) return;
+        CGSize size = CGSizeMake(44.0, 44.0);
+        UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+        format.scale = UIScreen.mainScreen.scale;
+        format.opaque = NO;
+        UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc]
+            initWithSize:size format:format];
+        UIImage *renderedAvatar = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+            CGRect bounds = (CGRect){CGPointZero, size};
+            [[UIBezierPath bezierPathWithOvalInRect:bounds] addClip];
+            CGFloat scale = MAX(size.width / source.size.width,
+                size.height / source.size.height);
+            CGSize drawSize = CGSizeMake(source.size.width * scale,
+                source.size.height * scale);
+            CGRect drawRect = CGRectMake((size.width - drawSize.width) / 2.0,
+                (size.height - drawSize.height) / 2.0, drawSize.width, drawSize.height);
+            [source drawInRect:drawRect];
+        }];
+        UIImage *avatar = [renderedAvatar imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+        [PocketJCreditsImageCache setObject:avatar forKey:URLString];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (indexPath.section >= self.sections.count ||
+                indexPath.row >= [self.sections[indexPath.section][@"items"] count]) return;
+            NSDictionary *currentItem = [self itemAtIndexPath:indexPath];
+            if (![currentItem[@"avatarURL"] isEqualToString:URLString]) return;
+            UITableViewCell *visibleCell = [self.tableView cellForRowAtIndexPath:indexPath];
+            visibleCell.imageView.image = avatar;
+            [visibleCell setNeedsLayout];
+        });
+    }] resume];
+}
+
+- (void)openLink:(UIButton *)sender {
+    NSURL *URL = [NSURL URLWithString:sender.accessibilityIdentifier ?: @""];
     if (!URL) return;
     [UIApplication.sharedApplication openURL:URL
                                      options:@{}
@@ -718,8 +833,17 @@ static NSString *const PocketJGitHubURLString = @"https://github.com/EricoEC/Poc
         [self showPickerForItem:item cell:cell];
     } else if ([type isEqualToString:ModernSettingTypeText]) {
         [self showTextEditorForItem:item];
+    } else if ([type isEqualToString:ModernSettingTypeCapability] &&
+               [item[@"key"] isEqualToString:@"jit"]) {
+        [self.navigationController
+            pushViewController:[StikDebugViewController new]
+                      animated:YES];
     } else if ([type isEqualToString:ModernSettingTypeNavigation]) {
-        if ([item[@"key"] isEqualToString:@"runtime"]) {
+        if ([item[@"key"] isEqualToString:@"stikdebug"]) {
+            [self.navigationController
+                pushViewController:[StikDebugViewController new]
+                          animated:YES];
+        } else if ([item[@"key"] isEqualToString:@"runtime"]) {
             [self.navigationController
                 pushViewController:[LauncherPrefManageJREViewController new]
                           animated:YES];

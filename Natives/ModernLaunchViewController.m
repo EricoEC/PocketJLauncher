@@ -378,6 +378,13 @@
     return @"Vanilla";
 }
 
+- (NSString *)loaderForProfile:(NSDictionary *)profile {
+    NSString *explicit = [profile[@"pocketjLoader"] lowercaseString];
+    NSDictionary *names = @{@"vanilla": @"Vanilla", @"fabric": @"Fabric",
+        @"forge": @"Forge", @"neoforge": @"NeoForge", @"quilt": @"Quilt"};
+    return names[explicit] ?: [self loaderForVersion:profile[@"lastVersionId"]];
+}
+
 - (void)reloadContent {
     NSString *instanceName = getPrefObject(@"general.game_directory");
     NSString *instancePath = instanceName.length > 0
@@ -407,9 +414,9 @@
     [PLProfiles updateCurrent];
     NSDictionary *profile = PLProfiles.current.selectedProfile;
     NSString *name = profile[@"name"];
-    NSString *version = profile[@"lastVersionId"];
+    NSString *version = profile[@"pocketjMinecraftVersion"] ?: profile[@"lastVersionId"];
     self.hasConfiguredVersion = version.length > 0;
-    NSString *loader = [self loaderForVersion:version];
+    NSString *loader = [self loaderForProfile:profile];
     self.selectedProfileLabel.text =
         name.length
             ? [NSString stringWithFormat:@"%@ · %@ · %@",
@@ -546,6 +553,9 @@
     }
     BOOL active = [notification.userInfo[@"active"] boolValue];
     BOOL paused = [notification.userInfo[@"paused"] boolValue];
+    BOOL loaderInstalling = [notification.userInfo[@"loaderInstalling"] boolValue];
+    BOOL jitEnabling = [notification.userInfo[@"jitEnabling"] boolValue];
+    BOOL jitReady = [notification.userInfo[@"jitReady"] boolValue];
     if (active) {
         self.directLaunchWithoutDownload =
             ![notification.userInfo[@"downloading"] boolValue];
@@ -554,9 +564,13 @@
     [self setLaunchPaused:paused];
     if (active) {
         self.statusLabel.text =
-            paused ? localize(@"下载已暂停", nil) : localize(@"正在准备 Minecraft…", nil);
+            jitReady ? localize(@"JIT 已开启，可继续游戏", nil) :
+            (jitEnabling ? localize(@"正在开启 JIT…", nil) :
+            (loaderInstalling ? localize(@"正在安装模组加载器…", nil) :
+            (paused ? localize(@"下载已暂停", nil) : localize(@"正在准备 Minecraft…", nil))));
         self.progressView.hidden = NO;
-        self.progressView.progress = 0.05;
+        self.progressView.progress = jitReady ? 1.0 : 0.05;
+        self.playButton.enabled = !loaderInstalling && !jitEnabling;
     } else {
         BOOL wasStopping =
             [self.statusLabel.text hasPrefix:localize(@"正在停止", nil)];

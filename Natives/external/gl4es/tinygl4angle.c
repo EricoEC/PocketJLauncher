@@ -53,6 +53,171 @@ void(*gles_glShaderSource)(GLuint shader, GLsizei count, const GLchar * const *s
 void(*gles_glTexImage2D)(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid *data);
 void(*gles_glTexSubImage2D)(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid *data);
 void(*gles_glTexParameterfv)(GLenum target, GLenum pname, const GLfloat *params);
+void(*gles_glTexBuffer)(GLenum target, GLenum internalformat, GLuint buffer);
+void(*gles_glTexBufferRange)(GLenum target, GLenum internalformat, GLuint buffer, GLintptr offset, GLsizeiptr size);
+void(*gles_glTextureBuffer)(GLuint texture, GLenum internalformat, GLuint buffer);
+void(*gles_glTextureBufferRange)(GLuint texture, GLenum internalformat, GLuint buffer, GLintptr offset, GLsizeiptr size);
+
+/*
+ * Minecraft 26.x creates a texture buffer for CloudFaces even after its
+ * unsupported buffer fetches have been replaced in the shader. ANGLE's Metal
+ * backend currently crashes in Texture::setBufferRange for that now-unused
+ * binding. Ignore only texture-buffer attachments; all ordinary textures keep
+ * their original ANGLE path.
+ */
+static void PocketJLogSkippedTextureBuffer(void) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSLog(@"[PocketJ ANGLE] Skipping unsupported Minecraft 26.x texture-buffer binding");
+    });
+}
+
+static BOOL PocketJShouldSkipTextureBuffer(void) {
+    const char *enabled = getenv("POCKETJ_ANGLE_26_TEXTURE_BUFFER_WORKAROUND");
+    return enabled && !strcmp(enabled, "1");
+}
+
+void glTexBuffer(GLenum target, GLenum internalformat, GLuint buffer) {
+    if (PocketJShouldSkipTextureBuffer() && target == GL_TEXTURE_BUFFER) {
+        PocketJLogSkippedTextureBuffer();
+        return;
+    }
+    LOOKUP_FUNC(glTexBuffer)
+    gles_glTexBuffer(target, internalformat, buffer);
+}
+
+void glTexBufferRange(GLenum target, GLenum internalformat, GLuint buffer,
+        GLintptr offset, GLsizeiptr size) {
+    if (PocketJShouldSkipTextureBuffer() && target == GL_TEXTURE_BUFFER) {
+        PocketJLogSkippedTextureBuffer();
+        return;
+    }
+    LOOKUP_FUNC(glTexBufferRange)
+    gles_glTexBufferRange(target, internalformat, buffer, offset, size);
+}
+
+void glTexBufferEXT(GLenum target, GLenum internalformat, GLuint buffer) {
+    glTexBuffer(target, internalformat, buffer);
+}
+
+void glTexBufferRangeEXT(GLenum target, GLenum internalformat, GLuint buffer,
+        GLintptr offset, GLsizeiptr size) {
+    glTexBufferRange(target, internalformat, buffer, offset, size);
+}
+
+void glTexBufferOES(GLenum target, GLenum internalformat, GLuint buffer) {
+    glTexBuffer(target, internalformat, buffer);
+}
+
+void glTexBufferRangeOES(GLenum target, GLenum internalformat, GLuint buffer,
+        GLintptr offset, GLsizeiptr size) {
+    glTexBufferRange(target, internalformat, buffer, offset, size);
+}
+
+/* Minecraft 26.x uses the OpenGL 4.5 direct-state-access variants on newer
+ * LWJGL.  These were the actual path reaching ANGLE's setBufferRange. */
+void glTextureBuffer(GLuint texture, GLenum internalformat, GLuint buffer) {
+    if (PocketJShouldSkipTextureBuffer()) {
+        PocketJLogSkippedTextureBuffer();
+        return;
+    }
+    LOOKUP_FUNC(glTextureBuffer)
+    gles_glTextureBuffer(texture, internalformat, buffer);
+}
+
+void glTextureBufferRange(GLuint texture, GLenum internalformat, GLuint buffer,
+        GLintptr offset, GLsizeiptr size) {
+    if (PocketJShouldSkipTextureBuffer()) {
+        PocketJLogSkippedTextureBuffer();
+        return;
+    }
+    LOOKUP_FUNC(glTextureBufferRange)
+    gles_glTextureBufferRange(texture, internalformat, buffer, offset, size);
+}
+
+/* MobileGlues dispatches desktop DSA calls through these private entry points
+ * instead of the public glTextureBuffer symbols. Keep them inside tinygl so
+ * older renderers and the process-wide symbol resolver remain untouched. */
+void GL_TextureBuffer(GLuint texture, GLenum internalformat, GLuint buffer) {
+    glTextureBuffer(texture, internalformat, buffer);
+}
+
+void GL_TextureBufferRange(GLuint texture, GLenum internalformat, GLuint buffer,
+        GLintptr offset, GLsizeiptr size) {
+    glTextureBufferRange(texture, internalformat, buffer, offset, size);
+}
+
+void glTextureBufferEXT(GLuint texture, GLenum target, GLenum internalformat,
+        GLuint buffer) {
+    (void)target;
+    glTextureBuffer(texture, internalformat, buffer);
+}
+
+void glTextureBufferRangeEXT(GLuint texture, GLenum target, GLenum internalformat,
+        GLuint buffer, GLintptr offset, GLsizeiptr size) {
+    (void)target;
+    glTextureBufferRange(texture, internalformat, buffer, offset, size);
+}
+
+/*
+ * ANGLE's Metal desktop-GL translator currently emits calls to an undeclared
+ * ANGLE_texelFetch helper for Minecraft 26.x's CloudFaces isamplerBuffer.
+ * Cloud pipelines are mandatory during resource reload, so one failed shader
+ * aborts the entire client. Replace only CloudFaces fetch expressions with an
+ * empty cell value. This keeps every other shader and every older Minecraft
+ * version byte-for-byte unchanged; the practical fallback is simply no cloud
+ * cells until the bundled ANGLE implements sampler-buffer texelFetch.
+ */
+static void patchMinecraftCloudTexelFetch(char *source, int *sourceLength) {
+    if (!source || !strstr(source, "texelFetch(")) return;
+
+    /*
+     * Mojang's GLSL symbol is not guaranteed to survive resource-pack
+     * preprocessing as "CloudFaces".  The stable signature at this stage is
+     * the buffer-sampler declaration plus texelFetch.  Restrict the fallback
+     * to buffer samplers so ordinary 2D/3D texture fetches stay untouched.
+     */
+    if (!strstr(source, "samplerBuffer")) return;
+
+    const char *needle = "texelFetch(";
+    const char *replacement = "ivec4(0)";
+    const size_t needleLength = strlen(needle);
+    const size_t replacementLength = strlen(replacement);
+    char *cursor = source;
+    int replacements = 0;
+
+    while ((cursor = strstr(cursor, needle))) {
+        char *scan = cursor + needleLength;
+        int depth = 1;
+        while (*scan && depth > 0) {
+            if (*scan == '(') depth++;
+            else if (*scan == ')') depth--;
+            scan++;
+        }
+        if (depth != 0) break;
+
+        size_t expressionLength = (size_t)(scan - cursor);
+        memcpy(cursor, replacement, replacementLength);
+
+        /*
+         * Keep the shader byte length exactly unchanged. ANGLE retains the
+         * original source length internally; compacting this buffer made its
+         * later Metal translation read stale bytes and emit a truncated MSL
+         * function. GLSL whitespace safely pads the removed expression.
+         */
+        if (expressionLength > replacementLength) {
+            memset(cursor + replacementLength, ' ',
+                expressionLength - replacementLength);
+        }
+        cursor += expressionLength;
+        replacements++;
+    }
+
+    if (replacements > 0) {
+        NSLog(@"[PocketJ ANGLE] Replaced %d unsupported CloudFaces texelFetch expression(s)",
+            replacements);
+    }
+}
 
 void glClearDepth(GLdouble depth) {
     glClearDepthf(depth);
@@ -134,6 +299,10 @@ void glShaderSource(GLuint shader, GLsizei count, const GLchar * const *string, 
             converted = InplaceReplace(converted, &convertedLen, tmpOutFindLine, tmpOutReplaceLine);
         }
     }
+
+    // Minecraft 26.x buffer-sampler compatibility is applied after ANGLE has
+    // generated Metal source. LWJGL can resolve glShaderSource directly from
+    // ANGLE, so this wrapper is not a reliable interception point.
 
     // some needed exts
     const char* extensions =

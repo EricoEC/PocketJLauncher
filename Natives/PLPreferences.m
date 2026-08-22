@@ -16,6 +16,7 @@
             @"check_sha": @YES,
             @"cosmetica": @YES,
             @"debug_logging": @(!CONFIG_RELEASE),
+            @"legacy_compatibility": @YES,
         }.mutableCopy,
         @"video": @{ // Video & Audio
             @"renderer": @"auto",
@@ -57,7 +58,8 @@
                 }.mutableCopy,
                 @"8": @"internal",
                 @"17": @"internal",
-                @"21": @"internal"
+                @"21": @"internal",
+                @"25": @"internal"
             }.mutableCopy,
             @"java_args": @"",
             @"env_variables": @"",
@@ -183,6 +185,17 @@
             NSDebugLog(@"[PLPreferences] Set default vaule: %@: %@", key, value);
             pref[section][key] = value;
         }
+    }
+    // java_homes is itself a version map. Older preference files already have
+    // the parent key, so the generic one-level migration above would never add
+    // a newly bundled runtime such as Java 25.
+    NSMutableDictionary *javaHomes = [pref[@"java"][@"java_homes"] mutableCopy];
+    NSDictionary *defaultJavaHomes = defaults[@"java"][@"java_homes"];
+    if (defaultJavaHomes && javaHomes) {
+        for (NSString *version in defaultJavaHomes) {
+            if (!javaHomes[version]) javaHomes[version] = defaultJavaHomes[version];
+        }
+        pref[@"java"][@"java_homes"] = javaHomes;
     }
     return pref;
 }

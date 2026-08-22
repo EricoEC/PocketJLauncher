@@ -57,6 +57,10 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
     self.prefControllerTypes = @[@{@"name": @"xbox"}, @{@"name": @"playstation"}];
     
     self.prefSections = @[@"key_layout_editor", @"game_mappings", @"menu_mappings", @"controller_style"];
+    self.prefSectionsVisibility = [@[
+        @(![NSUserDefaults.standardUserDefaults boolForKey:@"PocketJTouchControlsCollapsed"]),
+        @(![NSUserDefaults.standardUserDefaults boolForKey:@"PocketJGamepadControlsCollapsed"])
+    ] mutableCopy];
     [self reloadKeyLayoutFiles];
     
     self.editPickMapping = [[UIPickerView alloc] init];
@@ -124,8 +128,11 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (section == 0) {
+        if (!self.prefSectionsVisibility[0].boolValue) return 0;
         return self.keyLayoutFiles.count + 3;
     } else {
+        // Sections 1...end are one native "Gamepad Controls" disclosure group.
+        if (!self.prefSectionsVisibility[1].boolValue) return 0;
         return [self prefContentForIndex:section].count;
     }
 }
@@ -214,18 +221,77 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     if (section == 0) {
-        return localize(@"键位修改", nil);
+        return localize(@"触控键位", nil);
     }
+    if (section == 1) {
+        return localize(@"手柄键位", nil);
+    }
+    if (!self.prefSectionsVisibility[1].boolValue) return nil;
     return localize([NSString stringWithFormat:@"controller_configurator.section.%@", self.prefSections[section]], nil);
+}
+
+- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
+    if (section > 1) return nil;
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.tag = section;
+    button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentFill;
+    button.contentEdgeInsets = UIEdgeInsetsMake(4, 20, 4, 20);
+    button.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
+    NSString *title = section == 0 ? localize(@"触控键位", nil) : localize(@"手柄键位", nil);
+    UIImage *image = [UIImage systemImageNamed:
+        self.prefSectionsVisibility[section].boolValue ? @"chevron.down" : @"chevron.right"];
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
+        configuration.title = title;
+        configuration.image = image;
+        configuration.imagePlacement = NSDirectionalRectEdgeTrailing;
+        configuration.imagePadding = 8;
+        configuration.baseForegroundColor = UIColor.secondaryLabelColor;
+        button.configuration = configuration;
+    } else {
+        [button setTitle:title forState:UIControlStateNormal];
+        [button setImage:image forState:UIControlStateNormal];
+        button.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
+        button.tintColor = UIColor.secondaryLabelColor;
+    }
+    [button addTarget:self action:@selector(toggleControlSection:)
+        forControlEvents:UIControlEventTouchUpInside];
+    button.accessibilityHint = localize(@"轻点展开或折叠", nil);
+    return button;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
+    if (section <= 1) return 48.0;
+    return self.prefSectionsVisibility[1].boolValue ? UITableViewAutomaticDimension : 0.01;
+}
+
+- (void)toggleControlSection:(UIButton *)sender {
+    NSInteger section = sender.tag;
+    if (section < 0 || section >= self.prefSectionsVisibility.count) return;
+    BOOL expanded = !self.prefSectionsVisibility[section].boolValue;
+    self.prefSectionsVisibility[section] = @(expanded);
+    NSString *key = section == 0
+        ? @"PocketJTouchControlsCollapsed" : @"PocketJGamepadControlsCollapsed";
+    [NSUserDefaults.standardUserDefaults setBool:!expanded forKey:key];
+    NSRange range = section == 0 ? NSMakeRange(0, 1)
+        : NSMakeRange(1, self.prefSections.count - 1);
+    [self.tableView reloadSections:[NSIndexSet indexSetWithIndexesInRange:range]
+                  withRowAnimation:UITableViewRowAnimationAutomatic];
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     if (section == 0) {
         return localize(@"开启后，手指从屏幕任意位置滑入按键即可触发；滑过按键间隙不会中断，滑入方向键夹角时可同时触发两个方向。", nil);
     }
+    if (!self.prefSectionsVisibility[1].boolValue) return nil;
     NSString *key = [NSString stringWithFormat:@"controller_configurator.section.footer.%@", self.prefSections[section]];
     NSString *footer = localize(key, nil);
     return [footer isEqualToString:key] ? nil : footer;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
+    if (section > 0 && !self.prefSectionsVisibility[1].boolValue) return 0.01;
+    return UITableViewAutomaticDimension;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {

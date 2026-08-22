@@ -6,6 +6,7 @@
 #import "LauncherProfileEditorViewController.h"
 #import "LauncherProfilesViewController.h"
 #import "ModernUITheme.h"
+#import "ModManagerViewController.h"
 //#import "NSFileManager+NRFileManager.h"
 #import "PLProfiles.h"
 #pragma clang diagnostic push
@@ -28,6 +29,8 @@ NSNotificationName const LauncherOpenModManagerNotification =
 
 @property(nonatomic) UIBarButtonItem *createButtonItem;
 @property(nonatomic) NSArray<NSString *> *instanceNames;
+@property(nonatomic, copy) NSString *pendingNewInstanceName;
+@property(nonatomic, copy) NSString *previousInstanceName;
 @end
 
 @implementation LauncherProfilesViewController
@@ -46,51 +49,28 @@ NSNotificationName const LauncherOpenModManagerNotification =
 {
     [super viewDidLoad];
 
-    UIMenu *createMenu = [UIMenu menuWithTitle:localize(@"新建实例", nil) image:nil identifier:nil
-    options:UIMenuOptionsDisplayInline
-    children:@[
-        [UIAction
-            actionWithTitle:@"Vanilla" image:nil
-            identifier:@"vanilla" handler:^(UIAction *action) {
-                [self chooseDirectoryForNewInstance:@"Vanilla"
-                    completion:^{
-                        [self actionEditProfile:@{
-                            @"name": @"",
-                            @"lastVersionId": @"latest-release"}];
-                    }];
-            }],
-#if 0 // TODO
-        [UIAction
-            actionWithTitle:@"OptiFine" image:nil
-            identifier:@"optifine" handler:createHandler],
-#endif
-        [UIAction
-            actionWithTitle:@"Fabric/Quilt" image:nil
-            identifier:@"fabric_or_quilt" handler:^(UIAction *action) {
-                [self chooseDirectoryForNewInstance:@"Fabric"
-                    completion:^{ [self actionCreateFabricProfile]; }];
-            }],
-        [UIAction
-            actionWithTitle:@"Forge" image:nil
-            identifier:@"forge" handler:^(UIAction *action) {
-                [self chooseDirectoryForNewInstance:@"Forge"
-                    completion:^{ [self actionCreateForgeProfile]; }];
-            }],
-        [UIAction
-            actionWithTitle:localize(@"整合包", nil) image:nil
-            identifier:@"modpack" handler:^(UIAction *action) {
-                [self chooseDirectoryForNewInstance:localize(@"整合包", nil)
-                    completion:^{ [self actionCreateModpackProfile]; }];
-            }],
-        [UIAction
-            actionWithTitle:localize(@"导入压缩包", nil)
-            image:[UIImage systemImageNamed:@"square.and.arrow.down"]
-            identifier:@"import_instance_zip"
-            handler:^(UIAction *action) {
-                [self actionImportInstanceArchive];
-            }]
-    ]];
-    self.createButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd menu:createMenu];
+    self.createButtonItem = [[UIBarButtonItem alloc]
+        initWithBarButtonSystemItem:UIBarButtonSystemItemAdd
+        target:nil action:nil];
+    UIMenu *createMenu = [UIMenu menuWithTitle:@""
+        children:@[
+            [UIAction actionWithTitle:localize(@"新建实例", nil)
+                image:[UIImage systemImageNamed:@"plus.rectangle.on.folder"]
+                identifier:nil handler:^(UIAction *action) {
+                    [self actionCreateUnifiedInstance];
+                }],
+            [UIAction actionWithTitle:localize(@"导入压缩包", nil)
+                image:[UIImage systemImageNamed:@"square.and.arrow.down"]
+                identifier:nil handler:^(UIAction *action) {
+                    [self actionImportInstanceArchive];
+                }],
+            [UIAction actionWithTitle:localize(@"在线整合包", nil)
+                image:[UIImage systemImageNamed:@"shippingbox"]
+                identifier:nil handler:^(UIAction *action) {
+                    [self actionCreateModpackProfile];
+                }]
+        ]];
+    self.createButtonItem.menu = createMenu;
     if(@available(iOS 19.0, *)) {
         self.createButtonItem.sharesBackground = NO;
     }
@@ -520,12 +500,82 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
 
     // The modern shell has a dedicated Accounts tab. Never reach back into
     // the removed split-view sidebar from here.
-    self.navigationItem.rightBarButtonItems = @[self.createButtonItem];
+    self.navigationItem.rightBarButtonItem = self.createButtonItem;
 
     [self reloadInstanceNames];
     [PLProfiles updateCurrent];
+    [self reconcilePendingLoaderInstallation];
     [self.tableView reloadData];
     [[self launcherNavigationController] reloadProfileList];
+}
+
+- (void)reconcilePendingLoaderInstallation {
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    NSString *instance = [defaults stringForKey:@"PocketJPendingLoaderInstance"];
+    NSString *profileName = [defaults stringForKey:@"PocketJPendingLoaderProfile"];
+    NSString *loader = [defaults stringForKey:@"PocketJPendingLoaderKind"];
+    NSString *minecraftVersion =
+        [defaults stringForKey:@"PocketJPendingLoaderMinecraftVersion"];
+    NSString *loaderVersion =
+        [defaults stringForKey:@"PocketJPendingLoaderVersion"];
+    if (!instance.length || !profileName.length || !loader.length) return;
+
+    NSString *versionsPath = [[self.instancesRoot
+        stringByAppendingPathComponent:instance]
+        stringByAppendingPathComponent:@"versions"];
+    NSArray<NSString *> *before = [defaults arrayForKey:
+        @"PocketJPendingLoaderBeforeVersions"] ?: @[];
+    NSSet *beforeSet = [NSSet setWithArray:before];
+    NSArray<NSString *> *versions = [NSFileManager.defaultManager
+        contentsOfDirectoryAtPath:versionsPath error:nil] ?: @[];
+    NSString *installedVersion = nil;
+    NSDate *latestDate = NSDate.distantPast;
+    for (NSString *candidate in versions) {
+        NSString *lower = candidate.lowercaseString;
+        if (![lower containsString:loader]) continue;
+        NSString *jsonPath = [[versionsPath stringByAppendingPathComponent:candidate]
+            stringByAppendingPathComponent:[candidate stringByAppendingPathExtension:@"json"]];
+        NSDictionary *metadata = parseJSONFromFile(jsonPath);
+        NSString *base = metadata[@"inheritsFrom"];
+        BOOL versionMatches = !minecraftVersion.length ||
+            [base isEqualToString:minecraftVersion] ||
+            [candidate containsString:minecraftVersion];
+        if (!versionMatches) continue;
+        NSDictionary *attributes = [NSFileManager.defaultManager
+            attributesOfItemAtPath:jsonPath error:nil];
+        NSDate *date = attributes[NSFileModificationDate] ?: NSDate.distantPast;
+        if (![beforeSet containsObject:candidate] ||
+            [date compare:latestDate] == NSOrderedDescending) {
+            installedVersion = candidate;
+            latestDate = date;
+        }
+    }
+    if (!installedVersion.length) return;
+
+    [self activateInstanceNamed:instance];
+    [PLProfiles updateCurrent];
+    NSMutableDictionary *profile = PLProfiles.current.profiles[profileName];
+    if ([profile isKindOfClass:NSMutableDictionary.class]) {
+        profile[@"lastVersionId"] = installedVersion;
+        profile[@"pocketjLoader"] = loader;
+        profile[@"pocketjMinecraftVersion"] = minecraftVersion ?: @"";
+        profile[@"pocketjLoaderVersion"] = loaderVersion ?: @"";
+        profile[@"pocketjLoaderInstallPending"] = @NO;
+        profile[@"pocketjResourcesVerified"] = @NO;
+        PLProfiles.current.profileDict[@"selectedProfile"] = profileName;
+        [PLProfiles.current save];
+    }
+    for (NSString *key in @[@"PocketJPendingLoaderInstance",
+                            @"PocketJPendingLoaderProfile",
+                            @"PocketJPendingLoaderKind",
+                            @"PocketJPendingLoaderMinecraftVersion",
+                            @"PocketJPendingLoaderVersion",
+                            @"PocketJPendingLoaderBeforeVersions"]) {
+        [defaults removeObjectForKey:key];
+    }
+    showDialog(localize(@"加载器安装完成", nil),
+        [NSString stringWithFormat:localize(@"已为实例写入 %@。", nil),
+            installedVersion]);
 }
 
 - (NSString *)instancesRoot {
@@ -668,6 +718,28 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     [self presentViewController:choice animated:YES completion:nil];
 }
 
+- (void)actionCreateUnifiedInstance {
+    NSString *name = [self availableInstanceNameFromPreferredName:
+        localize(@"新实例", nil)];
+    NSString *path = [self.instancesRoot stringByAppendingPathComponent:name];
+    NSError *error = nil;
+    if (![NSFileManager.defaultManager createDirectoryAtPath:path
+        withIntermediateDirectories:YES attributes:nil error:&error]) {
+        showDialog(localize(@"无法创建实例", nil), error.localizedDescription);
+        return;
+    }
+    self.previousInstanceName = getPrefObject(@"general.game_directory");
+    self.pendingNewInstanceName = name;
+    [self activateInstanceNamed:name];
+    [self reloadInstanceNames];
+    [self.tableView reloadData];
+    [self actionEditProfile:@{
+        @"name": name,
+        @"lastVersionId": @"latest-release",
+        @"pocketjLoader": @"vanilla",
+    }];
+}
+
 - (void)actionCreateFabricProfile {
     FabricInstallViewController *vc = [FabricInstallViewController new];
     [self presentNavigatedViewController:vc];
@@ -694,7 +766,41 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
         editableProfile[@"name"] = vc.instanceName;
     }
     vc.profile = editableProfile;
+    BOOL creating = [vc.instanceName isEqualToString:self.pendingNewInstanceName];
+    vc.creatingNewInstance = creating;
     __weak typeof(self) weakSelf = self;
+    if (creating) {
+        vc.cancelCreation = ^{
+            NSString *temporaryName = weakSelf.pendingNewInstanceName;
+            if (temporaryName.length) {
+                [NSFileManager.defaultManager removeItemAtPath:
+                    [weakSelf.instancesRoot stringByAppendingPathComponent:temporaryName]
+                    error:nil];
+            }
+            NSString *previous = weakSelf.previousInstanceName;
+            weakSelf.pendingNewInstanceName = nil;
+            weakSelf.previousInstanceName = nil;
+            [weakSelf reloadInstanceNames];
+            if (previous.length &&
+                [NSFileManager.defaultManager fileExistsAtPath:
+                    [weakSelf.instancesRoot stringByAppendingPathComponent:previous]]) {
+                [weakSelf activateInstanceNamed:previous];
+            } else {
+                // Cancelling the very first instance must not leave the
+                // launcher pointing at the temporary directory we removed.
+                setPrefObject(@"general.game_directory", @"");
+                NSString *gamePath = @(getenv("POJAV_GAME_DIR"));
+                [NSFileManager.defaultManager removeItemAtPath:gamePath error:nil];
+            }
+            [weakSelf.tableView reloadData];
+        };
+        vc.creationDidFinish = ^{
+            weakSelf.pendingNewInstanceName = nil;
+            weakSelf.previousInstanceName = nil;
+            [weakSelf reloadInstanceNames];
+            [weakSelf.tableView reloadData];
+        };
+    }
     vc.renameInstance = ^BOOL(NSString *oldName, NSString *newName,
                               NSString **errorMessage) {
         NSString *oldPath =
@@ -702,7 +808,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
         NSString *newPath =
             [weakSelf.instancesRoot stringByAppendingPathComponent:newName];
         if ([NSFileManager.defaultManager fileExistsAtPath:newPath]) {
-            if (errorMessage) *errorMessage = localize(@"已经存在同名实例。", nil);
+            if (errorMessage) *errorMessage = localize(@"已重名，请换个名字。", nil);
             return NO;
         }
         NSError *error = nil;
@@ -749,6 +855,13 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     return @"Vanilla";
 }
 
+- (NSString *)loaderNameForProfile:(NSDictionary *)profile {
+    NSString *loader = [profile[@"pocketjLoader"] lowercaseString];
+    NSDictionary *names = @{@"vanilla": @"Vanilla", @"fabric": @"Fabric",
+        @"forge": @"Forge", @"neoforge": @"NeoForge", @"quilt": @"Quilt"};
+    return names[loader] ?: [self loaderNameForVersion:profile[@"lastVersionId"]];
+}
+
 - (void)setupInstanceCell:(UITableViewCell *) cell atRow:(NSInteger)row {
     cell.userInteractionEnabled = !getenv("DEMO_LOCK");
     NSString *name = self.instanceNames[row];
@@ -764,7 +877,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
         [profiles[@"profiles"] isKindOfClass:NSDictionary.class]
             ? profiles[@"profiles"][selectedName] : nil;
     if (![profile isKindOfClass:NSDictionary.class]) profile = nil;
-    NSString *version = profile[@"lastVersionId"];
+    NSString *version = profile[@"pocketjMinecraftVersion"] ?: profile[@"lastVersionId"];
     BOOL current =
         [name isEqualToString:getPrefObject(@"general.game_directory")];
 
@@ -773,7 +886,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     cell.textLabel.text = name;
     cell.detailTextLabel.text = version.length
         ? [NSString stringWithFormat:@"%@ · %@",
-            [self loaderNameForVersion:version], version]
+            [self loaderNameForProfile:profile], version]
         : localize(@"尚未配置 Minecraft 版本", nil);
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
 }
@@ -811,9 +924,23 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     NSString *name = self.instanceNames[indexPath.row];
     [self activateInstanceNamed:name];
     NSDictionary *profile = PLProfiles.current.selectedProfile;
-    [self actionEditProfile:profile ?: @{
-        @"name": name
-    }];
+    UIAlertController *actions = [UIAlertController
+        alertControllerWithTitle:name message:nil
+        preferredStyle:UIAlertControllerStyleActionSheet];
+    [actions addAction:[UIAlertAction actionWithTitle:localize(@"管理模组", nil)
+        style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            [self presentModManagerForInstanceNamed:name];
+        }]];
+    [actions addAction:[UIAlertAction actionWithTitle:localize(@"编辑实例", nil)
+        style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            [self actionEditProfile:profile ?: @{@"name": name}];
+        }]];
+    [actions addAction:[UIAlertAction actionWithTitle:localize(@"取消", nil)
+        style:UIAlertActionStyleCancel handler:nil]];
+    UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
+    actions.popoverPresentationController.sourceView = cell;
+    actions.popoverPresentationController.sourceRect = cell.bounds;
+    [self presentViewController:actions animated:YES completion:nil];
 }
 
 #pragma mark Context Menu configuration
@@ -926,13 +1053,9 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     }
     NSString *path = [self.instancesRoot
         stringByAppendingPathComponent:instanceName];
-    [NSNotificationCenter.defaultCenter
-        postNotificationName:LauncherOpenModManagerNotification
-                      object:self
-                    userInfo:@{
-                        @"instanceName": instanceName,
-                        @"instancePath": path
-                    }];
+    ModManagerViewController *controller = [[ModManagerViewController alloc]
+        initWithInstanceName:instanceName instancePath:path];
+    [self.navigationController pushViewController:controller animated:YES];
 }
 
 @end

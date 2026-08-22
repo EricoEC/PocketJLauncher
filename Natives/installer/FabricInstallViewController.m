@@ -35,8 +35,8 @@
     // Setup preference getter and setter
     __weak __typeof(self) weakSelf = self;
     self.localKVO = @{
-        @"gameVersion": @"1.20.1",
-        @"loaderVendor": @"Fabric",
+        @"gameVersion": self.presetGameVersion.length ? self.presetGameVersion : @"1.20.1",
+        @"loaderVendor": self.presetVendor.length ? self.presetVendor : @"Fabric",
         @"loaderVersion": @"0.14.22"
     }.mutableCopy;
     self.getPreference = ^id(NSString *section, NSString *key){
@@ -49,14 +49,14 @@
     id typePickSegment = ^void(UITableViewCell *cell, NSString *section, NSString *key, NSDictionary *item) {
         UISegmentedControl *view = [[UISegmentedControl alloc] initWithItems:item[@"pickList"]];
         [view addTarget:weakSelf action:@selector(segmentChanged:) forControlEvents:UIControlEventValueChanged];
-        if (view.selectedSegmentIndex == UISegmentedControlNoSegment) {
-            view.selectedSegmentIndex = 0;
-        }
+        NSUInteger selected = [item[@"pickList"] indexOfObject:weakSelf.localKVO[key]];
+        view.selectedSegmentIndex = selected == NSNotFound ? 0 : selected;
         cell.accessoryView = view;
     };
 
     self.versionList = [NSMutableArray new];
     self.loaderList = [NSMutableArray new];
+    BOOL presetLocked = self.presetGameVersion.length && self.presetVendor.length;
     self.prefContents = @[
         @[
             @{@"key": @"gameType",
@@ -64,6 +64,7 @@
               @"title": @"preference.profile.title.version_type",
               @"type": typePickSegment,
               @"pickList": @[localize(@"Release", nil), localize(@"Snapshot", nil)],
+              @"enableCondition": ^BOOL{ return !presetLocked; },
               @"action": ^(int type) {
                   [weakSelf changeVersionTypeTo:type];
               }
@@ -73,13 +74,15 @@
               @"title": @"preference.profile.title.version",
               @"type": self.typePickField,
               @"pickKeys": self.versionList,
-              @"pickList": self.versionList
+              @"pickList": self.versionList,
+              @"enableCondition": ^BOOL{ return !presetLocked; }
             },
             @{@"key": @"loaderVendor",
               @"icon": @"folder.badge.gearshape",
               @"title": @"preference.profile.title.loader_vendor",
               @"type": typePickSegment,
               @"pickList": @[@"Fabric", @"Quilt"],
+              @"enableCondition": ^BOOL{ return !presetLocked; },
               @"action": ^(int vendor){
                   [weakSelf fetchVersionEndpoints:vendor];
               }
@@ -108,7 +111,8 @@
 
     // Init endpoint info
     self.endpoints = FabricUtils.endpoints;
-    [self fetchVersionEndpoints:0];
+    [self fetchVersionEndpoints:
+        [self.localKVO[@"loaderVendor"] isEqualToString:@"Quilt"] ? 1 : 0];
 }
 
 - (void)fetchVersionEndpoints:(int)type {
@@ -128,6 +132,13 @@
         NSDebugLog(@"[%@ Installer] Got %d game versions", self.localKVO[@"loaderVendor"], response.count);
         self.versionMetadata = response;
         [self changeVersionTypeTo:[self.localKVO[@"gameType_index"] intValue]];
+        if (self.presetGameVersion.length &&
+            [self.versionList containsObject:self.presetGameVersion]) {
+            self.localKVO[@"gameVersion"] = self.presetGameVersion;
+            [self.tableView reloadRowsAtIndexPaths:
+                @[[NSIndexPath indexPathForRow:1 inSection:0]]
+                                 withRowAnimation:UITableViewRowAnimationNone];
+        }
     } failure:errorCallback];
     [manager GET:endpoint[@"loader"] parameters:nil headers:nil progress:nil success:^(NSURLSessionTask *task, NSArray *response) {
         NSDebugLog(@"[%@ Installer] Got %d loader versions", self.localKVO[@"loaderVendor"], response.count);
@@ -160,17 +171,24 @@
             [localVersionList addObject:@{
                 @"id": response[@"id"],
                 @"type": @"custom"}];
-            // Jump to the profile editor
-            LauncherProfileEditorViewController *vc = [LauncherProfileEditorViewController new];
-            vc.profile = @{
-                @"icon": endpoint[@"icon"],
-                @"name": response[@"id"],
-                @"lastVersionId": response[@"id"]
-            }.mutableCopy;
-            vc.instanceName =
-                getPrefObject(@"general.game_directory") ?: @"default";
-            vc.hidesMinecraftVersion = YES;
-            [self.navigationController pushViewController:vc animated:YES];
+            if (self.installationDidFinish) {
+                self.installationDidFinish(response[@"id"]);
+                [self.navigationController dismissViewControllerAnimated:YES
+                                                               completion:nil];
+            } else {
+                // Legacy entry point: keep the old profile editor only when
+                // this installer was opened directly, not from unified edit.
+                LauncherProfileEditorViewController *vc = [LauncherProfileEditorViewController new];
+                vc.profile = @{
+                    @"icon": endpoint[@"icon"],
+                    @"name": response[@"id"],
+                    @"lastVersionId": response[@"id"]
+                }.mutableCopy;
+                vc.instanceName =
+                    getPrefObject(@"general.game_directory") ?: @"default";
+                vc.hidesMinecraftVersion = YES;
+                [self.navigationController pushViewController:vc animated:YES];
+            }
         }
     } failure:^(NSURLSessionTask *operation, NSError *error) {
         sender.enabled = YES;

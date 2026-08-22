@@ -99,30 +99,49 @@ UIEdgeInsets getDefaultSafeArea() {
 #pragma mark Java runtime
 
 NSString* getSelectedJavaHome(NSString* defaultJRETag, int minVersion) {
-    NSDictionary *pref = getPrefObject(@"java.java_homes");
-    NSDictionary<NSString *, NSString *> *selected = pref[@"0"];
+    NSDictionary *runtimePreferences = getPrefObject(@"java.java_homes");
+    NSDictionary<NSString *, NSString *> *selected = runtimePreferences[@"0"];
+    // Very old manifests do not declare javaVersion. Java 8 is the safest
+    // baseline for those releases and keeps Alpha/Beta-era instances usable.
+    int requiredVersion = MAX(minVersion, 8);
+
+    NSString *(^runtimePath)(NSString *) = ^NSString *(NSString *version) {
+        id directory = runtimePreferences[version];
+        if (![directory isKindOfClass:NSString.class] || ![directory length]) return nil;
+        if ([directory isEqualToString:@"internal"]) {
+            return [NSString stringWithFormat:@"%@/java_runtimes/java-%@-openjdk",
+                NSBundle.mainBundle.bundlePath, version];
+        }
+        return [NSString stringWithFormat:@"%s/java_runtimes/%@",
+            getenv("POJAV_HOME"), directory];
+    };
+
     NSString *selectedVer = selected[defaultJRETag];
-    if (minVersion > selectedVer.intValue) {
-        NSArray *sortedVersions = [pref.allKeys valueForKeyPath:@"self.integerValue"];
-        sortedVersions = [sortedVersions sortedArrayUsingSelector:@selector(compare:)];
-        for (NSNumber *version in sortedVersions) {
-            if (version.intValue >= minVersion) {
-                selectedVer = version.stringValue;
-                break;
+    NSString *selectedPath = runtimePath(selectedVer);
+    BOOL selectedIsUsable = selectedVer.intValue >= requiredVersion &&
+        [NSFileManager.defaultManager fileExistsAtPath:selectedPath];
+
+    if (!selectedIsUsable) {
+        NSMutableArray<NSNumber *> *installedVersions = [NSMutableArray array];
+        for (NSString *key in runtimePreferences) {
+            int version = key.intValue;
+            if (version <= 0 || version < requiredVersion) continue;
+            NSString *path = runtimePath(key);
+            if ([NSFileManager.defaultManager fileExistsAtPath:path]) {
+                [installedVersions addObject:@(version)];
             }
         }
-        if (!selectedVer) {
-            NSLog(@"Error: requested Java >= %d was not installed!", minVersion);
-            return nil;
-        }
+        [installedVersions sortUsingSelector:@selector(compare:)];
+        selectedVer = installedVersions.firstObject.stringValue;
+        selectedPath = runtimePath(selectedVer);
     }
 
-    id selectedDir = pref[selectedVer];
-    if ([selectedDir isEqualToString:@"internal"]) {
-        selectedDir = [NSString stringWithFormat:@"%@/java_runtimes/java-%@-openjdk", NSBundle.mainBundle.bundlePath, selectedVer];
-    } else {
-        selectedDir = [NSString stringWithFormat:@"%s/java_runtimes/%@", getenv("POJAV_HOME"), selectedDir];
+    if (!selectedVer.length || !selectedPath.length) {
+        NSLog(@"Error: requested Java >= %d was not installed!", requiredVersion);
+        return nil;
     }
+
+    id selectedDir = selectedPath;
 
     if ([NSFileManager.defaultManager fileExistsAtPath:selectedDir]) {
         return selectedDir;

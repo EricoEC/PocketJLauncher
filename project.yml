@@ -5,6 +5,7 @@ options:
     iOS: "14.0"
 settings:
   base:
+    DEVELOPMENT_TEAM: Q42CQ5VP5A
     CODE_SIGN_STYLE: Automatic
     IPHONEOS_DEPLOYMENT_TARGET: "14.0"
     SUPPORTED_PLATFORMS: iphoneos
@@ -22,6 +23,12 @@ targets:
           - build_pocketj.sh
           - Info.plist
           - PocketJLauncher.entitlements
+      - path: JITIntegration/Host/PocketJJITExtensionPoint.swift
+    dependencies:
+      - target: PocketJJITCoordinator
+        embed: false
+      - target: PocketJJITHelper
+        embed: false
     settings:
       base:
         PRODUCT_NAME: PocketJLauncher
@@ -33,10 +40,80 @@ targets:
         ENABLE_DEBUG_DYLIB: NO
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: NO
+        EX_ENABLE_EXTENSION_POINT_GENERATION: YES
     postBuildScripts:
       - name: Build and embed PocketJ Launcher
         path: XcodeRunner/build_pocketj.sh
         basedOnDependencyAnalysis: false
+
+  PocketJJITCoordinator:
+    type: framework
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: JITIntegration/Shared
+      - path: JITIntegration/Host/PocketJJITExtensionPoint.swift
+      - path: JITIntegration/Host/PocketJJITCoordinator.swift
+    dependencies:
+      - sdk: ExtensionFoundation.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.Erico.PocketJLauncher.JITCoordinator
+        PRODUCT_NAME: PocketJJITCoordinator
+        GENERATE_INFOPLIST_FILE: YES
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: NO
+
+  StikJIT:
+    type: framework
+    platform: iOS
+    deploymentTarget: "17.4"
+    sources:
+      - path: Vendor/StikJIT/Sources
+      - path: Vendor/StikJIT/Resources
+        buildPhase: resources
+    dependencies:
+      - sdk: JavaScriptCore.framework
+      - sdk: Network.framework
+      - sdk: Security.framework
+      - sdk: CFNetwork.framework
+      - sdk: SystemConfiguration.framework
+      - sdk: IOKit.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.Erico.PocketJLauncher.StikJIT
+        PRODUCT_NAME: StikJIT
+        GENERATE_INFOPLIST_FILE: YES
+        DEFINES_MODULE: YES
+        BUILD_LIBRARY_FOR_DISTRIBUTION: YES
+        SKIP_INSTALL: NO
+        SWIFT_INCLUDE_PATHS: "$(SRCROOT)/Vendor/StikJIT/idevice $(SRCROOT)/Vendor/StikJIT/iokit"
+        HEADER_SEARCH_PATHS: "$(SRCROOT)/Vendor/StikJIT/idevice $(SRCROOT)/Vendor/StikJIT/iokit"
+        LIBRARY_SEARCH_PATHS: "$(SRCROOT)/Vendor/StikJIT/idevice"
+        OTHER_LDFLAGS: "-force_load $(SRCROOT)/Vendor/StikJIT/idevice/libidevice_ffi.a"
+
+  PocketJJITHelper:
+    type: extensionkit-extension
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: JITIntegration/Shared
+      - path: JITIntegration/Helper
+    dependencies:
+      - target: StikJIT
+        embed: true
+      - sdk: ExtensionFoundation.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.Erico.PocketJLauncher.JITHelper
+        PRODUCT_NAME: PocketJJITHelper
+        MARKETING_VERSION: "1.1"
+        CURRENT_PROJECT_VERSION: "1.1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: JITIntegration/Helper/Info.plist
+        EX_ENABLE_EXTENSION_POINT_GENERATION: YES
+        SKIP_INSTALL: NO
+        APPLICATION_EXTENSION_API_ONLY: YES
 schemes:
   PocketJ Launcher:
     build:

@@ -1,6 +1,7 @@
 #import "AFNetworking.h"
 #import "ForgeInstallViewController.h"
 #import "LauncherNavigationController.h"
+#import "JavaLauncher.h"
 #import "WFWorkflowProgressView.h"
 #import "ios_uikit_bridge.h"
 #import "utils.h"
@@ -10,6 +11,23 @@
 @property (nonatomic, strong) UILabel *versionLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
 @end
+
+static LauncherNavigationController *PocketJLauncherNavigationController(UIViewController *source) {
+    UITabBarController *tabs = source.tabBarController;
+    if (!tabs) tabs = source.presentingViewController.tabBarController;
+    if (!tabs) tabs = source.navigationController.presentingViewController.tabBarController;
+    UIWindow *window = source.view.window ?: UIApplication.sharedApplication.windows.firstObject;
+    if (!tabs && [window.rootViewController
+            isKindOfClass:UITabBarController.class]) {
+        tabs = (UITabBarController *)window.rootViewController;
+    }
+    for (UIViewController *controller in tabs.viewControllers) {
+        if ([controller isKindOfClass:LauncherNavigationController.class]) {
+            return (LauncherNavigationController *)controller;
+        }
+    }
+    return nil;
+}
 
 @implementation ForgeVersionCell
 
@@ -177,10 +195,13 @@
     [self.tableView registerClass:[MinecraftVersionHeaderView class] forHeaderFooterViewReuseIdentifier:@"MinecraftVersionHeader"];
     
     UISegmentedControl *segment = [[UISegmentedControl alloc] initWithItems:@[@"Forge", @"NeoForge"]];
-    segment.selectedSegmentIndex = 0;
+    segment.selectedSegmentIndex =
+        [self.presetVendor isEqualToString:@"NeoForge"] ? 1 : 0;
     [segment addTarget:self action:@selector(segmentChanged:) forControlEvents:UIControlEventValueChanged];
     self.navigationItem.titleView = segment;
-    self.currentVendor = @"Forge";
+    self.currentVendor = segment.selectedSegmentIndex == 1
+        ? @"NeoForge" : @"Forge";
+    if (self.presetVendor.length) segment.enabled = NO;
 
     self.searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
     self.searchController.searchResultsUpdater = (id<UISearchResultsUpdating>)self;
@@ -790,6 +811,9 @@
         self.forgeList[indexPath.section][indexPath.row];
     
     versionString = [versionString copy];
+    NSString *minecraftVersion = [self.currentVendor isEqualToString:@"NeoForge"]
+        ? [self extractMinecraftVersionFromNeoForgeVersion:versionString]
+        : [self extractMinecraftVersionFromForgeVersion:versionString];
     
     [self.dataLock unlock];
     
@@ -831,21 +855,43 @@
                 return;
             }
             
-            showDialog(localize(@"下载完成", nil),
-                      [NSString stringWithFormat:@"%@ installer will now run. After installation completes, you will need to restart the app.", self.currentVendor]);
-            
-            LauncherNavigationController *navVC = (id)((UISplitViewController *)self.presentingViewController).viewControllers[1];
+            LauncherNavigationController *navVC =
+                PocketJLauncherNavigationController(self);
+            if (!navVC) {
+                showDialog(localize(@"无法启动安装器", nil),
+                    localize(@"启动页面尚未就绪，请返回后重试。", nil));
+                [self switchToReadyState];
+                return;
+            }
+            NSArray *beforeVersions = [NSFileManager.defaultManager
+                contentsOfDirectoryAtPath:[NSString stringWithFormat:
+                    @"%s/versions", getenv("POJAV_GAME_DIR")] error:nil] ?: @[];
+            NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+            [defaults setObject:self.targetInstanceName ?: @""
+                         forKey:@"PocketJPendingLoaderInstance"];
+            [defaults setObject:self.targetProfileName ?: @""
+                         forKey:@"PocketJPendingLoaderProfile"];
+            [defaults setObject:self.currentVendor.lowercaseString
+                         forKey:@"PocketJPendingLoaderKind"];
+            [defaults setObject:minecraftVersion ?: self.presetGameVersion ?: @""
+                         forKey:@"PocketJPendingLoaderMinecraftVersion"];
+            [defaults setObject:beforeVersions
+                         forKey:@"PocketJPendingLoaderBeforeVersions"];
             
             // Dismiss search controller first if it's active, then dismiss main view controller
             if (self.searchController.isActive) {
                 [self.searchController dismissViewControllerAnimated:NO completion:^{
                     [self dismissViewControllerAnimated:YES completion:^{
-                        [navVC enterModInstallerWithPath:outPath hitEnterAfterWindowShown:YES];
+                        [navVC enterModInstallerWithPath:outPath
+                            hitEnterAfterWindowShown:YES
+                            requiredJavaVersion:PocketJRequiredJavaVersionForMinecraft(minecraftVersion)];
                     }];
                 }];
             } else {
                 [self dismissViewControllerAnimated:YES completion:^{
-                    [navVC enterModInstallerWithPath:outPath hitEnterAfterWindowShown:YES];
+                    [navVC enterModInstallerWithPath:outPath
+                        hitEnterAfterWindowShown:YES
+                        requiredJavaVersion:PocketJRequiredJavaVersionForMinecraft(minecraftVersion)];
                 }];
             }
         });
@@ -1004,6 +1050,22 @@
         self.visibilityList = newVisibility;
         self.versionList = newVersionList;
         self.forgeList = newForgeList;
+
+        if (self.presetGameVersion.length) {
+            NSUInteger wanted = [self.versionList
+                indexOfObject:self.presetGameVersion];
+            if (wanted != NSNotFound) {
+                self.visibilityList = [NSMutableArray arrayWithObject:@YES];
+                self.versionList = [NSMutableArray arrayWithObject:
+                    self.versionList[wanted]];
+                self.forgeList = [NSMutableArray arrayWithObject:
+                    self.forgeList[wanted]];
+            } else {
+                [self.visibilityList removeAllObjects];
+                [self.versionList removeAllObjects];
+                [self.forgeList removeAllObjects];
+            }
+        }
 
         for (NSMutableArray<NSString *> *versions in self.forgeList) {
             [versions sortUsingComparator:^NSComparisonResult(NSString *lhs, NSString *rhs) {

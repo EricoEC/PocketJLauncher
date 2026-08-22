@@ -218,6 +218,7 @@ void AWTInputBridge_sendKey(int keycode) {
 @property(nonatomic) ControlLayout* ctrlView;
 @property(nonatomic) PLLogOutputView* logOutputView;
 @property(nonatomic) ScrollableSurfaceView* surfaceScrollView;
+@property(nonatomic) UIButton *closeButton;
 
 @end
 
@@ -296,6 +297,22 @@ void AWTInputBridge_sendKey(int keycode) {
     [self addChildViewController:self.logOutputView.navController];
     [self.view addSubview:self.logOutputView.navController.view];
 
+    self.closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.closeButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.closeButton setImage:[UIImage systemImageNamed:@"xmark.circle.fill"] forState:UIControlStateNormal];
+    self.closeButton.tintColor = UIColor.whiteColor;
+    self.closeButton.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.45];
+    self.closeButton.layer.cornerRadius = 22.0;
+    self.closeButton.accessibilityLabel = localize(@"Close", nil);
+    [self.closeButton addTarget:self action:@selector(actionCloseInstaller) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:self.closeButton];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.closeButton.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:10.0],
+        [self.closeButton.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12.0],
+        [self.closeButton.widthAnchor constraintEqualToConstant:44.0],
+        [self.closeButton.heightAnchor constraintEqualToConstant:44.0]
+    ]];
+
     setenv("POJAV_SKIP_JNI_GLFW", "1", 1);
  
     // Register the display loop
@@ -316,7 +333,16 @@ void AWTInputBridge_sendKey(int keycode) {
 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         launchJVM(nil, self.filepath, windowWidth, windowHeight, _requiredJavaVersion);
         _requiredJavaVersion = 0;
+        // Returning from launchJVM only means the embedded Java entry point
+        // returned; some Forge installers keep their AWT window alive beyond
+        // that point. Do not tear down the installer UI automatically. The
+        // explicit close button remains available after the installer reports
+        // completion.
     });
+}
+
+- (void)actionCloseInstaller {
+    [self dismissViewControllerAnimated:YES completion:nil];
 }
 
 - (void)loadCustomControls {
@@ -361,6 +387,9 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 
 @synthesize requiredJavaVersion = _requiredJavaVersion;
 - (int)requiredJavaVersion {
+    if (self.requiredJavaVersionOverride > 0) {
+        return _requiredJavaVersion = self.requiredJavaVersionOverride;
+    }
     if (_requiredJavaVersion) {
         return _requiredJavaVersion;
     }

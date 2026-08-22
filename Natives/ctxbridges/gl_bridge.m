@@ -1,4 +1,6 @@
 #import <Foundation/Foundation.h>
+#import <Metal/Metal.h>
+#import <objc/runtime.h>
 #import "SurfaceViewController.h"
 
 #include <dlfcn.h>
@@ -10,7 +12,85 @@
 static EGLDisplay g_EglDisplay;
 static egl_library handle;
 
+typedef id<MTLLibrary> (*PocketJNewLibraryIMP)(id, SEL, NSString *, MTLCompileOptions *, NSError **);
+static PocketJNewLibraryIMP pocketjOriginalNewLibrary;
+
+static NSString *PocketJPatchCloudBufferFetches(NSString *source) {
+    if ([source rangeOfString:@"_uCloudFaces"].location == NSNotFound ||
+        [source rangeOfString:@"ANGLE_texelFetch("].location == NSNotFound) {
+        return source;
+    }
+
+    NSMutableString *patched = source.mutableCopy;
+    NSString *needle = @"ANGLE_texelFetch(";
+    NSUInteger searchOffset = 0;
+    NSUInteger replacements = 0;
+
+    while (searchOffset < patched.length) {
+        NSRange call = [patched rangeOfString:needle
+                                     options:0
+                                       range:NSMakeRange(searchOffset,
+                                           patched.length - searchOffset)];
+        if (call.location == NSNotFound) break;
+
+        NSUInteger argumentStart = NSMaxRange(call);
+        NSUInteger cursor = argumentStart;
+        NSInteger depth = 1;
+        NSUInteger comma = NSNotFound;
+        while (cursor < patched.length && depth > 0) {
+            unichar character = [patched characterAtIndex:cursor];
+            if (character == '(') depth++;
+            else if (character == ')') depth--;
+            else if (character == ',' && depth == 1 && comma == NSNotFound) comma = cursor;
+            cursor++;
+        }
+        if (depth != 0 || comma == NSNotFound) break;
+
+        NSRange firstRange = NSMakeRange(argumentStart, comma - argumentStart);
+        NSRange secondRange = NSMakeRange(comma + 1, (cursor - 1) - (comma + 1));
+        NSString *textureEnv = [[patched substringWithRange:firstRange]
+            stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        NSString *index = [[patched substringWithRange:secondRange]
+            stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        NSString *replacement = [NSString stringWithFormat:@"(*%@.texture).read(uint(%@))",
+            textureEnv, index];
+        NSRange entireCall = NSMakeRange(call.location, cursor - call.location);
+        [patched replaceCharactersInRange:entireCall withString:replacement];
+        searchOffset = call.location + replacement.length;
+        replacements++;
+    }
+
+    if (replacements > 0) {
+        NSLog(@"[PocketJ ANGLE] Patched %lu CloudFaces buffer fetch(es) at Metal compile time",
+            (unsigned long)replacements);
+    }
+    return patched;
+}
+
+static id<MTLLibrary> PocketJNewLibraryWithSource(id self, SEL selector,
+    NSString *source, MTLCompileOptions *options, NSError **error) {
+    return pocketjOriginalNewLibrary(self, selector,
+        PocketJPatchCloudBufferFetches(source), options, error);
+}
+
+static void PocketJInstallMetalShaderPatch(void) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+        SEL selector = @selector(newLibraryWithSource:options:error:);
+        Method method = class_getInstanceMethod(object_getClass(device) ? [device class] : Nil, selector);
+        if (!method) {
+            NSLog(@"[PocketJ ANGLE] Metal shader compile hook unavailable");
+            return;
+        }
+        pocketjOriginalNewLibrary = (PocketJNewLibraryIMP)method_getImplementation(method);
+        method_setImplementation(method, (IMP)PocketJNewLibraryWithSource);
+        NSLog(@"[PocketJ ANGLE] Metal shader compile hook installed on %@", NSStringFromClass(device.class));
+    });
+}
+
 void dlsym_EGL() {
+    PocketJInstallMetalShaderPatch();
     void* dl_handle = dlopen("@rpath/libtinygl4angle.dylib", RTLD_GLOBAL);
     NSCAssert(dl_handle, @(dlerror()));
     handle.eglBindAPI = dlsym(dl_handle, "eglBindAPI");

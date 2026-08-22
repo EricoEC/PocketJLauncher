@@ -5,14 +5,21 @@
 #import "CustomControlsViewController.h"
 #import "DownloadProgressViewController.h"
 #import "JavaGUIViewController.h"
+#import "JavaLauncher.h"
 #import "LauncherMenuViewController.h"
 #import "LauncherNavigationController.h"
 #import "LauncherPreferences.h"
+#import "installer/FabricUtils.h"
+#import "installer/modpack/ModpackAPI.h"
+#import "installer/modpack/ModrinthAPI.h"
 #import "MinecraftResourceDownloadTask.h"
 #import "MinecraftResourceUtils.h"
 #import "PickTextField.h"
 #import "PLPickerView.h"
 #import "PLProfiles.h"
+#import "stikdebug/StikDebugEngine.h"
+#import "stikdebug/StikDebugViewController.h"
+#import "ModernRootTabBarController.h"
 #import "UIKit+AFNetworking.h"
 #import "UIKit+hook.h"
 #import "ios_uikit_bridge.h"
@@ -52,10 +59,26 @@ static NSString *const LauncherVerifiedCompletesKey =
 @property(nonatomic) BOOL currentTaskPaused;
 @property(nonatomic) BOOL activeTaskRequiresDownload;
 @property(nonatomic, copy) NSString *activeDownloadIdentifier;
+@property(nonatomic, strong) NSURLSessionTask *loaderInstallTask;
+@property(nonatomic) BOOL jitEnabling;
+@property(nonatomic) BOOL jitReadyFeedback;
+@property(nonatomic) BOOL deferGameLaunchAfterJITEnable;
 
 @end
 
 @implementation LauncherNavigationController
+
+- (BOOL)shouldAutorotate {
+    return YES;
+}
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+    UIInterfaceOrientationMask childMask =
+        self.topViewController.supportedInterfaceOrientations;
+    return childMask ?: (UIInterfaceOrientationMaskPortrait |
+        UIInterfaceOrientationMaskLandscapeLeft |
+        UIInterfaceOrientationMaskLandscapeRight);
+}
 
 - (void)postTaskActive:(BOOL)active {
     [NSNotificationCenter.defaultCenter
@@ -64,12 +87,31 @@ static NSString *const LauncherVerifiedCompletesKey =
                     userInfo:@{
                         @"active": @(active),
                         @"paused": @(self.currentTaskPaused),
-                        @"downloading": @(self.activeTaskRequiresDownload)
+                        @"downloading": @(self.activeTaskRequiresDownload),
+                        @"loaderInstalling": @(self.loaderInstallTask != nil),
+                        @"jitEnabling": @(self.jitEnabling),
+                        @"jitReady": @(self.jitReadyFeedback)
                     }];
 }
 
+- (void)showJITReadyFeedbackThen:(dispatch_block_t)completion {
+    self.deferGameLaunchAfterJITEnable = NO;
+    self.jitReadyFeedback = YES;
+    self.jitEnabling = YES;
+    [self postTaskActive:YES];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
+        (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        self.jitReadyFeedback = NO;
+        self.jitEnabling = NO;
+        self.activeDownloadIdentifier = nil;
+        [self postTaskActive:NO];
+        if (completion) completion();
+    });
+}
+
 - (BOOL)hasActiveLaunchTask {
-    return self.task != nil &&
+    BOOL hasTask = self.task != nil || self.loaderInstallTask != nil || self.jitEnabling;
+    return hasTask &&
         [self.activeDownloadIdentifier
             isEqualToString:self.selectedDownloadIdentifier];
 }
@@ -146,6 +188,14 @@ static NSString *const LauncherVerifiedCompletesKey =
 
 - (BOOL)selectedProfileNeedsDownload {
     [self migrateLegacyDownloadStatesIfNeeded];
+    if ([PLProfiles.current.selectedProfile[@"pocketjPendingModpack"]
+            isKindOfClass:NSDictionary.class]) {
+        return YES;
+    }
+    if ([PLProfiles.current.selectedProfile[@"pocketjResourcesVerified"]
+            isEqual:@NO]) {
+        return YES;
+    }
     if ([[self downloadStatesForKey:LauncherVerifiedCompletesKey]
             [self.selectedDownloadIdentifier] boolValue]) {
         return NO;
@@ -184,7 +234,21 @@ static NSString *const LauncherVerifiedCompletesKey =
 
 - (void)cancelCurrentLaunchTask {
     MinecraftResourceDownloadTask *task = self.task;
-    if (!task) {
+    NSURLSessionTask *loaderTask = self.loaderInstallTask;
+    if (!task && !loaderTask && !self.jitEnabling) {
+        return;
+    }
+
+    if (self.jitEnabling) return;
+
+    if (loaderTask) {
+        [loaderTask cancel];
+        self.loaderInstallTask = nil;
+        self.currentTaskPaused = NO;
+        self.activeTaskRequiresDownload = NO;
+        self.activeDownloadIdentifier = nil;
+        [self setInteractionEnabled:YES forDownloading:YES];
+        [self postTaskActive:NO];
         return;
     }
 
@@ -420,9 +484,16 @@ static NSString *const LauncherVerifiedCompletesKey =
 }
 
 - (void)enterModInstallerWithPath:(NSString *)path hitEnterAfterWindowShown:(BOOL)hitEnter {
+    [self enterModInstallerWithPath:path hitEnterAfterWindowShown:hitEnter requiredJavaVersion:0];
+}
+
+- (void)enterModInstallerWithPath:(NSString *)path
+        hitEnterAfterWindowShown:(BOOL)hitEnter
+        requiredJavaVersion:(int)requiredJavaVersion {
     JavaGUIViewController *vc = [[JavaGUIViewController alloc] init];
     vc.filepath = path;
     vc.hitEnterAfterWindowShown = hitEnter;
+    vc.requiredJavaVersionOverride = requiredJavaVersion;
     if (!vc.requiredJavaVersion) {
         return;
     }
@@ -457,6 +528,183 @@ static NSString *const LauncherVerifiedCompletesKey =
     UIApplication.sharedApplication.idleTimerDisabled = !enabled;
 }
 
+- (void)presentPendingLoaderInstallerAtPath:(NSString *)path
+                                     loader:(NSString *)loader
+                           minecraftVersion:(NSString *)minecraftVersion
+                              loaderVersion:(NSString *)loaderVersion {
+    NSMutableDictionary *profile = PLProfiles.current.selectedProfile;
+    profile[@"pocketjResourcesVerified"] = @NO;
+    [PLProfiles.current save];
+    NSArray *before = [NSFileManager.defaultManager contentsOfDirectoryAtPath:
+        [NSString stringWithFormat:@"%s/versions", getenv("POJAV_GAME_DIR")] error:nil] ?: @[];
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    [defaults setObject:getPrefObject(@"general.game_directory") ?: @"" forKey:@"PocketJPendingLoaderInstance"];
+    [defaults setObject:PLProfiles.current.selectedProfileName ?: @"" forKey:@"PocketJPendingLoaderProfile"];
+    [defaults setObject:loader forKey:@"PocketJPendingLoaderKind"];
+    [defaults setObject:minecraftVersion forKey:@"PocketJPendingLoaderMinecraftVersion"];
+    [defaults setObject:loaderVersion forKey:@"PocketJPendingLoaderVersion"];
+    [defaults setObject:before forKey:@"PocketJPendingLoaderBeforeVersions"];
+    [self setInteractionEnabled:YES forDownloading:YES];
+    [self postTaskActive:NO];
+    int requiredJava = PocketJRequiredJavaVersionForMinecraft(minecraftVersion);
+    NSLog(@"[Loader Installer] %@ %@ for Minecraft %@ will use Java %d",
+        loader, loaderVersion, minecraftVersion, requiredJava);
+    [self enterModInstallerWithPath:path
+            hitEnterAfterWindowShown:YES
+            requiredJavaVersion:requiredJava];
+}
+
+- (void)installPendingLoaderForProfile:(NSMutableDictionary *)profile sender:(UIButton *)sender {
+    if (self.loaderInstallTask || self.task) return;
+    NSString *loader = profile[@"pocketjLoader"] ?: @"vanilla";
+    NSString *minecraftVersion = profile[@"pocketjMinecraftVersion"] ?: profile[@"lastVersionId"];
+    if ([minecraftVersion isEqualToString:@"latest-release"]) {
+        minecraftVersion = getPrefObject(@"internal.latest_version.release") ?: minecraftVersion;
+    } else if ([minecraftVersion isEqualToString:@"latest-snapshot"]) {
+        minecraftVersion = getPrefObject(@"internal.latest_version.snapshot") ?: minecraftVersion;
+    }
+    NSString *loaderVersion = profile[@"pocketjLoaderVersion"] ?: @"";
+    if (!minecraftVersion.length || !loaderVersion.length) {
+        showDialog(localize(@"加载器配置不完整", nil),
+            localize(@"请在编辑实例中选择 Minecraft 版本和加载器版本。", nil));
+        return;
+    }
+    // Migrated instances may already contain the requested loader while the
+    // old profile still points at Vanilla. Reuse that installation first.
+    NSString *versionsRoot = [NSString stringWithFormat:@"%s/versions", getenv("POJAV_GAME_DIR")];
+    for (NSString *candidate in [NSFileManager.defaultManager contentsOfDirectoryAtPath:versionsRoot error:nil] ?: @[]) {
+        NSString *lower = candidate.lowercaseString;
+        if (![lower containsString:loader.lowercaseString] ||
+            ![lower containsString:loaderVersion.lowercaseString]) continue;
+        if ([loader isEqualToString:@"forge"] && [lower containsString:@"neoforge"]) continue;
+        NSString *jsonPath = [[versionsRoot stringByAppendingPathComponent:candidate]
+            stringByAppendingPathComponent:[candidate stringByAppendingPathExtension:@"json"]];
+        NSDictionary *metadata = parseJSONFromFile(jsonPath);
+        NSString *base = metadata[@"inheritsFrom"];
+        if (base.length && ![base isEqualToString:minecraftVersion]) continue;
+        profile[@"lastVersionId"] = candidate;
+        profile[@"pocketjLoaderInstallPending"] = @NO;
+        [PLProfiles.current save];
+        [NSNotificationCenter.defaultCenter postNotificationName:@"LauncherProfilesDidChangeNotification" object:nil];
+        [self launchMinecraft:sender];
+        return;
+    }
+    [self setInteractionEnabled:NO forDownloading:YES];
+    self.activeDownloadIdentifier = self.selectedDownloadIdentifier;
+    self.activeTaskRequiresDownload = YES;
+    self.progressText.text = [NSString stringWithFormat:localize(@"正在安装 %@…", nil), loader.capitalizedString];
+    __weak typeof(self) weakSelf = self;
+    if ([loader isEqualToString:@"fabric"] || [loader isEqualToString:@"quilt"]) {
+        NSString *vendor = [loader isEqualToString:@"quilt"] ? @"Quilt" : @"Fabric";
+        NSString *format = [FabricUtils endpoints][vendor][@"json"];
+        NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:format, minecraftVersion, loaderVersion]];
+        __block NSURLSessionDataTask *task = nil;
+        task = [[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+            NSHTTPURLResponse *http = [response isKindOfClass:NSHTTPURLResponse.class]
+                ? (NSHTTPURLResponse *)response : nil;
+            BOOL validResponse = !http || http.statusCode == 200;
+            NSDictionary *metadata = data.length && validResponse
+                ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
+            NSString *versionID = [metadata isKindOfClass:NSDictionary.class] ? metadata[@"id"] : nil;
+            NSError *saveError = nil;
+            if (versionID.length) {
+                NSString *path = [NSString stringWithFormat:@"%s/versions/%@/%@.json", getenv("POJAV_GAME_DIR"), versionID, versionID];
+                [NSFileManager.defaultManager createDirectoryAtPath:path.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:&saveError];
+                if (!saveError) saveError = saveJSONToFile(metadata, path);
+            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (weakSelf.loaderInstallTask != task) return;
+                weakSelf.loaderInstallTask = nil;
+                weakSelf.activeDownloadIdentifier = nil;
+                weakSelf.activeTaskRequiresDownload = NO;
+                if (error || saveError || !versionID.length) {
+                    [weakSelf setInteractionEnabled:YES forDownloading:YES];
+                    [weakSelf postTaskActive:NO];
+                    NSString *detail = error.localizedDescription ?: saveError.localizedDescription;
+                    if (!detail.length && http.statusCode != 200) {
+                        detail = [NSString stringWithFormat:@"HTTP %ld", (long)http.statusCode];
+                    }
+                    showDialog(localize(@"加载器安装失败", nil),
+                        detail ?: localize(@"服务器返回了无效的加载器信息。", nil));
+                    return;
+                }
+                profile[@"lastVersionId"] = versionID;
+                profile[@"pocketjLoaderInstallPending"] = @NO;
+                profile[@"pocketjResourcesVerified"] = @NO;
+                [PLProfiles.current save];
+                [NSNotificationCenter.defaultCenter postNotificationName:@"LauncherProfilesDidChangeNotification" object:nil];
+                [weakSelf setInteractionEnabled:YES forDownloading:YES];
+                [weakSelf postTaskActive:NO];
+                [weakSelf launchMinecraft:sender];
+            });
+        }];
+        self.loaderInstallTask = task;
+        [self postTaskActive:YES];
+        [task resume];
+        return;
+    }
+
+    NSString *forgePrefix = [minecraftVersion stringByAppendingString:@"-"];
+    NSString *artifactVersion = [loader isEqualToString:@"forge"]
+        ? ([loaderVersion hasPrefix:forgePrefix]
+            ? loaderVersion
+            : [NSString stringWithFormat:@"%@-%@", minecraftVersion, loaderVersion])
+        : loaderVersion;
+    NSString *urlString = [loader isEqualToString:@"forge"]
+        ? [NSString stringWithFormat:@"https://maven.minecraftforge.net/net/minecraftforge/forge/%1$@/forge-%1$@-installer.jar", artifactVersion]
+        : [NSString stringWithFormat:@"https://maven.neoforged.net/releases/net/neoforged/neoforge/%1$@/neoforge-%1$@-installer.jar", artifactVersion];
+    NSString *cacheRoot = [@(getenv("POJAV_GAME_DIR"))
+        stringByAppendingPathComponent:@".pocketj-cache/loaders"];
+    [NSFileManager.defaultManager createDirectoryAtPath:cacheRoot
+        withIntermediateDirectories:YES attributes:nil error:nil];
+    NSString *target = [cacheRoot stringByAppendingPathComponent:
+        [NSString stringWithFormat:@"%@-%@-installer.jar", loader, artifactVersion]];
+    unsigned long long cachedSize = [[NSFileManager.defaultManager
+        attributesOfItemAtPath:target error:nil][NSFileSize] unsignedLongLongValue];
+    if (cachedSize > 65536) {
+        NSLog(@"[Loader Installer] Reusing cached installer %@", target.lastPathComponent);
+        self.activeDownloadIdentifier = nil;
+        self.activeTaskRequiresDownload = NO;
+        [self presentPendingLoaderInstallerAtPath:target loader:loader
+            minecraftVersion:minecraftVersion loaderVersion:loaderVersion];
+        return;
+    }
+    __block NSURLSessionDownloadTask *task = nil;
+    task = [[NSURLSession sharedSession] downloadTaskWithURL:[NSURL URLWithString:urlString]
+        completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+        NSHTTPURLResponse *http = [response isKindOfClass:NSHTTPURLResponse.class]
+            ? (NSHTTPURLResponse *)response : nil;
+        if (!error && http && http.statusCode != 200) {
+            error = [NSError errorWithDomain:@"PocketJLoaderDownload"
+                code:http.statusCode userInfo:@{NSLocalizedDescriptionKey:
+                    [NSString stringWithFormat:localize(@"加载器服务器返回 HTTP %ld。", nil),
+                        (long)http.statusCode]}];
+        }
+        NSError *moveError = nil;
+        if (location && !error) {
+            [NSFileManager.defaultManager removeItemAtPath:target error:nil];
+            [NSFileManager.defaultManager moveItemAtURL:location toURL:[NSURL fileURLWithPath:target] error:&moveError];
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (weakSelf.loaderInstallTask != task) return;
+            weakSelf.loaderInstallTask = nil;
+            weakSelf.activeDownloadIdentifier = nil;
+            weakSelf.activeTaskRequiresDownload = NO;
+            if (error || moveError) {
+                [weakSelf setInteractionEnabled:YES forDownloading:YES];
+                [weakSelf postTaskActive:NO];
+                showDialog(localize(@"加载器安装失败", nil), error.localizedDescription ?: moveError.localizedDescription);
+                return;
+            }
+            [weakSelf presentPendingLoaderInstallerAtPath:target loader:loader
+                minecraftVersion:minecraftVersion loaderVersion:loaderVersion];
+        });
+    }];
+    self.loaderInstallTask = task;
+    [self postTaskActive:YES];
+    [task resume];
+}
+
 - (void)launchMinecraft:(UIButton *)sender {
     if (!self.versionTextField.hasText) {
         [self.versionTextField becomeFirstResponder];
@@ -470,6 +718,21 @@ static NSString *const LauncherVerifiedCompletesKey =
         [view performSelector:@selector(selectAccount:) withObject:sender];
         return;
     }
+
+    NSMutableDictionary *selectedProfile = PLProfiles.current.selectedProfile;
+    NSDictionary *pendingModpack = [selectedProfile[@"pocketjPendingModpack"]
+        isKindOfClass:NSDictionary.class]
+        ? (NSDictionary *)selectedProfile[@"pocketjPendingModpack"] : nil;
+    if (pendingModpack) {
+        [self downloadPendingModpack:pendingModpack];
+        return;
+    }
+    if ([selectedProfile[@"pocketjLoaderInstallPending"] boolValue]) {
+        [self installPendingLoaderForProfile:selectedProfile sender:sender];
+        return;
+    }
+
+    self.deferGameLaunchAfterJITEnable = !isJITEnabled(false);
 
     [self setInteractionEnabled:NO forDownloading:YES];
 
@@ -536,6 +799,52 @@ static NSString *const LauncherVerifiedCompletesKey =
             }
             self.progressViewMain.observedProgress = downloadTask.progress;
             [downloadTask.progress addObserver:self
+                forKeyPath:@"fractionCompleted"
+                options:NSKeyValueObservingOptionInitial
+                context:ProgressObserverContext];
+        });
+    });
+}
+
+- (void)downloadPendingModpack:(NSDictionary *)pending {
+    if (self.task) return;
+    NSString *source = pending[@"source"];
+    ModpackAPI *api = [source isEqualToString:@"modrinth"]
+        ? [ModrinthAPI new] : nil;
+    NSDictionary *detail = [pending[@"detail"] isKindOfClass:NSDictionary.class]
+        ? pending[@"detail"] : nil;
+    if (!api || !detail) {
+        showDialog(localize(@"整合包配置无效", nil),
+            localize(@"请删除该待下载项后重新从在线整合包添加。", nil));
+        return;
+    }
+    [self setInteractionEnabled:NO forDownloading:YES];
+    self.task = [MinecraftResourceDownloadTask new];
+    self.currentTaskPaused = NO;
+    self.activeDownloadIdentifier = self.selectedDownloadIdentifier;
+    self.activeTaskRequiresDownload = YES;
+    [self markSelectedDownloadInterrupted];
+    [self postTaskActive:YES];
+    MinecraftResourceDownloadTask *downloadTask = self.task;
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        downloadTask.handleError = ^{
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (weakSelf.task != downloadTask) return;
+                [weakSelf setInteractionEnabled:YES forDownloading:YES];
+                weakSelf.task = nil;
+                weakSelf.currentTaskPaused = NO;
+                weakSelf.activeTaskRequiresDownload = NO;
+                weakSelf.activeDownloadIdentifier = nil;
+                weakSelf.progressVC = nil;
+                [weakSelf postTaskActive:NO];
+            });
+        };
+        [downloadTask downloadModpackFromAPI:api detail:detail atIndex:0];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (weakSelf.task != downloadTask || downloadTask.progress.cancelled) return;
+            weakSelf.progressViewMain.observedProgress = downloadTask.progress;
+            [downloadTask.progress addObserver:weakSelf
                 forKeyPath:@"fractionCompleted"
                 options:NSKeyValueObservingOptionInitial
                 context:ProgressObserverContext];
@@ -634,12 +943,17 @@ static NSString *const LauncherVerifiedCompletesKey =
         [self.progressVC dismissModalViewControllerAnimated:NO];
 
         self.progressViewMain.observedProgress = nil;
-        if (self.task.metadata) {
-            __block NSDictionary *metadata = self.task.metadata;
-            [self invokeAfterJITEnabled:^{
-                UIKit_launchMinecraftSurfaceVC(self.view.window, metadata);
-            }];
-        } else {
+        NSDictionary *metadata = self.task.metadata;
+        NSMutableDictionary *completedProfile = nil;
+        BOOL continueWithLoaderInstall = NO;
+        if (!metadata) {
+            NSMutableDictionary *profile = PLProfiles.current.selectedProfile;
+            if ([profile[@"pocketjPendingModpack"] isKindOfClass:NSDictionary.class]) {
+                [profile removeObjectForKey:@"pocketjPendingModpack"];
+                [PLProfiles.current save];
+                completedProfile = profile;
+                continueWithLoaderInstall = [profile[@"pocketjLoaderInstallPending"] boolValue];
+            }
             [self reloadProfileList];
         }
         self.task = nil;
@@ -649,6 +963,24 @@ static NSString *const LauncherVerifiedCompletesKey =
         self.activeDownloadIdentifier = nil;
         [self setInteractionEnabled:YES forDownloading:YES];
         [self postTaskActive:NO];
+        if (metadata) {
+            NSMutableDictionary *profile = PLProfiles.current.selectedProfile;
+            profile[@"pocketjResourcesVerified"] = @YES;
+            [PLProfiles.current save];
+            [self setDownloadState:YES identifier:self.selectedDownloadIdentifier
+                key:LauncherVerifiedCompletesKey];
+            [self invokeAfterJITEnabled:^{
+                UIKit_launchMinecraftSurfaceVC(self.view.window, metadata);
+            }];
+        } else if (continueWithLoaderInstall && completedProfile) {
+            // Modpack acquisition and loader installation are separate stages.
+            // The package/dependencies stay cached, so retrying after an
+            // installer failure starts here instead of downloading them again.
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
+                (int64_t)(0.15 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [self installPendingLoaderForProfile:completedProfile sender:nil];
+            });
+        }
     });
 }
 
@@ -656,31 +988,83 @@ static NSString *const LauncherVerifiedCompletesKey =
     if (![notification.name isEqualToString:@"InstallModpack"]) {
         return;
     }
-    [self setInteractionEnabled:NO forDownloading:YES];
-    self.task = [MinecraftResourceDownloadTask new];
-    self.currentTaskPaused = NO;
-    [self postTaskActive:YES];
     NSDictionary *userInfo = notification.userInfo;
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        __weak LauncherNavigationController *weakSelf = self;
-        self.task.handleError = ^{
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [weakSelf setInteractionEnabled:YES forDownloading:YES];
-                weakSelf.task = nil;
-                weakSelf.currentTaskPaused = NO;
-                weakSelf.progressVC = nil;
-                [weakSelf postTaskActive:NO];
-            });
-        };
-        [self.task downloadModpackFromAPI:notification.object detail:userInfo[@"detail"] atIndex:[userInfo[@"index"] unsignedLongValue]];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            self.progressViewMain.observedProgress = self.task.progress;
-            [self.task.progress addObserver:self
-                forKeyPath:@"fractionCompleted"
-                options:NSKeyValueObservingOptionInitial
-                context:ProgressObserverContext];
-        });
-    });
+    NSDictionary *detail = userInfo[@"detail"];
+    NSUInteger index = [userInfo[@"index"] unsignedLongValue];
+    NSArray *urls = detail[@"versionUrls"];
+    if (![detail isKindOfClass:NSDictionary.class] || index >= urls.count) {
+        showDialog(localize(@"整合包配置无效", nil),
+            localize(@"所选版本没有可用的下载文件。", nil));
+        return;
+    }
+
+    NSString *baseName = [detail[@"title"] isKindOfClass:NSString.class]
+        ? detail[@"title"] : localize(@"在线整合包", nil);
+    baseName = [baseName stringByTrimmingCharactersInSet:
+        NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (!baseName.length) baseName = localize(@"在线整合包", nil);
+
+    // A modpack is a standalone instance. Never register it in the currently
+    // selected instance's launcher_profiles.json.
+    NSString *instancesRoot = [NSString stringWithFormat:@"%s/instances", getenv("POJAV_HOME")];
+    NSString *safeBaseName = [[baseName stringByReplacingOccurrencesOfString:@"/" withString:@"-"]
+        stringByReplacingOccurrencesOfString:@":" withString:@"-"];
+    NSString *directoryName = safeBaseName;
+    NSUInteger suffix = 2;
+    while ([NSFileManager.defaultManager fileExistsAtPath:
+        [instancesRoot stringByAppendingPathComponent:directoryName]]) {
+        directoryName = [NSString stringWithFormat:@"%@ %lu", safeBaseName,
+            (unsigned long)suffix++];
+    }
+    NSString *instancePath = [instancesRoot stringByAppendingPathComponent:directoryName];
+    NSError *directoryError = nil;
+    if (![NSFileManager.defaultManager createDirectoryAtPath:instancePath
+        withIntermediateDirectories:YES attributes:nil error:&directoryError]) {
+        showDialog(localize(@"无法创建实例", nil), directoryError.localizedDescription);
+        return;
+    }
+    NSString *profileName = baseName;
+
+    id (^valueAt)(NSString *) = ^id(NSString *key) {
+        NSArray *values = [detail[key] isKindOfClass:NSArray.class] ? detail[key] : @[];
+        return index < values.count ? values[index] : @"";
+    };
+    NSDictionary *selectedDetail = @{
+        @"apiSource": detail[@"apiSource"] ?: @1,
+        @"id": detail[@"id"] ?: @"",
+        @"title": baseName,
+        @"versionNames": @[valueAt(@"versionNames") ?: @""],
+        @"mcVersionNames": @[valueAt(@"mcVersionNames") ?: @""],
+        @"versionSizes": @[valueAt(@"versionSizes") ?: @0],
+        @"versionUrls": @[valueAt(@"versionUrls") ?: @""],
+        @"versionHashes": @[valueAt(@"versionHashes") ?: @""]
+    };
+    NSString *minecraftVersion = valueAt(@"mcVersionNames");
+    NSMutableDictionary *profile = [@{
+        @"name": profileName,
+        @"lastVersionId": minecraftVersion.length ? minecraftVersion : @"latest-release",
+        @"gameDir": @".",
+        @"pocketjMinecraftVersion": minecraftVersion ?: @"",
+        @"pocketjPendingModpack": @{
+            @"source": @"modrinth",
+            @"detail": selectedDetail
+        }
+    } mutableCopy];
+    NSDictionary *profileDatabase = @{
+        @"profiles": @{profileName: profile},
+        @"selectedProfile": profileName
+    };
+    NSError *saveError = saveJSONToFile(profileDatabase,
+        [instancePath stringByAppendingPathComponent:@"launcher_profiles.json"]);
+    if (saveError) {
+        showDialog(localize(@"无法创建实例", nil), saveError.localizedDescription);
+        return;
+    }
+    [self reloadProfileList];
+    [NSNotificationCenter.defaultCenter
+        postNotificationName:@"LauncherProfilesDidChangeNotification" object:nil];
+    showDialog(localize(@"已添加整合包", nil),
+        localize(@"已登记为待下载实例，请回到启动页统一下载。", nil));
 }
 
 - (void)invokeAfterJITEnabled:(void(^)(void))handler {
@@ -689,8 +1073,53 @@ static NSString *const LauncherVerifiedCompletesKey =
     BOOL isLiveContainer = getenv("LC_HOME_PATH") != NULL;
 
     if (isJITEnabled(false)) {
+        self.deferGameLaunchAfterJITEnable = NO;
         [ALTServerManager.sharedManager stopDiscovering];
         handler();
+        return;
+    } else if (@available(iOS 26.0, *)) {
+        if (StikDebugEngine.sharedEngine.hasPairingFile) {
+            self.jitEnabling = YES;
+            self.activeDownloadIdentifier = self.selectedDownloadIdentifier;
+            self.progressText.text = localize(@"正在开启内置 JIT…", nil);
+            [self postTaskActive:YES];
+            [StikDebugViewController enableEmbeddedJITWithCompletion:
+                ^(BOOL success, NSString *message) {
+                    if (success || isJITEnabled(false)) {
+                        if (self.deferGameLaunchAfterJITEnable) {
+                            [self showJITReadyFeedbackThen:handler];
+                        } else {
+                            self.jitEnabling = NO;
+                            self.activeDownloadIdentifier = nil;
+                            [self postTaskActive:NO];
+                            handler();
+                        }
+                    } else {
+                        self.jitEnabling = NO;
+                        self.activeDownloadIdentifier = nil;
+                        [self postTaskActive:NO];
+                        self.deferGameLaunchAfterJITEnable = NO;
+                        NSString *detail = message.length ? message : localize(@"未知错误", nil);
+                        if ([detail localizedCaseInsensitiveContainsString:@"Timed out connecting"] ||
+                            [detail localizedCaseInsensitiveContainsString:@"not ready for JIT"]) {
+                            detail = [detail stringByAppendingFormat:@"\n\n%@",
+                                localize(@"请确保 LocalDevVPN 已开启后重试。", nil)];
+                        }
+                        showDialog(localize(@"无法开启 JIT", nil), detail);
+                    }
+                }];
+            return;
+        }
+        ModernRootTabBarController *root =
+            [self.tabBarController isKindOfClass:ModernRootTabBarController.class]
+                ? (ModernRootTabBarController *)self.tabBarController : nil;
+        if (root) {
+            [root openJITSettingsWithConfigurationPrompt:YES];
+        } else {
+            [self pushViewController:[StikDebugViewController new] animated:YES];
+            showDialog(localize(@"JIT 等待配置", nil),
+                localize(@"开始游戏前，请先导入本机配对文件并开启 LocalDevVPN。", nil));
+        }
         return;
     } else if (hasTrollStoreJIT) {
         NSURL *jitURL = [NSURL URLWithString:[NSString stringWithFormat:@"apple-magnifier://enable-jit?bundle-id=%@", NSBundle.mainBundle.bundleIdentifier]];
@@ -734,6 +1163,9 @@ static NSString *const LauncherVerifiedCompletesKey =
     }
 
     self.progressText.text = localize(@"launcher.wait_jit.title", nil);
+    self.jitEnabling = YES;
+    self.activeDownloadIdentifier = self.selectedDownloadIdentifier;
+    [self postTaskActive:YES];
 
     UIAlertController* alert = [UIAlertController alertControllerWithTitle:localize(@"launcher.wait_jit.title", nil)
         message:hasTrollStoreJIT ? localize(@"launcher.wait_jit_trollstore.message", nil) : localize(@"launcher.wait_jit.message", nil)
@@ -752,7 +1184,16 @@ static NSString *const LauncherVerifiedCompletesKey =
             usleep(1000*200);
         }
         dispatch_async(dispatch_get_main_queue(), ^{
-            [alert dismissViewControllerAnimated:YES completion:handler];
+            [alert dismissViewControllerAnimated:YES completion:^{
+                if (self.deferGameLaunchAfterJITEnable) {
+                    [self showJITReadyFeedbackThen:handler];
+                } else {
+                    self.jitEnabling = NO;
+                    self.activeDownloadIdentifier = nil;
+                    [self postTaskActive:NO];
+                    handler();
+                }
+            }];
         });
     });
 }

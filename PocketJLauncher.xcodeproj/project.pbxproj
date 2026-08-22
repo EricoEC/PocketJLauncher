@@ -7,19 +7,172 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		083CF9284D23152E0FA8032D /* ExtensionFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B61A694797E7A719E7397A1B /* ExtensionFoundation.framework */; };
+		0BF65410D4084544976180CC /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F168D68E0520A6D01E89715F /* Network.framework */; };
+		1069D896FCF4B64DC79326E0 /* IdeviceFFI.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA649ABE29A759AC4D6ACFB2 /* IdeviceFFI.swift */; };
+		113518FC17F4426B6E05F705 /* PocketJJITCoordinator.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F06DDAFCD4ABD8FC4AFFDD6C /* PocketJJITCoordinator.framework */; };
+		1AF9C04C0FB511A17EF0E5B4 /* universal.js in Resources */ = {isa = PBXBuildFile; fileRef = E1BF2A6A673ADFA7151306ED /* universal.js */; };
+		1BEE4B45936A2EF3E61CFF74 /* PocketJJITExtensionPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35F3B708603A160C5261C3FB /* PocketJJITExtensionPoint.swift */; };
+		314FAC35AE6E7226E1A2B5FA /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8748A468A334F2D8E536F7BF /* SystemConfiguration.framework */; };
+		4C24C474D60400F39222F9E7 /* SynchronousDDIDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37A2D7E296B2BBE962C9C6BA /* SynchronousDDIDownloader.swift */; };
+		6C53A9A0DD1ECF516958BB6E /* PocketJJITXPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36EDAC4DDE8B57E6D851016 /* PocketJJITXPC.swift */; };
+		72E80C3358C527315F486596 /* DeveloperDiskImageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFE7D8188168178CE933A5E /* DeveloperDiskImageService.swift */; };
+		7BA0352CCB47A258AEE27EC1 /* StikJITError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 774B1B71B492124FE1FCCB40 /* StikJITError.swift */; };
+		7D70D03961F3CAC5A2BB110F /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5880C08146C4D6F93A391628 /* CFNetwork.framework */; };
+		80B69A8451A9D9B23CC8E38C /* legacy.js in Resources */ = {isa = PBXBuildFile; fileRef = 1D27798481BD9930DA4FF1D2 /* legacy.js */; };
+		9777DC580EB03926AF4D2073 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 98F9A449EC3447FB4BDD20DC /* IOKit.framework */; };
+		A0D12E79F20142792806275D /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BFD1AAE7BBD1EE68705EE46B /* JavaScriptCore.framework */; };
+		A503DD16B2D7A52DC003C91F /* ProcessInfo+TXM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7AD98A1EC08D448827ED43 /* ProcessInfo+TXM.swift */; };
+		A9224E1D712A1C7CC0C3CD79 /* StikJIT.swift in Sources */ = {isa = PBXBuildFile; fileRef = 864A11973E6D8E71C5DCB1FF /* StikJIT.swift */; };
+		A98E1EB51B06880E37B31B62 /* BundledScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95ACE10A0F57D85898615AD1 /* BundledScript.swift */; };
+		AA57A82D1FCBE80C8E5F0A8F /* EndpointProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47D361958A2E330B3B08F37F /* EndpointProbe.swift */; };
+		AAEDD61B1E7B8A9AB15B8FD8 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52D0B5EFFAD7AD26A41897C7 /* Security.framework */; };
+		B7F5AECEF139E001B7D41DA5 /* PocketJJITHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D14D4B5EA4AE4621C28AD67 /* PocketJJITHelper.swift */; };
+		B82C8B26D2D526E7C7E26539 /* PocketJJITXPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36EDAC4DDE8B57E6D851016 /* PocketJJITXPC.swift */; };
+		BA474C39E3959E8017A731A9 /* StikJIT.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 05EC12D5C1099A16C1B9F8AB /* StikJIT.framework */; };
+		C1E80BE9ED13CBDC7D6911E7 /* ExtensionFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B61A694797E7A719E7397A1B /* ExtensionFoundation.framework */; };
+		C9D3514E614C758635CFA9B5 /* PocketJJITExtensionPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35F3B708603A160C5261C3FB /* PocketJJITExtensionPoint.swift */; };
 		CAC80538E7FDA62E9A702056 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 7CC2BE563442E074ABB5739D /* main.m */; };
+		D6FFA070EFC06C9C5F1DC4EE /* DDISession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A571638D84FE08CB9946496 /* DDISession.swift */; };
+		DD4F799281FE16A80773E174 /* ScriptRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C2355B9CDEBCE8245B97121 /* ScriptRunner.swift */; };
+		E4B80229B338A7AE4DEF6031 /* PocketJJITCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1FF96A7248A2D17181C477F /* PocketJJITCoordinator.swift */; };
+		EF9CC56A9BACBC82F2B0C66F /* JITSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDCD64A0B0CF635F9801644E /* JITSession.swift */; };
+		F64E912BAC2A97FDF8E14E35 /* StikJIT.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 05EC12D5C1099A16C1B9F8AB /* StikJIT.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		1621D73576F490C0A1948452 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5FF2C83EF70E432391048157 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8092DFBA4B20E09055B2E62D;
+			remoteInfo = StikJIT;
+		};
+		B8A1327691AFC434D4492E9B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5FF2C83EF70E432391048157 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BE9E7273E22946C71CFC3DEF;
+			remoteInfo = PocketJJITHelper;
+		};
+		F2E1D121F06A83BE6A187E5F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5FF2C83EF70E432391048157 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9302EEFC6F82D17848A9B203;
+			remoteInfo = PocketJJITCoordinator;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		07DB2BADA909CBD3B7CD76CA /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				F64E912BAC2A97FDF8E14E35 /* StikJIT.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		05EC12D5C1099A16C1B9F8AB /* StikJIT.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = StikJIT.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		0758BA45A4578B4E2805E30A /* PocketJJITHelper.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = PocketJJITHelper.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		0C2355B9CDEBCE8245B97121 /* ScriptRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScriptRunner.swift; sourceTree = "<group>"; };
+		1D27798481BD9930DA4FF1D2 /* legacy.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = legacy.js; sourceTree = "<group>"; };
+		2F7AD98A1EC08D448827ED43 /* ProcessInfo+TXM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProcessInfo+TXM.swift"; sourceTree = "<group>"; };
+		35F3B708603A160C5261C3FB /* PocketJJITExtensionPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketJJITExtensionPoint.swift; sourceTree = "<group>"; };
+		37A2D7E296B2BBE962C9C6BA /* SynchronousDDIDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynchronousDDIDownloader.swift; sourceTree = "<group>"; };
+		3A571638D84FE08CB9946496 /* DDISession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DDISession.swift; sourceTree = "<group>"; };
+		3D14D4B5EA4AE4621C28AD67 /* PocketJJITHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketJJITHelper.swift; sourceTree = "<group>"; };
+		47D361958A2E330B3B08F37F /* EndpointProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointProbe.swift; sourceTree = "<group>"; };
+		52D0B5EFFAD7AD26A41897C7 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		5880C08146C4D6F93A391628 /* CFNetwork.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CFNetwork.framework; path = System/Library/Frameworks/CFNetwork.framework; sourceTree = SDKROOT; };
+		59BE2DCAD545BA2FFD500AC3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		774B1B71B492124FE1FCCB40 /* StikJITError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StikJITError.swift; sourceTree = "<group>"; };
 		7CC2BE563442E074ABB5739D /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		7CFE7D8188168178CE933A5E /* DeveloperDiskImageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeveloperDiskImageService.swift; sourceTree = "<group>"; };
+		864A11973E6D8E71C5DCB1FF /* StikJIT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StikJIT.swift; sourceTree = "<group>"; };
+		8748A468A334F2D8E536F7BF /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
 		88FC7E066ABC77DBF9382C8D /* PocketJ Launcher.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "PocketJ Launcher.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		95ACE10A0F57D85898615AD1 /* BundledScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundledScript.swift; sourceTree = "<group>"; };
+		98F9A449EC3447FB4BDD20DC /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		B1FF96A7248A2D17181C477F /* PocketJJITCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketJJITCoordinator.swift; sourceTree = "<group>"; };
+		B61A694797E7A719E7397A1B /* ExtensionFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ExtensionFoundation.framework; path = System/Library/Frameworks/ExtensionFoundation.framework; sourceTree = SDKROOT; };
+		BFD1AAE7BBD1EE68705EE46B /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		D36EDAC4DDE8B57E6D851016 /* PocketJJITXPC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketJJITXPC.swift; sourceTree = "<group>"; };
+		DDCD64A0B0CF635F9801644E /* JITSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JITSession.swift; sourceTree = "<group>"; };
+		E1BF2A6A673ADFA7151306ED /* universal.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = universal.js; sourceTree = "<group>"; };
+		EA649ABE29A759AC4D6ACFB2 /* IdeviceFFI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeviceFFI.swift; sourceTree = "<group>"; };
+		F06DDAFCD4ABD8FC4AFFDD6C /* PocketJJITCoordinator.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PocketJJITCoordinator.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		F168D68E0520A6D01E89715F /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		187360732655FCB05547956E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A0D12E79F20142792806275D /* JavaScriptCore.framework in Frameworks */,
+				0BF65410D4084544976180CC /* Network.framework in Frameworks */,
+				AAEDD61B1E7B8A9AB15B8FD8 /* Security.framework in Frameworks */,
+				7D70D03961F3CAC5A2BB110F /* CFNetwork.framework in Frameworks */,
+				314FAC35AE6E7226E1A2B5FA /* SystemConfiguration.framework in Frameworks */,
+				9777DC580EB03926AF4D2073 /* IOKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2CD47819918B6C1262E4D4D1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA474C39E3959E8017A731A9 /* StikJIT.framework in Frameworks */,
+				083CF9284D23152E0FA8032D /* ExtensionFoundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5FA2273F49CCA9916689CF15 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				113518FC17F4426B6E05F705 /* PocketJJITCoordinator.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E472F90F57C63A605E7E956F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C1E80BE9ED13CBDC7D6911E7 /* ExtensionFoundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
+		084A8E1D10BA7BB281A82D9E /* Helper */ = {
+			isa = PBXGroup;
+			children = (
+				59BE2DCAD545BA2FFD500AC3 /* Info.plist */,
+				3D14D4B5EA4AE4621C28AD67 /* PocketJJITHelper.swift */,
+			);
+			name = Helper;
+			path = JITIntegration/Helper;
+			sourceTree = "<group>";
+		};
 		4ABEF279AA678E41FC4ED6A5 = {
 			isa = PBXGroup;
 			children = (
+				084A8E1D10BA7BB281A82D9E /* Helper */,
+				BCDE4FCB95DA481622A6DAB2 /* Host */,
+				FE63E4EC65F1C7AFE4334761 /* Resources */,
+				AB584DCC0CAE13F918254EFB /* Shared */,
+				A204D9CA60541656B6E9B82F /* Sources */,
 				78D4320913FC17BDB0BF6B58 /* XcodeRunner */,
+				8D6C4D644CBEE2A4E2C50DE7 /* Frameworks */,
 				689A67A4FF878795BADBABCC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -28,6 +181,9 @@
 			isa = PBXGroup;
 			children = (
 				88FC7E066ABC77DBF9382C8D /* PocketJ Launcher.app */,
+				F06DDAFCD4ABD8FC4AFFDD6C /* PocketJJITCoordinator.framework */,
+				0758BA45A4578B4E2805E30A /* PocketJJITHelper.appex */,
+				05EC12D5C1099A16C1B9F8AB /* StikJIT.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -40,19 +196,141 @@
 			path = XcodeRunner;
 			sourceTree = "<group>";
 		};
+		8D6C4D644CBEE2A4E2C50DE7 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				5880C08146C4D6F93A391628 /* CFNetwork.framework */,
+				B61A694797E7A719E7397A1B /* ExtensionFoundation.framework */,
+				98F9A449EC3447FB4BDD20DC /* IOKit.framework */,
+				BFD1AAE7BBD1EE68705EE46B /* JavaScriptCore.framework */,
+				F168D68E0520A6D01E89715F /* Network.framework */,
+				52D0B5EFFAD7AD26A41897C7 /* Security.framework */,
+				8748A468A334F2D8E536F7BF /* SystemConfiguration.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A204D9CA60541656B6E9B82F /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				95ACE10A0F57D85898615AD1 /* BundledScript.swift */,
+				3A571638D84FE08CB9946496 /* DDISession.swift */,
+				7CFE7D8188168178CE933A5E /* DeveloperDiskImageService.swift */,
+				47D361958A2E330B3B08F37F /* EndpointProbe.swift */,
+				EA649ABE29A759AC4D6ACFB2 /* IdeviceFFI.swift */,
+				DDCD64A0B0CF635F9801644E /* JITSession.swift */,
+				2F7AD98A1EC08D448827ED43 /* ProcessInfo+TXM.swift */,
+				0C2355B9CDEBCE8245B97121 /* ScriptRunner.swift */,
+				864A11973E6D8E71C5DCB1FF /* StikJIT.swift */,
+				774B1B71B492124FE1FCCB40 /* StikJITError.swift */,
+				37A2D7E296B2BBE962C9C6BA /* SynchronousDDIDownloader.swift */,
+			);
+			name = Sources;
+			path = Vendor/StikJIT/Sources;
+			sourceTree = "<group>";
+		};
+		AB584DCC0CAE13F918254EFB /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				D36EDAC4DDE8B57E6D851016 /* PocketJJITXPC.swift */,
+			);
+			name = Shared;
+			path = JITIntegration/Shared;
+			sourceTree = "<group>";
+		};
+		BCDE4FCB95DA481622A6DAB2 /* Host */ = {
+			isa = PBXGroup;
+			children = (
+				B1FF96A7248A2D17181C477F /* PocketJJITCoordinator.swift */,
+				35F3B708603A160C5261C3FB /* PocketJJITExtensionPoint.swift */,
+			);
+			name = Host;
+			path = JITIntegration/Host;
+			sourceTree = "<group>";
+		};
+		FE63E4EC65F1C7AFE4334761 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				1D27798481BD9930DA4FF1D2 /* legacy.js */,
+				E1BF2A6A673ADFA7151306ED /* universal.js */,
+			);
+			name = Resources;
+			path = Vendor/StikJIT/Resources;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		8092DFBA4B20E09055B2E62D /* StikJIT */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D174FBA5FA7C4D8ABEB52C0E /* Build configuration list for PBXNativeTarget "StikJIT" */;
+			buildPhases = (
+				8E0106CD623D36C9B235DAF3 /* Sources */,
+				2154523691F7360A7C0F6F55 /* Resources */,
+				187360732655FCB05547956E /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StikJIT;
+			packageProductDependencies = (
+			);
+			productName = StikJIT;
+			productReference = 05EC12D5C1099A16C1B9F8AB /* StikJIT.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		9302EEFC6F82D17848A9B203 /* PocketJJITCoordinator */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FE2BC753D4A5EF95867A71D6 /* Build configuration list for PBXNativeTarget "PocketJJITCoordinator" */;
+			buildPhases = (
+				6D71B43243E4B95C783B15B4 /* Sources */,
+				E472F90F57C63A605E7E956F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PocketJJITCoordinator;
+			packageProductDependencies = (
+			);
+			productName = PocketJJITCoordinator;
+			productReference = F06DDAFCD4ABD8FC4AFFDD6C /* PocketJJITCoordinator.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		BE9E7273E22946C71CFC3DEF /* PocketJJITHelper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9BB426E96C107BF046080C07 /* Build configuration list for PBXNativeTarget "PocketJJITHelper" */;
+			buildPhases = (
+				F3AF5225E94CE491086F7537 /* Sources */,
+				2CD47819918B6C1262E4D4D1 /* Frameworks */,
+				07DB2BADA909CBD3B7CD76CA /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F741065EFD03EBF9528CBB9F /* PBXTargetDependency */,
+			);
+			name = PocketJJITHelper;
+			packageProductDependencies = (
+			);
+			productName = PocketJJITHelper;
+			productReference = 0758BA45A4578B4E2805E30A /* PocketJJITHelper.appex */;
+			productType = "com.apple.product-type.extensionkit-extension";
+		};
 		C1CB9A95487E022997F710C1 /* PocketJ Launcher */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C59BE712392A01D9BB650808 /* Build configuration list for PBXNativeTarget "PocketJ Launcher" */;
 			buildPhases = (
 				7BD423E79E5DF9EF809DB729 /* Sources */,
+				5FA2273F49CCA9916689CF15 /* Frameworks */,
 				A557DD92E1E8FDFCEAAFE235 /* Build and embed PocketJ Launcher */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BD10F5E47C88178755826CB3 /* PBXTargetDependency */,
+				495D99BD7FB5B4E417ADE496 /* PBXTargetDependency */,
 			);
 			name = "PocketJ Launcher";
 			packageProductDependencies = (
@@ -70,7 +348,20 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					8092DFBA4B20E09055B2E62D = {
+						DevelopmentTeam = Q42CQ5VP5A;
+						ProvisioningStyle = Automatic;
+					};
+					9302EEFC6F82D17848A9B203 = {
+						DevelopmentTeam = Q42CQ5VP5A;
+						ProvisioningStyle = Automatic;
+					};
+					BE9E7273E22946C71CFC3DEF = {
+						DevelopmentTeam = Q42CQ5VP5A;
+						ProvisioningStyle = Automatic;
+					};
 					C1CB9A95487E022997F710C1 = {
+						DevelopmentTeam = Q42CQ5VP5A;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -90,9 +381,24 @@
 			projectRoot = "";
 			targets = (
 				C1CB9A95487E022997F710C1 /* PocketJ Launcher */,
+				9302EEFC6F82D17848A9B203 /* PocketJJITCoordinator */,
+				BE9E7273E22946C71CFC3DEF /* PocketJJITHelper */,
+				8092DFBA4B20E09055B2E62D /* StikJIT */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		2154523691F7360A7C0F6F55 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				80B69A8451A9D9B23CC8E38C /* legacy.js in Resources */,
+				1AF9C04C0FB511A17EF0E5B4 /* universal.js in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		A557DD92E1E8FDFCEAAFE235 /* Build and embed PocketJ Launcher */ = {
@@ -112,20 +418,76 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "#!/bin/zsh\nset -euo pipefail\n\n# Xcode launched from Finder does not inherit the interactive shell PATH.\n# upstream Makefile requires these Homebrew-provided build tools.\nexport PATH=\"/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin\"\n\nSOURCE_ROOT=\"${SRCROOT}\"\nWORK_ROOT=\"/tmp/PocketJLauncher-XcodeBuild\"\nBOOT_JDK_CACHE=\"/tmp/PocketJLauncher-BootJDK8\"\nPRODUCT_APP=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}\"\nPAYLOAD_APP=\"${WORK_ROOT}/artifacts/Payload/PocketJLauncher.app\"\n\nmkdir -p \"${WORK_ROOT}\"\nrsync -a --delete \\\n  --exclude \".git\" \\\n  --exclude \"artifacts\" \\\n  --exclude \"depends\" \\\n  --exclude \"Natives/build\" \\\n  \"${SOURCE_ROOT}/\" \"${WORK_ROOT}/\"\n\n# Natives/build is intentionally excluded from rsync because it is large.\n# Remove the staged app explicitly so an old Assets.car or AppIcon PNG can\n# never survive into a new install.\nrm -rf \"${WORK_ROOT}/Natives/build/PocketJLauncher.app\"\n\nBOOT_JDK=\"\"\nJAVA8_HOME=$(/usr/libexec/java_home -v 1.8 2>/dev/null || true)\nCACHED_JAVA8=$(find \"${BOOT_JDK_CACHE}\" -path \"*/Contents/Home/bin/javac\" -print -quit 2>/dev/null || true)\nif [[ -x \"${JAVA8_HOME}/bin/javac\" ]] &&\n   \"${JAVA8_HOME}/bin/javac\" -version 2>&1 | /usr/bin/grep -q \"javac 1.8\"; then\n  BOOT_JDK=\"${JAVA8_HOME}/bin\"\nelif [[ -n \"${CACHED_JAVA8}\" ]] &&\n     \"${CACHED_JAVA8}\" -version 2>&1 | /usr/bin/grep -q \"javac 1.8\"; then\n  BOOT_JDK=\"${CACHED_JAVA8%/javac}\"\nelse\n  mkdir -p \"${BOOT_JDK_CACHE}\"\n  ARCHIVE=\"${BOOT_JDK_CACHE}/jdk8.tar.gz\"\n  curl -L --fail --retry 3 \\\n    \"https://api.adoptium.net/v3/binary/latest/8/ga/mac/x64/jdk/hotspot/normal/eclipse\" \\\n    -o \"${ARCHIVE}\"\n  tar -xzf \"${ARCHIVE}\" -C \"${BOOT_JDK_CACHE}\"\n  JDK_HOME=$(find \"${BOOT_JDK_CACHE}\" -path \"*/Contents/Home/bin/javac\" -print -quit)\n  BOOT_JDK=\"${JDK_HOME%/javac}\"\nfi\n\ncd \"${WORK_ROOT}\"\n/opt/homebrew/bin/gmake payload \\\n  JOBS=8 \\\n  PLATFORM=2 \\\n  RELEASE=$([[ \"${CONFIGURATION}\" == \"Release\" ]] && echo 1 || echo 0) \\\n  BRANCH=main \\\n  COMMIT=local \\\n  BOOTJDK=\"${BOOT_JDK}\" \\\n  VERBOSE=0\n\nif [[ ! -x \"${PAYLOAD_APP}/PocketJLauncher\" ]]; then\n  echo \"error: PocketJ Launcher payload was not generated\"\n  exit 1\nfi\n\nrsync -a --delete \\\n  --exclude \"_CodeSignature\" \\\n  --exclude \"embedded.mobileprovision\" \\\n  \"${PAYLOAD_APP}/\" \"${PRODUCT_APP}/\"\n\n/usr/libexec/PlistBuddy -c \"Set :CFBundleIdentifier ${PRODUCT_BUNDLE_IDENTIFIER}\" \\\n  \"${PRODUCT_APP}/Info.plist\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleExecutable ${EXECUTABLE_NAME}\" \\\n  \"${PRODUCT_APP}/Info.plist\"\n\nif [[ \"${EXECUTABLE_NAME}\" != \"PocketJLauncher\" ]]; then\n  mv \"${PRODUCT_APP}/PocketJLauncher\" \"${PRODUCT_APP}/${EXECUTABLE_NAME}\"\nfi\n\nSIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY:--}\"\nfind \"${PRODUCT_APP}\" -type f | while IFS= read -r ITEM; do\n  if file \"${ITEM}\" | /usr/bin/grep -q \"Mach-O\"; then\n    /usr/bin/codesign --force --sign \"${SIGN_IDENTITY}\" \\\n      --timestamp=none \"${ITEM}\"\n  fi\ndone\n\necho \"PocketJ Launcher engine embedded into ${PRODUCT_APP}\"\n";
+			shellScript = "#!/bin/zsh\nset -euo pipefail\n\n# Xcode launched from Finder does not inherit the interactive shell PATH.\n# upstream Makefile requires these Homebrew-provided build tools.\nexport PATH=\"/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin\"\n\nSOURCE_ROOT=\"${SRCROOT}\"\nWORK_ROOT=\"/tmp/PocketJLauncher-XcodeBuild\"\nBOOT_JDK_CACHE=\"/tmp/PocketJLauncher-BootJDK8\"\nCUSTOM_JDK8=\"${POCKETJ_BOOT_JDK8:-}\"\nPRODUCT_APP=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}\"\nPAYLOAD_APP=\"${WORK_ROOT}/artifacts/Payload/PocketJLauncher.app\"\nCOORDINATOR_FRAMEWORK=\"${BUILT_PRODUCTS_DIR}/PocketJJITCoordinator.framework\"\nJIT_HELPER=\"${BUILT_PRODUCTS_DIR}/PocketJJITHelper.appex\"\n\nmkdir -p \"${WORK_ROOT}\"\nrsync -a --delete \\\n  --exclude \".git\" \\\n  --exclude \"artifacts\" \\\n  --exclude \"depends\" \\\n  --exclude \"JavaApp/build\" \\\n  --exclude \"Natives/build\" \\\n  \"${SOURCE_ROOT}/\" \"${WORK_ROOT}/\"\n\n# Natives/build is intentionally excluded from rsync because it is large.\n# Remove the staged app explicitly so an old Assets.car or AppIcon PNG can\n# never survive into a new install.\nrm -rf \"${WORK_ROOT}/Natives/build/PocketJLauncher.app\"\n\nBOOT_JDK=\"\"\nJAVA8_HOME=$(/usr/libexec/java_home -v 1.8 2>/dev/null || true)\nif [[ -x \"${JAVA8_HOME}/bin/javac\" ]] &&\n   \"${JAVA8_HOME}/bin/javac\" -version 2>&1 | /usr/bin/grep -q \"javac 1.8\"; then\n  BOOT_JDK=\"${JAVA8_HOME}/bin\"\nelif [[ -n \"${CUSTOM_JDK8}\" && -x \"${CUSTOM_JDK8}/bin/javac\" ]]; then\n  BOOT_JDK=\"${CUSTOM_JDK8}/bin\"\nelif [[ -x \"${BOOT_JDK_CACHE}/Contents/Home/bin/javac\" ]]; then\n  BOOT_JDK=\"${BOOT_JDK_CACHE}/Contents/Home/bin\"\nelse\n  mkdir -p \"${BOOT_JDK_CACHE}\"\n  ARCHIVE=\"${BOOT_JDK_CACHE}/jdk8.tar.gz\"\n  curl -L --fail --retry 3 \\\n    \"https://api.adoptium.net/v3/binary/latest/8/ga/mac/x64/jdk/hotspot/normal/eclipse\" \\\n    -o \"${ARCHIVE}\"\n  tar -xzf \"${ARCHIVE}\" -C \"${BOOT_JDK_CACHE}\"\n  JDK_HOME=$(find \"${BOOT_JDK_CACHE}\" -path \"*/Contents/Home/bin/javac\" -print -quit)\n  BOOT_JDK=\"${JDK_HOME%/javac}\"\nfi\n\ncd \"${WORK_ROOT}\"\n/opt/homebrew/bin/gmake payload \\\n  JOBS=8 \\\n  PLATFORM=2 \\\n  RELEASE=$([[ \"${CONFIGURATION}\" == \"Release\" ]] && echo 1 || echo 0) \\\n  BRANCH=main \\\n  COMMIT=local \\\n  BOOTJDK=\"${BOOT_JDK}\" \\\n  VERBOSE=0\n\nif [[ ! -x \"${PAYLOAD_APP}/PocketJLauncher\" ]]; then\n  echo \"error: PocketJ Launcher payload was not generated\"\n  exit 1\nfi\n\n# The Swift compiler generates the host extension-point definition directly\n# in the wrapper's Extensions directory. Preserve it while the native payload\n# replaces that wrapper; without it ExtensionFoundation reports\n# \"Failed to add observer\".\nAPPEXT_BACKUP=\"${WORK_ROOT}/host-extension-points\"\nrm -rf \"${APPEXT_BACKUP}\"\nmkdir -p \"${APPEXT_BACKUP}\"\nfind \"${PRODUCT_APP}/Extensions\" -maxdepth 1 -type f -name \"*.appexpt\" \\\n  -exec cp -p {} \"${APPEXT_BACKUP}/\" \\; 2>/dev/null || true\n\nrsync -a --delete \\\n  --exclude \"_CodeSignature\" \\\n  --exclude \"embedded.mobileprovision\" \\\n  \"${PAYLOAD_APP}/\" \"${PRODUCT_APP}/\"\n\nmkdir -p \"${PRODUCT_APP}/Extensions\"\nif find \"${APPEXT_BACKUP}\" -maxdepth 1 -type f -name \"*.appexpt\" -print -quit | /usr/bin/grep -q .; then\n  cp -p \"${APPEXT_BACKUP}\"/*.appexpt \"${PRODUCT_APP}/Extensions/\"\nelse\n  echo \"error: host extension-point definition (.appexpt) was not generated\"\n  exit 1\nfi\n\n# Restore Xcode-built helper products after the native payload replaces the\n# wrapper. Generic ExtensionFoundation extensions live in Extensions/.\nmkdir -p \"${PRODUCT_APP}/Frameworks\" \"${PRODUCT_APP}/Extensions\"\nrsync -a --delete \"${COORDINATOR_FRAMEWORK}/\" \\\n  \"${PRODUCT_APP}/Frameworks/PocketJJITCoordinator.framework/\"\nrsync -a --delete \"${JIT_HELPER}/\" \\\n  \"${PRODUCT_APP}/Extensions/PocketJJITHelper.appex/\"\n\n/usr/libexec/PlistBuddy -c \"Set :CFBundleIdentifier ${PRODUCT_BUNDLE_IDENTIFIER}\" \\\n  \"${PRODUCT_APP}/Info.plist\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleExecutable ${EXECUTABLE_NAME}\" \\\n  \"${PRODUCT_APP}/Info.plist\"\n\nif [[ \"${EXECUTABLE_NAME}\" != \"PocketJLauncher\" ]]; then\n  mv \"${PRODUCT_APP}/PocketJLauncher\" \"${PRODUCT_APP}/${EXECUTABLE_NAME}\"\nfi\n\nSIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY:--}\"\nfind \"${PRODUCT_APP}\" -type f | while IFS= read -r ITEM; do\n  if file \"${ITEM}\" | /usr/bin/grep -q \"Mach-O\"; then\n    /usr/bin/codesign --force --sign \"${SIGN_IDENTITY}\" \\\n      --timestamp=none \"${ITEM}\"\n  fi\ndone\n\n# Re-seal nested bundles after their Mach-O files have been signed.\n/usr/bin/codesign --force --sign \"${SIGN_IDENTITY}\" --timestamp=none \\\n  \"${PRODUCT_APP}/Frameworks/PocketJJITCoordinator.framework\"\nif [[ -d \"${PRODUCT_APP}/Extensions/PocketJJITHelper.appex/Frameworks/StikJIT.framework\" ]]; then\n  /usr/bin/codesign --force --sign \"${SIGN_IDENTITY}\" --timestamp=none \\\n    \"${PRODUCT_APP}/Extensions/PocketJJITHelper.appex/Frameworks/StikJIT.framework\"\nfi\n/usr/bin/codesign --force --sign \"${SIGN_IDENTITY}\" --timestamp=none \\\n  \"${PRODUCT_APP}/Extensions/PocketJJITHelper.appex\"\n\necho \"PocketJ Launcher engine embedded into ${PRODUCT_APP}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		6D71B43243E4B95C783B15B4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E4B80229B338A7AE4DEF6031 /* PocketJJITCoordinator.swift in Sources */,
+				1BEE4B45936A2EF3E61CFF74 /* PocketJJITExtensionPoint.swift in Sources */,
+				6C53A9A0DD1ECF516958BB6E /* PocketJJITXPC.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7BD423E79E5DF9EF809DB729 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C9D3514E614C758635CFA9B5 /* PocketJJITExtensionPoint.swift in Sources */,
 				CAC80538E7FDA62E9A702056 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8E0106CD623D36C9B235DAF3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A98E1EB51B06880E37B31B62 /* BundledScript.swift in Sources */,
+				D6FFA070EFC06C9C5F1DC4EE /* DDISession.swift in Sources */,
+				72E80C3358C527315F486596 /* DeveloperDiskImageService.swift in Sources */,
+				AA57A82D1FCBE80C8E5F0A8F /* EndpointProbe.swift in Sources */,
+				1069D896FCF4B64DC79326E0 /* IdeviceFFI.swift in Sources */,
+				EF9CC56A9BACBC82F2B0C66F /* JITSession.swift in Sources */,
+				A503DD16B2D7A52DC003C91F /* ProcessInfo+TXM.swift in Sources */,
+				DD4F799281FE16A80773E174 /* ScriptRunner.swift in Sources */,
+				A9224E1D712A1C7CC0C3CD79 /* StikJIT.swift in Sources */,
+				7BA0352CCB47A258AEE27EC1 /* StikJITError.swift in Sources */,
+				4C24C474D60400F39222F9E7 /* SynchronousDDIDownloader.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F3AF5225E94CE491086F7537 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B7F5AECEF139E001B7D41DA5 /* PocketJJITHelper.swift in Sources */,
+				B82C8B26D2D526E7C7E26539 /* PocketJJITXPC.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		495D99BD7FB5B4E417ADE496 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BE9E7273E22946C71CFC3DEF /* PocketJJITHelper */;
+			targetProxy = B8A1327691AFC434D4492E9B /* PBXContainerItemProxy */;
+		};
+		BD10F5E47C88178755826CB3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9302EEFC6F82D17848A9B203 /* PocketJJITCoordinator */;
+			targetProxy = F2E1D121F06A83BE6A187E5F /* PBXContainerItemProxy */;
+		};
+		F741065EFD03EBF9528CBB9F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8092DFBA4B20E09055B2E62D /* StikJIT */;
+			targetProxy = 1621D73576F490C0A1948452 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		172BBBDF762B8CFA272406D2 /* Debug */ = {
@@ -136,6 +498,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				EX_ENABLE_EXTENSION_POINT_GENERATION = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = XcodeRunner/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -159,6 +522,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				EX_ENABLE_EXTENSION_POINT_GENERATION = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = XcodeRunner/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -211,6 +575,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = Q42CQ5VP5A;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -234,6 +599,138 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
+		};
+		2C466A6952EFEAF2F751DB9C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/Vendor/StikJIT/idevice $(SRCROOT)/Vendor/StikJIT/iokit";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/Vendor/StikJIT/idevice";
+				OTHER_LDFLAGS = "-force_load $(SRCROOT)/Vendor/StikJIT/idevice/libidevice_ffi.a";
+				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher.StikJIT;
+				PRODUCT_NAME = StikJIT;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = NO;
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/Vendor/StikJIT/idevice $(SRCROOT)/Vendor/StikJIT/iokit";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		7920840905380323F8A93F06 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher.JITCoordinator;
+				PRODUCT_NAME = PocketJJITCoordinator;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Debug;
+		};
+		849776BD1EADFC42E90903E8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CURRENT_PROJECT_VERSION = 1.1;
+				EX_ENABLE_EXTENSION_POINT_GENERATION = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = JITIntegration/Helper/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher.JITHelper;
+				PRODUCT_NAME = PocketJJITHelper;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		CFF841BACF2C574F15768342 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher.JITCoordinator;
+				PRODUCT_NAME = PocketJJITCoordinator;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		E513536A45DD32C8D6D7F341 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/Vendor/StikJIT/idevice $(SRCROOT)/Vendor/StikJIT/iokit";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/Vendor/StikJIT/idevice";
+				OTHER_LDFLAGS = "-force_load $(SRCROOT)/Vendor/StikJIT/idevice/libidevice_ffi.a";
+				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher.StikJIT;
+				PRODUCT_NAME = StikJIT;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = NO;
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/Vendor/StikJIT/idevice $(SRCROOT)/Vendor/StikJIT/iokit";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Debug;
 		};
 		EE6ADB4D5451BC1E0EC70093 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -272,6 +769,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = Q42CQ5VP5A;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -303,6 +801,28 @@
 			};
 			name = Debug;
 		};
+		F53D8A5E084A2CA49DECB5D7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CURRENT_PROJECT_VERSION = 1.1;
+				EX_ENABLE_EXTENSION_POINT_GENERATION = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = JITIntegration/Helper/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher.JITHelper;
+				PRODUCT_NAME = PocketJJITHelper;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -315,11 +835,38 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		9BB426E96C107BF046080C07 /* Build configuration list for PBXNativeTarget "PocketJJITHelper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F53D8A5E084A2CA49DECB5D7 /* Debug */,
+				849776BD1EADFC42E90903E8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		C59BE712392A01D9BB650808 /* Build configuration list for PBXNativeTarget "PocketJ Launcher" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				172BBBDF762B8CFA272406D2 /* Debug */,
 				1BAA5F37D012FC961E5B1A34 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D174FBA5FA7C4D8ABEB52C0E /* Build configuration list for PBXNativeTarget "StikJIT" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E513536A45DD32C8D6D7F341 /* Debug */,
+				2C466A6952EFEAF2F751DB9C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FE2BC753D4A5EF95867A71D6 /* Build configuration list for PBXNativeTarget "PocketJJITCoordinator" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7920840905380323F8A93F06 /* Debug */,
+				CFF841BACF2C574F15768342 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

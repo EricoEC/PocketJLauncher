@@ -8,6 +8,13 @@ extern dispatch_group_t fatalExitGroup;
 
 @implementation AppDelegate
 
+- (UIInterfaceOrientationMask)application:(UIApplication *)application
+        supportedInterfaceOrientationsForWindow:(UIWindow *)window {
+    return UIInterfaceOrientationMaskPortrait |
+        UIInterfaceOrientationMaskLandscapeLeft |
+        UIInterfaceOrientationMaskLandscapeRight;
+}
+
 #pragma mark - UISceneSession lifecycle
 
 

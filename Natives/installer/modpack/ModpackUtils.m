@@ -36,6 +36,8 @@
     NSString *minecraftVersion = dependency[@"minecraft"];
     if (dependency[@"forge"]) {
         info[@"id"] = [NSString stringWithFormat:@"%@-forge-%@", minecraftVersion, dependency[@"forge"]];
+    } else if (dependency[@"neoforge"]) {
+        info[@"id"] = [NSString stringWithFormat:@"neoforge-%@", dependency[@"neoforge"]];
     } else if (dependency[@"fabric-loader"]) {
         info[@"id"] = [NSString stringWithFormat:@"fabric-loader-%@-%@", dependency[@"fabric-loader"], minecraftVersion];
         info[@"json"] = [NSString stringWithFormat:FabricUtils.endpoints[@"Fabric"][@"json"], minecraftVersion, dependency[@"fabric-loader"]];
