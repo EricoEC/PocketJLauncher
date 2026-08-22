@@ -26,6 +26,8 @@
 
 很多移动端 Java 启动器止步于“把游戏打开”。PocketJ 更想把桌面启动器的完整体验带到 iOS：**在一个原生应用里完成 JIT、实例、Java、模组、整合包、账户、控制与诊断。**
 
+同时，PocketJ 不只关注功能完整性，也持续针对 iOS 环境优化启动流程、资源加载和渲染体验。相比早期移动端 Java 启动方案，PocketJ 在保持兼容性的基础上，对启动链路、运行效率和设备适配进行了大量优化，目标是在 iPhone 和 iPad 上提供更快速、更稳定、更接近桌面体验的 Minecraft Java 运行效果。
+
 它基于 GPL-3.0 项目 [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) 持续开发，并继承了 [PojavLauncher](https://github.com/PojavLauncherTeam) 与 Boardwalk 生态的工作。v1.1 在保留成熟 JVM 与启动内核的基础上，加入了 PocketJ 自己的 iOS 工作流。
 
 ## ✨ 别人缺少的，PocketJ 正在做
@@ -180,6 +182,8 @@ Copyright © 2026 Erico.
 ## Why PocketJ?
 
 Many mobile Java launchers stop at opening the game. PocketJ aims to bring a complete desktop-launcher workflow to iOS: **JIT, instances, Java runtimes, mods, modpacks, accounts, controls, and diagnostics—all inside one native app.**
+
+At the same time, PocketJ focuses not only on feature completeness, but also on improving the iOS Java runtime experience. Compared with earlier mobile Java launcher solutions, PocketJ introduces continuous optimizations across the launch pipeline, resource loading, rendering experience, and device adaptation, aiming to provide a faster, more stable Minecraft Java experience closer to desktop launchers on iPhone and iPad.
 
 PocketJ is developed from the GPL-3.0 licensed [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) project and inherits substantial work from the [PojavLauncher](https://github.com/PojavLauncherTeam) and Boardwalk ecosystems. Version 1.1 keeps the mature JVM and launch core while adding PocketJ's own iOS-first workflows.
 
