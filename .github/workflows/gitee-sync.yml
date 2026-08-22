@@ -17,4 +17,4 @@ jobs:
       - name: Sync
         run: |
           git remote add gitee https://EricoCZ:${{ secrets.GITEE_TOKEN }}@gitee.com/EricoCZ/PocketJLauncher.git
-          git push gitee main --force
+          git push gitee main --force --tags
