@@ -15,10 +15,6 @@ jobs:
           fetch-depth: 0
 
       - name: Sync
-        uses: Yikun/hub-mirror-action@master
-        with:
-          src: github/EricoEC
-          dst: gitee/你的Gitee用户名
-          dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
-          dst_token: ${{ secrets.GITEE_TOKEN }}
-          force_update: true
+        run: |
+          git remote add gitee https://EricoCZ:${{ secrets.GITEE_TOKEN }}@gitee.com/EricoCZ/PocketJLauncher.git
+          git push gitee main --force
