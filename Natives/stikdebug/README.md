@@ -1,6 +1,6 @@
 # Embedded StikDebug integration
 
-PocketJ Launcher 1.1 contains a modified, Objective-C integration derived
+PocketJ Launcher 1.2 contains a modified, Objective-C integration derived
 from the StikDebug on-device tunnel and DebugProxy workflow.
 
 - Upstream: https://github.com/StikDebug/StikDebug

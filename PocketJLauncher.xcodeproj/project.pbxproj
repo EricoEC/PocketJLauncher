@@ -97,7 +97,7 @@
 		7CFE7D8188168178CE933A5E /* DeveloperDiskImageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeveloperDiskImageService.swift; sourceTree = "<group>"; };
 		864A11973E6D8E71C5DCB1FF /* StikJIT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StikJIT.swift; sourceTree = "<group>"; };
 		8748A468A334F2D8E536F7BF /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
-		88FC7E066ABC77DBF9382C8D /* PocketJ Launcher.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "PocketJ Launcher.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		88FC7E066ABC77DBF9382C8D /* PocketJLauncher.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PocketJLauncher.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		95ACE10A0F57D85898615AD1 /* BundledScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundledScript.swift; sourceTree = "<group>"; };
 		98F9A449EC3447FB4BDD20DC /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		B1FF96A7248A2D17181C477F /* PocketJJITCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketJJITCoordinator.swift; sourceTree = "<group>"; };
@@ -180,7 +180,7 @@
 		689A67A4FF878795BADBABCC /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				88FC7E066ABC77DBF9382C8D /* PocketJ Launcher.app */,
+				88FC7E066ABC77DBF9382C8D /* PocketJLauncher.app */,
 				F06DDAFCD4ABD8FC4AFFDD6C /* PocketJJITCoordinator.framework */,
 				0758BA45A4578B4E2805E30A /* PocketJJITHelper.appex */,
 				05EC12D5C1099A16C1B9F8AB /* StikJIT.framework */,
@@ -336,7 +336,7 @@
 			packageProductDependencies = (
 			);
 			productName = "PocketJ Launcher";
-			productReference = 88FC7E066ABC77DBF9382C8D /* PocketJ Launcher.app */;
+			productReference = 88FC7E066ABC77DBF9382C8D /* PocketJLauncher.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -361,7 +361,6 @@
 						ProvisioningStyle = Automatic;
 					};
 					C1CB9A95487E022997F710C1 = {
-						DevelopmentTeam = Q42CQ5VP5A;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -496,6 +495,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
 				CODE_SIGN_ENTITLEMENTS = XcodeRunner/PocketJLauncher.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = Q42CQ5VP5A;
 				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				EX_ENABLE_EXTENSION_POINT_GENERATION = YES;
@@ -506,6 +506,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher;
 				PRODUCT_NAME = PocketJLauncher;
 				SDKROOT = iphoneos;
@@ -520,6 +521,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
 				CODE_SIGN_ENTITLEMENTS = XcodeRunner/PocketJLauncher.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = Q42CQ5VP5A;
 				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				EX_ENABLE_EXTENSION_POINT_GENERATION = YES;
@@ -530,6 +532,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher;
 				PRODUCT_NAME = PocketJLauncher;
 				SDKROOT = iphoneos;
@@ -611,7 +614,10 @@
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = "$(SRCROOT)/Vendor/StikJIT/idevice $(SRCROOT)/Vendor/StikJIT/iokit";
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/Vendor/StikJIT/idevice",
+					"$(SRCROOT)/Vendor/StikJIT/iokit",
+				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -619,7 +625,10 @@
 					"@executable_path/Frameworks",
 				);
 				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/Vendor/StikJIT/idevice";
-				OTHER_LDFLAGS = "-force_load $(SRCROOT)/Vendor/StikJIT/idevice/libidevice_ffi.a";
+				OTHER_LDFLAGS = (
+					"-force_load",
+					"$(SRCROOT)/Vendor/StikJIT/idevice/libidevice_ffi.a",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher.StikJIT;
 				PRODUCT_NAME = StikJIT;
 				SDKROOT = iphoneos;
@@ -659,7 +668,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CURRENT_PROJECT_VERSION = 1.1;
+				CURRENT_PROJECT_VERSION = 1.2;
 				EX_ENABLE_EXTENSION_POINT_GENERATION = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = JITIntegration/Helper/Info.plist;
@@ -668,7 +677,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher.JITHelper;
 				PRODUCT_NAME = PocketJJITHelper;
 				SDKROOT = iphoneos;
@@ -713,7 +722,10 @@
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = "$(SRCROOT)/Vendor/StikJIT/idevice $(SRCROOT)/Vendor/StikJIT/iokit";
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/Vendor/StikJIT/idevice",
+					"$(SRCROOT)/Vendor/StikJIT/iokit",
+				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -721,7 +733,10 @@
 					"@executable_path/Frameworks",
 				);
 				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/Vendor/StikJIT/idevice";
-				OTHER_LDFLAGS = "-force_load $(SRCROOT)/Vendor/StikJIT/idevice/libidevice_ffi.a";
+				OTHER_LDFLAGS = (
+					"-force_load",
+					"$(SRCROOT)/Vendor/StikJIT/idevice/libidevice_ffi.a",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher.StikJIT;
 				PRODUCT_NAME = StikJIT;
 				SDKROOT = iphoneos;
@@ -805,7 +820,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CURRENT_PROJECT_VERSION = 1.1;
+				CURRENT_PROJECT_VERSION = 1.2;
 				EX_ENABLE_EXTENSION_POINT_GENERATION = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = JITIntegration/Helper/Info.plist;
@@ -814,7 +829,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher.JITHelper;
 				PRODUCT_NAME = PocketJJITHelper;
 				SDKROOT = iphoneos;

@@ -7,14 +7,17 @@ export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/
 
 SOURCE_ROOT="${SRCROOT}"
 WORK_ROOT="/tmp/PocketJLauncher-XcodeBuild"
-BOOT_JDK_CACHE="/tmp/PocketJLauncher-BootJDK8"
+SOURCE_PARENT="${SOURCE_ROOT%/*}"
+SHARED_DEPENDENCIES="${POCKETJ_SHARED_DEPENDENCIES:-${SOURCE_PARENT}/SharedDependencies/PocketJ}"
+BOOT_JDK_CACHE="${SHARED_DEPENDENCIES}/BootJDK8"
+RUNTIME_CACHE="${SHARED_DEPENDENCIES}/Runtimes"
 CUSTOM_JDK8="${POCKETJ_BOOT_JDK8:-}"
 PRODUCT_APP="${TARGET_BUILD_DIR}/${WRAPPER_NAME}"
 PAYLOAD_APP="${WORK_ROOT}/artifacts/Payload/PocketJLauncher.app"
 COORDINATOR_FRAMEWORK="${BUILT_PRODUCTS_DIR}/PocketJJITCoordinator.framework"
 JIT_HELPER="${BUILT_PRODUCTS_DIR}/PocketJJITHelper.appex"
 
-mkdir -p "${WORK_ROOT}"
+mkdir -p "${WORK_ROOT}" "${SHARED_DEPENDENCIES}" "${RUNTIME_CACHE}"
 rsync -a --delete \
   --exclude ".git" \
   --exclude "artifacts" \
@@ -22,6 +25,11 @@ rsync -a --delete \
   --exclude "JavaApp/build" \
   --exclude "Natives/build" \
   "${SOURCE_ROOT}/" "${WORK_ROOT}/"
+
+# Downloaded Minecraft runtimes are version-independent build inputs. Keep
+# them beside all launcher versions so copied v1.x folders reuse one cache.
+rm -rf "${WORK_ROOT}/depends"
+ln -s "${RUNTIME_CACHE}" "${WORK_ROOT}/depends"
 
 # Natives/build is intentionally excluded from rsync because it is large.
 # Remove the staged app explicitly so an old Assets.car or AppIcon PNG can
@@ -44,6 +52,7 @@ else
     "https://api.adoptium.net/v3/binary/latest/8/ga/mac/x64/jdk/hotspot/normal/eclipse" \
     -o "${ARCHIVE}"
   tar -xzf "${ARCHIVE}" -C "${BOOT_JDK_CACHE}"
+  rm -f "${ARCHIVE}"
   JDK_HOME=$(find "${BOOT_JDK_CACHE}" -path "*/Contents/Home/bin/javac" -print -quit)
   BOOT_JDK="${JDK_HOME%/javac}"
 fi

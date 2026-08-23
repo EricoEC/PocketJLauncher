@@ -13,6 +13,7 @@ xcshareddata/
 xcuserdata/
 project.xcworkspace/
 /depends
+/SharedDependencies
 /Natives/config.h
 /Natives/CurseForgeSecrets.local.h
 *.mobiledevicepairing

@@ -429,7 +429,7 @@ typedef NS_ENUM(NSInteger, PocketJModSource) {
         value:[[NSString alloc] initWithData:facetData encoding:NSUTF8StringEncoding]]];
     components.queryItems = items;
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:components.URL];
-    [request setValue:@"PocketJLauncher/1.1 (Mod browser)"
+    [request setValue:@"PocketJLauncher/1.2 (Mod browser)"
         forHTTPHeaderField:@"User-Agent"];
     self.loading = YES;
     [self.tableView reloadData];
@@ -477,7 +477,7 @@ typedef NS_ENUM(NSInteger, PocketJModSource) {
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:URL];
     [request setValue:@"application/json" forHTTPHeaderField:@"Accept"];
     [request setValue:POCKETJ_CURSEFORGE_API_KEY forHTTPHeaderField:@"x-api-key"];
-    [request setValue:@"PocketJLauncher/1.1 (CurseForge mod browser)"
+    [request setValue:@"PocketJLauncher/1.2 (CurseForge mod browser)"
         forHTTPHeaderField:@"User-Agent"];
     return request;
 }
@@ -748,7 +748,7 @@ typedef NS_ENUM(NSInteger, PocketJModSource) {
         request.HTTPBody = [NSJSONSerialization dataWithJSONObject:body
             options:0 error:nil];
         [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-        [request setValue:@"PocketJLauncher/1.1 (Mod updater)"
+        [request setValue:@"PocketJLauncher/1.2 (Mod updater)"
             forHTTPHeaderField:@"User-Agent"];
         [[[NSURLSession sharedSession] dataTaskWithRequest:request
             completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
@@ -836,7 +836,7 @@ typedef NS_ENUM(NSInteger, PocketJModSource) {
         @"https://api.modrinth.com/v2/project/%@/version", project[@"id"]];
     NSMutableURLRequest *request = [NSMutableURLRequest
         requestWithURL:[NSURL URLWithString:endpoint]];
-    [request setValue:@"PocketJLauncher/1.1 (Mod installer)"
+    [request setValue:@"PocketJLauncher/1.2 (Mod installer)"
         forHTTPHeaderField:@"User-Agent"];
     __weak typeof(self) weakSelf = self;
     [[[NSURLSession sharedSession] dataTaskWithRequest:request

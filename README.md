@@ -7,7 +7,7 @@
   **掌上 Java，不只是“能启动”。**  
   A modern Minecraft: Java Edition launcher built for iPhone and iPad.
 
-  [![Version](https://img.shields.io/badge/version-v1.1-20c66b?style=for-the-badge)](../../releases)
+  [![Version](https://img.shields.io/badge/version-v1.2-20c66b?style=for-the-badge)](../../releases)
   ![Platform](https://img.shields.io/badge/iOS%20%7C%20iPadOS-14--27-111111?style=for-the-badge&logo=apple&logoColor=white)
   [![License](https://img.shields.io/badge/license-GPL--3.0-7c5cff?style=for-the-badge)](LICENSE)
   ![Languages](https://img.shields.io/badge/UI-简体中文%20%7C%20English-28a8ea?style=for-the-badge)
@@ -26,7 +26,15 @@
 
 很多移动端 Java 启动器止步于“把游戏打开”。PocketJ 更想把桌面启动器的完整体验带到 iOS：**在一个原生应用里完成 JIT、实例、Java、模组、整合包、账户、控制与诊断。**
 
-它基于 GPL-3.0 项目 [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) 持续开发，并继承了 [PojavLauncher](https://github.com/PojavLauncherTeam) 与 Boardwalk 生态的工作。v1.1 在保留成熟 JVM 与启动内核的基础上，加入了 PocketJ 自己的 iOS 工作流。
+同时，PocketJ 不只关注功能完整性，也持续针对 iOS 环境优化启动流程、资源加载和渲染体验。相比早期移动端 Java 启动方案，PocketJ 在保持兼容性的基础上，对启动链路、运行效率和设备适配进行了大量优化，目标是在 iPhone 和 iPad 上提供更快速、更稳定、更接近桌面体验的 Minecraft Java 运行效果。
+
+它基于 GPL-3.0 项目 [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) 持续开发，并继承了 [PojavLauncher](https://github.com/PojavLauncherTeam) 与 Boardwalk 生态的工作。v1.2 在保留成熟 JVM 与启动内核的基础上，加入了 PocketJ 自己的 iOS 工作流。
+
+### 📸 查看真实运行截图
+
+想先看看 PocketJ 在不同设备上的实际效果？进入 [截图画廊](Example/README.md)，可按 iOS 27、iPadOS 18、iPhone X + iOS 14 以及 Forge 测试分类浏览；所有缩略图均可点击查看原图。
+
+[![Screenshots](https://img.shields.io/badge/截图画廊-查看设备实测-20c66b?style=for-the-badge&logo=apple&logoColor=white)](Example/README.md)
 
 ## ✨ 别人缺少的，PocketJ 正在做
 
@@ -65,7 +73,7 @@
 
 </details>
 
-## ✅ v1.1 兼容性地图
+## ✅ v1.2 兼容性地图
 
 | 组合 | 当前定位 |
 |---|---|
@@ -91,8 +99,8 @@
 
 | 文件 | 用途 |
 |---|---|
-| `PocketJLauncher-v1.1-iOS.ipa` | 开发者签名、AltStore、SideStore 及兼容的 IPA 侧载方式 |
-| `PocketJLauncher-v1.1-iOS-TrollStore.tipa` | 适用于受支持的 TrollStore 环境 |
+| `PocketJLauncher-v1.2-iOS.ipa` | 开发者签名、AltStore、SideStore 及兼容的 IPA 侧载方式 |
+| `PocketJLauncher-v1.2-iOS-TrollStore.tipa` | 适用于受支持的 TrollStore 环境 |
 | `SHA256SUMS.txt` | 校验下载文件是否完整、是否与发布产物一致 |
 
 > [!WARNING]
@@ -181,7 +189,15 @@ Copyright © 2026 Erico.
 
 Many mobile Java launchers stop at opening the game. PocketJ aims to bring a complete desktop-launcher workflow to iOS: **JIT, instances, Java runtimes, mods, modpacks, accounts, controls, and diagnostics—all inside one native app.**
 
-PocketJ is developed from the GPL-3.0 licensed [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) project and inherits substantial work from the [PojavLauncher](https://github.com/PojavLauncherTeam) and Boardwalk ecosystems. Version 1.1 keeps the mature JVM and launch core while adding PocketJ's own iOS-first workflows.
+At the same time, PocketJ focuses not only on feature completeness, but also on improving the iOS Java runtime experience. Compared with earlier mobile Java launcher solutions, PocketJ introduces continuous optimizations across the launch pipeline, resource loading, rendering experience, and device adaptation, aiming to provide a faster, more stable Minecraft Java experience closer to desktop launchers on iPhone and iPad.
+
+PocketJ is developed from the GPL-3.0 licensed [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) project and inherits substantial work from the [PojavLauncher](https://github.com/PojavLauncherTeam) and Boardwalk ecosystems. Version 1.2 keeps the mature JVM and launch core while adding PocketJ's own iOS-first workflows.
+
+### 📸 See PocketJ running on real devices
+
+Visit the [screenshot gallery](Example/README.md) to browse iOS 27, iPadOS 18, iPhone X + iOS 14, and Forge test galleries. Every compact preview opens its full-resolution image.
+
+[![Screenshots](https://img.shields.io/badge/Screenshot%20Gallery-Real%20Device%20Tests-20c66b?style=for-the-badge&logo=apple&logoColor=white)](Example/README.md)
 
 ## ✨ What PocketJ brings to iOS
 
@@ -220,7 +236,7 @@ PocketJ is developed from the GPL-3.0 licensed [Amethyst-iOS](https://github.com
 
 </details>
 
-## ✅ v1.1 compatibility map
+## ✅ v1.2 compatibility map
 
 | Combination | Current status |
 |---|---|
@@ -246,8 +262,8 @@ Get release assets from [GitHub Releases](../../releases):
 
 | File | Purpose |
 |---|---|
-| `PocketJLauncher-v1.1-iOS.ipa` | Development signing, AltStore, SideStore, and compatible IPA sideloading methods |
-| `PocketJLauncher-v1.1-iOS-TrollStore.tipa` | Supported TrollStore environments |
+| `PocketJLauncher-v1.2-iOS.ipa` | Development signing, AltStore, SideStore, and compatible IPA sideloading methods |
+| `PocketJLauncher-v1.2-iOS-TrollStore.tipa` | Supported TrollStore environments |
 | `SHA256SUMS.txt` | Verifies release-file integrity |
 
 > [!WARNING]

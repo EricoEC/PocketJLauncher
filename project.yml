@@ -107,8 +107,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.Erico.PocketJLauncher.JITHelper
         PRODUCT_NAME: PocketJJITHelper
-        MARKETING_VERSION: "1.1"
-        CURRENT_PROJECT_VERSION: "1.1"
+        MARKETING_VERSION: "1.2"
+        CURRENT_PROJECT_VERSION: "1.2"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: JITIntegration/Helper/Info.plist
         EX_ENABLE_EXTENSION_POINT_GENERATION: YES

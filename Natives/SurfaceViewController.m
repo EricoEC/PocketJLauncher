@@ -64,6 +64,8 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
 
 @property(nonatomic) BOOL enableMouseGestures, enableHotbarGestures;
 
+@property(nonatomic) CGSize lastLaidOutGameSize;
+
 @property(nonatomic) UIImpactFeedbackGenerator *lightHaptic;
 @property(nonatomic) UIImpactFeedbackGenerator *mediumHaptic;
 
@@ -117,6 +119,8 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
     [self updateSavedResolution];
 
     self.rootView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width + 30.0, self.view.frame.size.height)];
+    self.rootView.autoresizingMask = UIViewAutoresizingFlexibleWidth |
+        UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.rootView];
 
     self.ctrlView = [[ControlLayout alloc] initWithFrame:getSafeArea(self.view.frame)];
@@ -124,12 +128,16 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
     [self performSelector:@selector(initCategory_Navigation)];
     
     self.surfaceView = [[GameSurfaceView alloc] initWithFrame:self.view.frame];
+    self.surfaceView.autoresizingMask = UIViewAutoresizingFlexibleWidth |
+        UIViewAutoresizingFlexibleHeight;
     self.surfaceView.layer.contentsScale = screenScale * resolutionScale;
     self.surfaceView.layer.magnificationFilter = self.surfaceView.layer.minificationFilter = kCAFilterNearest;
     self.surfaceView.multipleTouchEnabled = YES;
     pojavWindow = self.surfaceView;
 
     self.touchView = [[UIView alloc] initWithFrame:self.view.frame];
+    self.touchView.autoresizingMask = UIViewAutoresizingFlexibleWidth |
+        UIViewAutoresizingFlexibleHeight;
     self.touchView.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:1];
     self.touchView.multipleTouchEnabled = YES;
     [self.touchView addSubview:self.surfaceView];
@@ -286,6 +294,48 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
     }
 
     [self launchMinecraft];
+}
+
+- (BOOL)shouldAutorotate {
+    return YES;
+}
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+    return UIInterfaceOrientationMaskPortrait |
+        UIInterfaceOrientationMaskLandscapeLeft |
+        UIInterfaceOrientationMaskLandscapeRight;
+}
+
+// iOS 14 can finish rotating the UIWindow before the transition animation
+// block receives the controller's new frame.  Always derive the game canvas
+// from the final view bounds and update every layer from one place.
+- (void)synchronizeGameLayoutForSize:(CGSize)size {
+    if (size.width <= 0.0 || size.height <= 0.0 || !self.rootView) return;
+
+    CGRect gameBounds = CGRectMake(0.0, 0.0, size.width, size.height);
+    self.rootView.bounds = CGRectMake(0.0, 0.0, size.width + 30.0, size.height);
+    self.touchView.frame = gameBounds;
+    self.surfaceView.frame = self.touchView.bounds;
+    self.inputTextField.frame = CGRectMake(0.0, -32.0, size.width, 30.0);
+    self.ctrlView.frame = getSafeArea(gameBounds);
+
+    [self viewWillTransitionToSize_Navigation:gameBounds];
+    for (UIView *view in self.ctrlView.subviews) {
+        if ([view isKindOfClass:ControlButton.class]) {
+            [(ControlButton *)view update];
+        }
+    }
+
+    if (!CGSizeEqualToSize(self.lastLaidOutGameSize, size)) {
+        self.lastLaidOutGameSize = size;
+        [self updateSavedResolution];
+        [GyroInput updateOrientation];
+    }
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    [self synchronizeGameLayoutForSize:self.view.bounds.size];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -564,26 +614,11 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
 - (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
 {
     [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
-        self.rootView.bounds = CGRectMake(0, 0, size.width + 30.0, size.height);
-
-        CGRect frame = self.view.frame;
-        frame.size = size;
-        self.touchView.frame = frame;
-        self.inputTextField.frame = CGRectMake(0, -32.0, size.width, 30.0);
-        [self viewWillTransitionToSize_Navigation:frame];
-
-        // Update custom controls button position
-        self.ctrlView.frame = getSafeArea(self.view.frame);
-        for (UIView *view in self.ctrlView.subviews) {
-            if ([view isKindOfClass:ControlButton.class]) {
-                [(ControlButton *)view update];
-            }
-        }
-
-        // Update game resolution
-        [self updateSavedResolution];
-        [GyroInput updateOrientation];
+        [self synchronizeGameLayoutForSize:size];
     } completion:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
+        // On iOS 14 the final safe-area and UIWindow bounds are only reliable
+        // after the transition completes, so perform one final synchronization.
+        [self synchronizeGameLayoutForSize:self.view.bounds.size];
         virtualMouseFrame = self.mousePointerView.frame;
     }];
     [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];

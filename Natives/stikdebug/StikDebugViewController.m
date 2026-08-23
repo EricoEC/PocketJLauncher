@@ -14,9 +14,12 @@
 @property(nonatomic) BOOL enabling;
 @property(nonatomic) BOOL jitEnabled;
 @property(nonatomic) BOOL pairingImportFailed;
+@property(nonatomic) BOOL vpnChecking;
+@property(nonatomic) BOOL vpnConnected;
 @property(nonatomic, copy) NSString *lastStatus;
 @property(nonatomic, strong) UIButton *enableButton;
 - (NSString *)userFacingErrorMessage:(NSString *)message;
+- (void)refreshLocalDevVPNStatus;
 @end
 
 @protocol PocketJJITCoordinatorAPI <NSObject>
@@ -29,6 +32,7 @@
 
 + (PocketJJITSetupState)setupState {
     if (@available(iOS 17.4, *)) {
+        [StikDebugEngine.sharedEngine synchronizePairingFileFromDocuments:nil];
         if (isJITEnabled(YES)) return PocketJJITSetupStateEnabled;
         return StikDebugEngine.sharedEngine.hasPairingFile
             ? PocketJJITSetupStateReady
@@ -106,51 +110,138 @@
     [ModernUITheme styleTableView:self.tableView];
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 68;
+    [NSNotificationCenter.defaultCenter addObserver:self
+        selector:@selector(applicationDidBecomeActive:)
+        name:UIApplicationDidBecomeActiveNotification object:nil];
+    [self refreshLocalDevVPNStatus];
+}
+
+- (void)dealloc {
+    [NSNotificationCenter.defaultCenter removeObserver:self];
+}
+
+- (void)applicationDidBecomeActive:(NSNotification *)notification {
+    [StikDebugEngine.sharedEngine synchronizePairingFileFromDocuments:nil];
+    self.jitEnabled = isJITEnabled(YES);
+    [self refreshLocalDevVPNStatus];
+    [self.tableView reloadData];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    NSError *syncError = nil;
+    if (![StikDebugEngine.sharedEngine synchronizePairingFileFromDocuments:&syncError] && syncError) {
+        self.pairingImportFailed = YES;
+        self.lastStatus = syncError.localizedDescription;
+    }
     self.jitEnabled = isJITEnabled(YES);
     if (self.jitEnabled) self.enabling = NO;
+    [self refreshLocalDevVPNStatus];
     [self.tableView reloadData];
 }
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 2; }
+- (void)refreshLocalDevVPNStatus {
+    if (self.vpnChecking) return;
+    self.vpnChecking = YES;
+    __weak typeof(self) weakSelf = self;
+    [StikDebugEngine.sharedEngine checkLocalDevVPNWithCompletion:^(BOOL connected) {
+        weakSelf.vpnChecking = NO;
+        weakSelf.vpnConnected = connected;
+        if (weakSelf.isViewLoaded) [weakSelf.tableView reloadData];
+    }];
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 4; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return section == 0 ? 2 : 1;
+    if (section == 0) return 2;
+    if (section == 1) return 2;
+    if (section == 2) return 2;
+    return 1;
 }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    return section == 0 ? localize(@"连接准备", nil) : nil;
+    if (section == 0) return localize(@"JIT 状态", nil);
+    if (section == 1) return localize(@"连接准备", nil);
+    if (section == 2) return localize(@"配对文件管理", nil);
+    return nil;
 }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    if (section == 0) return localize(@"iOS 17.4 及以上需要本机配对文件和 LocalDevVPN；iOS 14–17.3 不支持这条 StikDebug 隧道协议。", nil);
-    if (section == 1) return localize(@"开启前请先导入本机配对文件，并确保 LocalDevVPN 已启动。", nil);
+    if (section == 0) return localize(@"JIT 是否开启与系统是否支持分别检测，互不混淆。", nil);
+    if (section == 1) return localize(@"完成配对文件和 LocalDevVPN 两项准备后即可开启 JIT。", nil);
+    if (section == 2) return localize(@"支持 iLoader 写入 Documents/pairingFile.plist，也可导出供其他应用使用或从本机删除。", nil);
+    if (section == 3) return localize(@"开启前请先导入本机配对文件，并确保 LocalDevVPN 已启动。", nil);
     return nil;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    BOOL actionRow = indexPath.section == 1;
+    BOOL actionRow = indexPath.section == 3;
     NSString *identifier = actionRow ? @"JITActionCell" : @"StikCell";
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
     if (!cell) cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:identifier];
     cell.textLabel.numberOfLines = 0;
     cell.detailTextLabel.numberOfLines = 0;
+    cell.textLabel.textColor = UIColor.labelColor;
+    cell.detailTextLabel.textColor = UIColor.secondaryLabelColor;
     cell.accessoryView = nil;
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     cell.selectionStyle = UITableViewCellSelectionStyleDefault;
-    if (indexPath.section == 0 && indexPath.row == 0) {
+    [ModernUITheme styleCell:cell destructive:NO];
+    if (indexPath.section == 0) {
+        PocketJJITSetupState state = StikDebugViewController.setupState;
+        if (indexPath.row == 0) {
+            cell.imageView.image = [UIImage systemImageNamed:
+                self.jitEnabled ? @"bolt.circle.fill" : @"bolt.slash.circle"];
+            cell.textLabel.text = localize(@"JIT 运行状态", nil);
+            cell.detailTextLabel.text = self.jitEnabled
+                ? localize(@"JIT 已开启", nil) : localize(@"JIT 未开启", nil);
+            cell.detailTextLabel.textColor = self.jitEnabled
+                ? UIColor.systemGreenColor : UIColor.secondaryLabelColor;
+        } else {
+            BOOL supported = state != PocketJJITSetupStateUnavailable;
+            cell.imageView.image = [UIImage systemImageNamed:
+                supported ? @"checkmark.shield.fill" : @"xmark.shield"];
+            cell.textLabel.text = localize(@"系统支持状态", nil);
+            cell.detailTextLabel.text = supported
+                ? localize(@"系统支持 StikDebug", nil)
+                : localize(@"系统版本不支持", nil);
+            cell.detailTextLabel.textColor = supported
+                ? UIColor.systemGreenColor : UIColor.systemRedColor;
+        }
+        cell.accessoryType = UITableViewCellAccessoryNone;
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    } else if (indexPath.section == 1 && indexPath.row == 0) {
         cell.imageView.image = [UIImage systemImageNamed:@"doc.badge.plus"];
-        cell.textLabel.text = localize(@"导入配对文件", nil);
+        cell.textLabel.text = localize(@"① 导入配对文件", nil);
         BOOL imported = StikDebugEngine.sharedEngine.hasPairingFile;
         cell.detailTextLabel.text = imported
             ? localize(@"已导入", nil)
             : (self.pairingImportFailed
                 ? (self.lastStatus.length ? self.lastStatus : localize(@"导入失败", nil))
                 : localize(@"未导入", nil));
-    } else if (indexPath.section == 0) {
+    } else if (indexPath.section == 1) {
         cell.imageView.image = [UIImage systemImageNamed:@"network.badge.shield.half.filled"];
-        cell.textLabel.text = @"LocalDevVPN";
-        cell.detailTextLabel.text = localize(@"打开 App Store 安装或启动回环 VPN", nil);
+        cell.textLabel.text = localize(@"② 打开 LocalDevVPN", nil);
+        cell.detailTextLabel.text = self.vpnChecking
+            ? localize(@"正在检测…", nil)
+            : (self.vpnConnected ? localize(@"已连接", nil) : localize(@"未连接", nil));
+        cell.detailTextLabel.textColor = self.vpnConnected
+            ? UIColor.systemGreenColor : UIColor.systemRedColor;
+    } else if (indexPath.section == 2 && indexPath.row == 0) {
+        cell.imageView.image = [UIImage systemImageNamed:@"square.and.arrow.up"];
+        cell.textLabel.text = localize(@"导出配对文件", nil);
+        cell.detailTextLabel.text = StikDebugEngine.sharedEngine.hasPairingFile
+            ? localize(@"导出当前配对文件供其他应用使用", nil)
+            : localize(@"请先导入配对文件", nil);
+        cell.selectionStyle = StikDebugEngine.sharedEngine.hasPairingFile
+            ? UITableViewCellSelectionStyleDefault : UITableViewCellSelectionStyleNone;
+        cell.accessoryType = StikDebugEngine.sharedEngine.hasPairingFile
+            ? UITableViewCellAccessoryDisclosureIndicator : UITableViewCellAccessoryNone;
+    } else if (indexPath.section == 2) {
+        cell.imageView.image = [UIImage systemImageNamed:@"trash"];
+        cell.textLabel.text = localize(@"删除配对文件", nil);
+        cell.detailTextLabel.text = localize(@"从 PocketJ Launcher 中移除本机配对凭据", nil);
+        cell.selectionStyle = StikDebugEngine.sharedEngine.hasPairingFile
+            ? UITableViewCellSelectionStyleDefault : UITableViewCellSelectionStyleNone;
+        cell.accessoryType = UITableViewCellAccessoryNone;
     } else {
         cell.textLabel.text = nil;
         cell.detailTextLabel.text = nil;
@@ -202,18 +293,20 @@
         ]];
         self.enableButton = button;
     }
-    [ModernUITheme styleCell:cell destructive:NO];
-    if (indexPath.section == 0 && indexPath.row == 0) {
+    if (indexPath.section == 1 && indexPath.row == 0) {
         BOOL imported = StikDebugEngine.sharedEngine.hasPairingFile;
         cell.detailTextLabel.textColor = imported
             ? UIColor.systemGreenColor : UIColor.systemRedColor;
+    }
+    if (indexPath.section == 2 && indexPath.row == 1) {
+        [ModernUITheme styleCell:cell destructive:YES];
     }
     return cell;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    if (indexPath.section == 0 && indexPath.row == 0) {
+    if (indexPath.section == 1 && indexPath.row == 0) {
         NSMutableArray<UTType *> *types = [NSMutableArray arrayWithObject:UTTypePropertyList];
         UTType *pairing = [UTType typeWithFilenameExtension:@"mobiledevicepairing" conformingToType:UTTypeData];
         if (pairing) [types addObject:pairing];
@@ -221,9 +314,42 @@
         picker.delegate = self;
         picker.allowsMultipleSelection = NO;
         [self presentViewController:picker animated:YES completion:nil];
-    } else if (indexPath.section == 0) {
+    } else if (indexPath.section == 1) {
         NSURL *URL = [NSURL URLWithString:@"https://apps.apple.com/us/app/localdevvpn/id6755608044"];
         [UIApplication.sharedApplication openURL:URL options:@{} completionHandler:nil];
+    } else if (indexPath.section == 2 && indexPath.row == 0) {
+        if (!StikDebugEngine.sharedEngine.hasPairingFile) return;
+        NSError *error = nil;
+        NSURL *URL = [StikDebugEngine.sharedEngine exportablePairingFileURL:&error];
+        if (!URL) {
+            showDialog(localize(@"导出失败", nil), error.localizedDescription ?: localize(@"未知错误", nil));
+            return;
+        }
+        UIActivityViewController *share = [[UIActivityViewController alloc]
+            initWithActivityItems:@[URL] applicationActivities:nil];
+        share.popoverPresentationController.sourceView = [tableView cellForRowAtIndexPath:indexPath];
+        [self presentViewController:share animated:YES completion:nil];
+    } else if (indexPath.section == 2) {
+        if (!StikDebugEngine.sharedEngine.hasPairingFile) return;
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:
+            localize(@"删除配对文件？", nil)
+            message:localize(@"删除后需要重新通过 iLoader 或文件选择器导入。", nil)
+            preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:localize(@"取消", nil)
+            style:UIAlertActionStyleCancel handler:nil]];
+        __weak typeof(self) weakSelf = self;
+        [alert addAction:[UIAlertAction actionWithTitle:localize(@"删除", nil)
+            style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+                NSError *error = nil;
+                if (![StikDebugEngine.sharedEngine deletePairingFile:&error]) {
+                    showDialog(localize(@"删除失败", nil), error.localizedDescription ?: localize(@"未知错误", nil));
+                    return;
+                }
+                weakSelf.pairingImportFailed = NO;
+                weakSelf.lastStatus = nil;
+                [weakSelf.tableView reloadData];
+            }]];
+        [self presentViewController:alert animated:YES completion:nil];
     }
 }
 
@@ -276,11 +402,26 @@
 
 - (NSString *)userFacingErrorMessage:(NSString *)message {
     NSString *result = message.length ? message : localize(@"未知错误", nil);
-    NSRange timeout = [result rangeOfString:@"Timed out connecting"
-                                    options:NSCaseInsensitiveSearch];
-    NSRange notReady = [result rangeOfString:@"not ready for JIT"
-                                     options:NSCaseInsensitiveSearch];
-    if (timeout.location != NSNotFound || notReady.location != NSNotFound) {
+    NSString *lowercase = result.lowercaseString;
+    BOOL pairingError =
+        [lowercase containsString:@"pairing file"] ||
+        [lowercase containsString:@"pairingfile"] ||
+        [lowercase containsString:@"public key"] ||
+        [lowercase containsString:@"private key"] ||
+        [lowercase containsString:@"invalid plist"] ||
+        [lowercase containsString:@"failed to read pairing"];
+    if (pairingError) {
+        return [result stringByAppendingFormat:@"\n\n%@",
+            localize(@"配对文件错误，请重新生成并导入本机配对文件。", nil)];
+    }
+
+    BOOL connectionError =
+        [lowercase containsString:@"timed out connecting"] ||
+        [lowercase containsString:@"connection refused"] ||
+        [lowercase containsString:@"network is unreachable"] ||
+        [lowercase containsString:@"no route to host"] ||
+        [lowercase containsString:@"could not connect to 10.7.0.1"];
+    if (connectionError) {
         return [result stringByAppendingFormat:@"\n\n%@",
             localize(@"请确保 LocalDevVPN 已开启后重试。", nil)];
     }
