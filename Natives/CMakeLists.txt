@@ -116,6 +116,7 @@ add_executable(PocketJLauncher
 
   ctxbridges/gl_bridge.m
   ctxbridges/osm_bridge.m
+  ctxbridges/vk_bridge.m
  
   customcontrols/ControlButton.m
   customcontrols/ControlDrawer.m
@@ -170,6 +171,10 @@ add_executable(PocketJLauncher
     ModernLaunchViewController.m
     ModernSettingsViewController.m
   ModernUITheme.m
+  PocketJUpdateChecker.m
+  PocketJBackgroundManager.m
+  PocketJBackgroundSettingsViewController.m
+  PocketJResourceLibraryViewController.m
   stikdebug/StikDebugEngine.m
   stikdebug/StikDebugViewController.m
   PickTextField.m
@@ -186,6 +191,7 @@ add_executable(PocketJLauncher
   SurfaceViewController+Navigation.m
   TrackedTextField.m
   egl_bridge.m
+  ZinkConfig.m
   input_bridge_v3.m
   ios_uikit_bridge.m
   utils.m
@@ -211,6 +217,7 @@ target_link_libraries(PocketJLauncher
   "-framework GameController"
   "-framework IOKit"
   "-framework Metal"
+  "-framework MessageUI"
   "-framework QuartzCore"
   "-framework UIKit"
   "-framework UniformTypeIdentifiers"

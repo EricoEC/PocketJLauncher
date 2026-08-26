@@ -11,7 +11,6 @@ SOURCE_PARENT="${SOURCE_ROOT%/*}"
 SHARED_DEPENDENCIES="${POCKETJ_SHARED_DEPENDENCIES:-${SOURCE_PARENT}/SharedDependencies/PocketJ}"
 BOOT_JDK_CACHE="${SHARED_DEPENDENCIES}/BootJDK8"
 RUNTIME_CACHE="${SHARED_DEPENDENCIES}/Runtimes"
-CUSTOM_JDK8="${POCKETJ_BOOT_JDK8:-}"
 PRODUCT_APP="${TARGET_BUILD_DIR}/${WRAPPER_NAME}"
 PAYLOAD_APP="${WORK_ROOT}/artifacts/Payload/PocketJLauncher.app"
 COORDINATOR_FRAMEWORK="${BUILT_PRODUCTS_DIR}/PocketJJITCoordinator.framework"
@@ -37,15 +36,13 @@ ln -s "${RUNTIME_CACHE}" "${WORK_ROOT}/depends"
 rm -rf "${WORK_ROOT}/Natives/build/PocketJLauncher.app"
 
 BOOT_JDK=""
-JAVA8_HOME=$(/usr/libexec/java_home -v 1.8 2>/dev/null || true)
-if [[ -x "${JAVA8_HOME}/bin/javac" ]] &&
-   "${JAVA8_HOME}/bin/javac" -version 2>&1 | /usr/bin/grep -q "javac 1.8"; then
-  BOOT_JDK="${JAVA8_HOME}/bin"
-elif [[ -n "${CUSTOM_JDK8}" && -x "${CUSTOM_JDK8}/bin/javac" ]]; then
-  BOOT_JDK="${CUSTOM_JDK8}/bin"
-elif [[ -x "${BOOT_JDK_CACHE}/Contents/Home/bin/javac" ]]; then
+if [[ -x "${BOOT_JDK_CACHE}/Contents/Home/bin/javac" ]]; then
   BOOT_JDK="${BOOT_JDK_CACHE}/Contents/Home/bin"
+elif JDK_JAVAC=$(find "${BOOT_JDK_CACHE}" -path "*/Contents/Home/bin/javac" -type f -print -quit 2>/dev/null) &&
+     [[ -n "${JDK_JAVAC}" && -x "${JDK_JAVAC}" ]]; then
+  BOOT_JDK="${JDK_JAVAC%/javac}"
 else
+  echo "Shared Boot JDK 8 not found; downloading it into ${BOOT_JDK_CACHE}"
   mkdir -p "${BOOT_JDK_CACHE}"
   ARCHIVE="${BOOT_JDK_CACHE}/jdk8.tar.gz"
   curl -L --fail --retry 3 \
@@ -53,9 +50,21 @@ else
     -o "${ARCHIVE}"
   tar -xzf "${ARCHIVE}" -C "${BOOT_JDK_CACHE}"
   rm -f "${ARCHIVE}"
-  JDK_HOME=$(find "${BOOT_JDK_CACHE}" -path "*/Contents/Home/bin/javac" -print -quit)
-  BOOT_JDK="${JDK_HOME%/javac}"
+  JDK_JAVAC=$(find "${BOOT_JDK_CACHE}" -path "*/Contents/Home/bin/javac" -type f -print -quit)
+  if [[ -z "${JDK_JAVAC}" || ! -x "${JDK_JAVAC}" ]]; then
+    echo "error: Downloaded Boot JDK 8 does not contain an executable javac"
+    exit 1
+  fi
+  BOOT_JDK="${JDK_JAVAC%/javac}"
 fi
+
+# The upstream Makefile expands BOOTJDK as an unquoted shell command. The
+# shared dependency directory may contain spaces, so expose the selected JDK
+# through one stable, space-free bridge used by both Xcode GUI and CLI builds.
+BOOT_JDK_BRIDGE="/tmp/PocketJLauncher-BootJDK8-bin"
+rm -f "${BOOT_JDK_BRIDGE}"
+ln -s "${BOOT_JDK}" "${BOOT_JDK_BRIDGE}"
+BOOT_JDK="${BOOT_JDK_BRIDGE}"
 
 cd "${WORK_ROOT}"
 /opt/homebrew/bin/gmake payload \

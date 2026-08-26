@@ -9,22 +9,43 @@ See PocketJ Launcher running across different devices and system generations.
 
 </div>
 
-> [!TIP]
-> 页面中的图片均为小尺寸预览。点击任意截图即可查看原图。每张图片旁都预留了中英文说明位置，可以直接替换占位文字。
-
-> [!TIP]
-> Every image is shown as a compact preview. Click a screenshot to open the full-resolution image. Bilingual description placeholders are available beside every image.
-
 ---
 
 # 🇨🇳 简体中文
 
 ## 选择要查看的内容
 
+- [v1.3 更新展示](#v13-gallery) — 自定义背景、Minecraft 26.x 渲染与在线资源中心
 - [iOS 27 测试](#ios-27-gallery) — 新系统、iPhone 主界面与主要功能
 - [iPadOS 18 测试](#ipados-18-gallery) — iPad 布局与大屏适配
 - [iPhone X 与 iOS 14 测试](#iphone-x-ios-14-gallery) — 旧设备、低系统兼容与横屏适配
-- [Forge 测试](#forge-gallery) — 实验性加载器测试，放在页面最后
+- [Forge 测试](#forge-gallery) — 早期 Forge 安装与启动记录
+
+<a id="v13-gallery"></a>
+<details open>
+<summary><strong>v1.3 更新展示 · 11 张截图</strong></summary>
+
+<br>
+
+> 这组图展示 v1.3 新增的自定义背景、Minecraft 26.x 图形兼容路径以及 Modrinth / CurseForge 在线资源浏览。每张图的“补充说明”已预留，可直接编辑填写。
+
+| 预览 | 截图说明 |
+|:---:|---|
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0215.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0215.png" width="180" alt="PocketJ v1.3 custom background home"></a> | **自定义启动器背景与首页**<br><br>补充说明：_待填写_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0216.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0216.png" width="180" alt="PocketJ v1.3 custom background settings"></a> | **自定义背景下的设置界面**<br><br>补充说明：_待填写_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0217.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0217.png" width="300" alt="Minecraft 26.2 title screen on PocketJ"></a> | **Minecraft 26.2 启动与主菜单**<br><br>补充说明：_待填写_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0218.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0218.png" width="300" alt="Minecraft 26.x world rendering"></a> | **Minecraft 26.x 世界方块渲染**<br><br>补充说明：_待填写_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0219.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0219.png" width="300" alt="Minecraft 26.x pause menu"></a> | **Minecraft 26.x 游戏暂停界面**<br><br>补充说明：_待填写_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0220.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0220.png" width="300" alt="Minecraft 26.x landscape rendering"></a> | **Minecraft 26.x 地形与触控界面**<br><br>补充说明：_待填写_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0221.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0221.png" width="300" alt="Minecraft 26.x third-person rendering"></a> | **Minecraft 26.x 第三人称渲染**<br><br>补充说明：_待填写_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0222.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0222.png" width="180" alt="Modrinth online shaders"></a> | **Modrinth 在线光影包**<br><br>补充说明：_待填写_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0223.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0223.png" width="180" alt="CurseForge online shaders"></a> | **CurseForge 在线光影包**<br><br>补充说明：_待填写_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0224.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0224.png" width="180" alt="Modrinth online resource packs"></a> | **Modrinth 在线材质包**<br><br>补充说明：_待填写_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0225.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0225.png" width="180" alt="Modrinth and CurseForge mod sources"></a> | **Modrinth / CurseForge 双源模组管理**<br><br>补充说明：_待填写_ |
+
+</details>
+
+<p align="right"><a href="#选择要查看的内容">返回目录 ↑</a></p>
 
 <a id="ios-27-gallery"></a>
 <details>
@@ -32,7 +53,7 @@ See PocketJ Launcher running across different devices and system generations.
 
 <br>
 
-| 小尺寸预览（点击放大） | 截图说明 |
+| 预览 | 截图说明 |
 |:---:|---|
 | <a href="iOS27测试/IMG_0088.PNG"><img src="iOS27测试/IMG_0088.PNG" width="180" alt="iOS 27 screenshot IMG_0088"></a> | _启动器主页_<br><br>_Launcher Home_ |
 | <a href="iOS27测试/IMG_0089.PNG"><img src="iOS27测试/IMG_0089.PNG" width="180" alt="iOS 27 screenshot IMG_0089"></a> | _实例管理界面_<br><br>_Instance Management Interface_ |
@@ -58,7 +79,7 @@ See PocketJ Launcher running across different devices and system generations.
 
 <br>
 
-| 小尺寸预览（点击放大） | 截图说明 |
+| 预览 | 截图说明 |
 |:---:|---|
 | <a href="iPadOS18测试/IMG_6676.PNG"><img src="iPadOS18测试/IMG_6676.PNG" width="220" alt="iPadOS 18 screenshot IMG_6676"></a> | _启动器主页_<br><br>_Launcher Home_ |
 | <a href="iPadOS18测试/IMG_6677.PNG"><img src="iPadOS18测试/IMG_6677.PNG" width="220" alt="iPadOS 18 screenshot IMG_6677"></a> | _设置界面_<br><br>_Settings Interface_ |
@@ -74,7 +95,7 @@ See PocketJ Launcher running across different devices and system generations.
 
 <br>
 
-| 小尺寸预览（点击放大） | 截图说明 |
+| 预览 | 截图说明 |
 |:---:|---|
 | <a href="iPhoneX%26iOS14/IMG_1559.jpg"><img src="iPhoneX%26iOS14/IMG_1559.jpg" width="180" alt="iPhone X iOS 14 screenshot IMG_1559"></a> | _巨魔商店安装tipa版本（常驻开启JIT）_<br><br>_Troll Store tipa Installation (JIT Permanently Enabled)_ |
 | <a href="iPhoneX%26iOS14/IMG_1561.PNG"><img src="iPhoneX%26iOS14/IMG_1561.PNG" width="180" alt="iPhone X iOS 14 screenshot IMG_1561"></a> | _启动器主页_<br><br>_Launcher Home_ |
@@ -92,10 +113,9 @@ See PocketJ Launcher running across different devices and system generations.
 <br>
 
 > [!NOTE]
-> Forge support remains experimental in v1.2. Some loader combinations still require additional compatibility work.
-> ⚠️ **Forge 功能部分版本仍需继续适配加载阶段**。
+> 这里保留的是早期 Forge 安装与启动测试截图；v1.3 已将 Forge 纳入统一加载器版本流程。
 
-| 小尺寸预览（点击放大） | 截图说明 |
+| 预览 | 截图说明 |
 |:---:|---|
 | <a href="测试forge/IMG_0068.PNG"><img src="测试forge/IMG_0068.PNG" width="180" alt="Forge test screenshot IMG_0068"></a> | _forge安装器_<br><br>_Forge Installer_ |
 | <a href="测试forge/IMG_0069.PNG"><img src="测试forge/IMG_0069.PNG" width="180" alt="Forge test screenshot IMG_0069"></a> | _forge安装器_<br><br>_Forge Installer_ |
@@ -111,11 +131,15 @@ See PocketJ Launcher running across different devices and system generations.
 
 ## Choose a gallery
 
-The galleries above are bilingual, so every screenshot has both a Chinese and an English description field:
+> [!NOTE]
+> The current screenshots show the **Simplified Chinese** edition of PocketJ Launcher. English-language preview screenshots will be added in a future update.
 
+The gallery structure and captions are bilingual:
+
+- [v1.3 update gallery](#v13-gallery) — custom backgrounds, Minecraft 26.x rendering, and online resources
 - [iOS 27 testing](#ios-27-gallery) — current iPhone UI and primary features
 - [iPadOS 18 testing](#ipados-18-gallery) — iPad layout and large-screen adaptation
 - [iPhone X and iOS 14 testing](#iphone-x-ios-14-gallery) — older-device, minimum-OS, and landscape compatibility
-- [Forge testing](#forge-gallery) — experimental loader testing, intentionally placed last
+- [Forge testing](#forge-gallery) — archived early Forge installation and launch testing
 
 <p align="center"><a href="../README.md">← 返回 PocketJ Launcher 主项目 / Back to PocketJ Launcher</a></p>

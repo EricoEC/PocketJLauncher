@@ -4,6 +4,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface ModernUITheme : NSObject
 + (UIColor *)accentColor;
++ (UIColor *)contentSurfaceBackgroundColor;
++ (BOOL)usesNativeLiquidGlass;
 + (void)applyGlobalAppearance;
 + (void)styleController:(UIViewController *)controller;
 + (void)styleTableView:(UITableView *)tableView;

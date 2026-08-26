@@ -7,7 +7,7 @@
   **掌上 Java，不只是“能启动”。**  
   A modern Minecraft: Java Edition launcher built for iPhone and iPad.
 
-  [![Version](https://img.shields.io/badge/version-v1.2-20c66b?style=for-the-badge)](../../releases)
+  [![Version](https://img.shields.io/badge/version-v1.3-20c66b?style=for-the-badge)](../../releases)
   ![Platform](https://img.shields.io/badge/iOS%20%7C%20iPadOS-14--27-111111?style=for-the-badge&logo=apple&logoColor=white)
   [![License](https://img.shields.io/badge/license-GPL--3.0-7c5cff?style=for-the-badge)](LICENSE)
   ![Languages](https://img.shields.io/badge/UI-简体中文%20%7C%20English-28a8ea?style=for-the-badge)
@@ -22,13 +22,13 @@
 
 # 🇨🇳 简体中文
 
-## 为什么是 PocketJ？
+## 为什么选择 PocketJ？
 
 很多移动端 Java 启动器止步于“把游戏打开”。PocketJ 更想把桌面启动器的完整体验带到 iOS：**在一个原生应用里完成 JIT、实例、Java、模组、整合包、账户、控制与诊断。**
 
 同时，PocketJ 不只关注功能完整性，也持续针对 iOS 环境优化启动流程、资源加载和渲染体验。相比早期移动端 Java 启动方案，PocketJ 在保持兼容性的基础上，对启动链路、运行效率和设备适配进行了大量优化，目标是在 iPhone 和 iPad 上提供更快速、更稳定、更接近桌面体验的 Minecraft Java 运行效果。
 
-它基于 GPL-3.0 项目 [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) 持续开发，并继承了 [PojavLauncher](https://github.com/PojavLauncherTeam) 与 Boardwalk 生态的工作。v1.2 在保留成熟 JVM 与启动内核的基础上，加入了 PocketJ 自己的 iOS 工作流。
+它基于 GPL-3.0 项目 [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) 持续开发，并继承了 [PojavLauncher](https://github.com/PojavLauncherTeam) 与 Boardwalk 生态的工作。v1.3 在保留成熟 JVM 与启动内核的基础上，将全世代 Minecraft、在线资源和个性化体验整合进 PocketJ 的 iOS 工作流。
 
 ### 📸 查看真实运行截图
 
@@ -41,11 +41,13 @@
 | PocketJ 能力 | 你可以做什么 |
 |---|---|
 | ⚡ **内置 JIT 工作流** | 在启动器内导入本机配对文件、检查状态并为 PocketJ 自身开启 JIT；就绪后可从“开始游戏”直接衔接启动 |
-| 🧩 **iOS 原生模组中心** | 直接浏览和搜索 Modrinth；按实例的 Minecraft 版本与加载器筛选结果，并显示项目图标和兼容状态 |
+| 🧩 **iOS 原生资源中心** | 浏览 Modrinth 与 CurseForge，按实例版本和加载器筛选模组、整合包、光影包、材质包与数据包 |
 | 🎛️ **实例级模组管理** | 查看已安装模组、启用/停用、检查更新、选择具体版本；不兼容项目会被明确标记，但选择权仍交给玩家 |
 | 📦 **统一实例与整合包入口** | 新建实例、导入 ZIP、浏览在线整合包都集中在同一个 `+` 菜单；每个整合包创建独立实例，避免覆盖当前游戏 |
 | ☕ **智能 Java 分配** | 内置并管理 Java 8、17、21、25，根据 Minecraft 世代自动选择，同时允许高级用户逐实例覆盖 |
 | 🕰️ **经典与远古版本兼容** | 为旧版 Java、内存与启动参数提供独立兼容路径；兼容开关可随时关闭，避免影响现代版本 |
+| 🌍 **Minecraft 全世代支持** | 从远古 Alpha / Beta、经典正式版到现代 26.x，由 Java 8 / 17 / 21 / 25 和分代渲染路径自动匹配 |
+| 🎨 **自定义启动器背景** | 选择任意图片，按当前 iPhone / iPad 屏幕比例裁切，并独立调整背景透明度 |
 | ⏯️ **可恢复下载队列** | 下载暂停、继续、失败重试与本地文件复用；有效文件不会无意义地重复下载 |
 | 🎮 **真正为触屏设计** | 原版控制编辑器、触控键位、手柄映射分区，以及可即时切换的灵敏八方向移动逻辑 |
 | 👤 **正版与离线账户共存** | Microsoft 与离线账户使用独立身份保存；同名账户不再互相覆盖，并支持 Minecraft 皮肤头像缓存 |
@@ -65,26 +67,25 @@
 <details>
 <summary><strong>🧩 模组工作流包含什么？</strong></summary>
 
-- 内置 Modrinth 搜索、项目图标、版本列表与兼容性筛选。
-- 可选的 CurseForge 数据源支持；自行构建时需按其 API 条款配置密钥。
+- 内置 Modrinth 与 CurseForge 搜索、项目图标、版本列表与兼容性筛选。
+- 模组、整合包、光影包、材质包和数据包共用原生在线浏览与下载流程。
 - 自动读取当前实例的 Minecraft 版本与 Fabric / Forge / NeoForge / Quilt 元数据。
 - 对已安装 `.jar` 使用可逆的 `.disabled` 方式开关，不删除原文件。
 - 新建和编辑实例共用统一加载器模型，Minecraft 版本与 Loader 版本不再混为一谈。
 
 </details>
 
-## ✅ v1.2 兼容性地图
+## ✅ v1.3 全版本兼容地图
 
 | 组合 | 当前定位 |
 |---|---|
-| **Minecraft 1.21.11 + Fabric** | 🟢 本次推荐的稳定组合 |
-| Vanilla 与大量经典/远古版本 | 🟢 已完成重点兼容，实际表现仍受设备与版本资源影响 |
-| Quilt | 🟡 已接入统一加载器与实例流程，建议按具体版本测试 |
-| Minecraft 26.x | 🧪 可进入的新版本兼容路径仍在完善图形呈现 |
-| Forge / NeoForge | 🧪 安装和启动链路已接入，部分版本仍需继续适配加载阶段 |
+| **Minecraft 26.x 与现代版本** | 🟢 已接入新版 LWJGL 兼容层和对应渲染链，可正常呈现世界方块 |
+| **Minecraft 1.x 经典正式版** | 🟢 按版本世代自动匹配 Java Runtime 和渲染器 |
+| **Alpha / Beta 与远古版本** | 🟢 具备独立旧版内存兼容路径，不干扰现代版本 |
+| **Fabric / Forge / NeoForge / Quilt** | 🟢 统一 Minecraft 版本和 Loader 版本模型，依据实例筛选对应加载器版本 |
 
 > [!TIP]
-> 第一次体验建议从 **Minecraft 1.21.11 + Fabric** 开始。实验组合出现问题时，请附上 `latestlog.txt` 提交 Issue。
+> 初次体验仍建议从稳定正式版开始。极旧或加载器组合仍受上游资源和设备内存影响，出现问题时请附上 `latestlog.txt`。
 
 ## 📱 系统要求
 
@@ -99,8 +100,8 @@
 
 | 文件 | 用途 |
 |---|---|
-| `PocketJLauncher-v1.2-iOS.ipa` | 开发者签名、AltStore、SideStore 及兼容的 IPA 侧载方式 |
-| `PocketJLauncher-v1.2-iOS-TrollStore.tipa` | 适用于受支持的 TrollStore 环境 |
+| `PocketJLauncher-v1.3-iOS.ipa` | 开发者签名、AltStore、SideStore 及兼容的 IPA 侧载方式 |
+| `PocketJLauncher-v1.3-iOS-TrollStore.tipa` | 适用于受支持的 TrollStore 环境 |
 | `SHA256SUMS.txt` | 校验下载文件是否完整、是否与发布产物一致 |
 
 > [!WARNING]
@@ -191,7 +192,7 @@ Many mobile Java launchers stop at opening the game. PocketJ aims to bring a com
 
 At the same time, PocketJ focuses not only on feature completeness, but also on improving the iOS Java runtime experience. Compared with earlier mobile Java launcher solutions, PocketJ introduces continuous optimizations across the launch pipeline, resource loading, rendering experience, and device adaptation, aiming to provide a faster, more stable Minecraft Java experience closer to desktop launchers on iPhone and iPad.
 
-PocketJ is developed from the GPL-3.0 licensed [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) project and inherits substantial work from the [PojavLauncher](https://github.com/PojavLauncherTeam) and Boardwalk ecosystems. Version 1.2 keeps the mature JVM and launch core while adding PocketJ's own iOS-first workflows.
+PocketJ is developed from the GPL-3.0 licensed [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) project and inherits substantial work from the [PojavLauncher](https://github.com/PojavLauncherTeam) and Boardwalk ecosystems. Version 1.3 keeps the mature JVM and launch core while unifying every Minecraft generation, online resources, and personalization in an iOS-first workflow.
 
 ### 📸 See PocketJ running on real devices
 
@@ -204,11 +205,13 @@ Visit the [screenshot gallery](Example/README.md) to browse iOS 27, iPadOS 18, i
 | PocketJ capability | What it gives you |
 |---|---|
 | ⚡ **Built-in JIT workflow** | Import this device's pairing file, inspect state, and enable JIT for PocketJ itself without leaving the launcher workflow |
-| 🧩 **Native mod center** | Browse and search Modrinth, with project icons and compatibility filtering based on the selected instance |
+| 🧩 **Native resource center** | Browse Modrinth and CurseForge mods, modpacks, shaders, resource packs, and data packs with instance-aware filtering |
 | 🎛️ **Per-instance mod management** | Inspect installed mods, enable or disable them, check updates, and choose exact versions |
 | 📦 **Unified instance and modpack entry** | Create an instance, import a ZIP, or browse online modpacks from one `+` menu; modpacks are isolated instead of replacing the active instance |
 | ☕ **Smart Java selection** | Manage Java 8, 17, 21, and 25; automatically match game generations while retaining per-instance overrides |
 | 🕰️ **Classic-version compatibility** | A dedicated legacy path adjusts Java-era memory and startup behavior without changing the modern path |
+| 🌍 **Every Minecraft generation** | Alpha, Beta, classic releases, modern releases, and 26.x use generation-aware Java and rendering paths |
+| 🎨 **Custom launcher backgrounds** | Crop a photo to the current iPhone or iPad aspect ratio and control its transparency independently |
 | ⏯️ **Resumable downloads** | Pause, resume, retry, and reuse valid local files instead of downloading everything again |
 | 🎮 **Touch-first controls** | Original control editor, separated touch/controller mapping, and responsive eight-direction movement |
 | 👤 **Microsoft and offline coexistence** | Separate account identities prevent same-name accounts from replacing each other; Minecraft avatar caching is included |
@@ -228,26 +231,25 @@ Visit the [screenshot gallery](Example/README.md) to browse iOS 27, iPadOS 18, i
 <details>
 <summary><strong>🧩 What is included in the mod workflow?</strong></summary>
 
-- Built-in Modrinth search, icons, version selection, and compatibility filters.
-- Optional CurseForge source support; source builders must configure a key under its API terms.
+- Built-in Modrinth and CurseForge search, icons, version selection, and compatibility filters.
+- One native workflow for mods, modpacks, shaders, resource packs, and data packs.
 - Instance metadata detection for Minecraft and Fabric / Forge / NeoForge / Quilt.
 - Reversible `.disabled` toggles for installed JAR files.
 - One loader model shared by creation and editing, keeping Minecraft versions separate from loader versions.
 
 </details>
 
-## ✅ v1.2 compatibility map
+## ✅ v1.3 full-version compatibility map
 
 | Combination | Current status |
 |---|---|
-| **Minecraft 1.21.11 + Fabric** | 🟢 Recommended stable combination for this release |
-| Vanilla and many classic/legacy releases | 🟢 Compatibility work completed for the primary paths; results still vary with device and upstream assets |
-| Quilt | 🟡 Connected to the unified loader workflow; test the exact version you need |
-| Minecraft 26.x | 🧪 New-version path can launch, while graphics presentation still needs further work |
-| Forge / NeoForge | 🧪 Installer and launch flows are integrated; some versions still require loader-stage compatibility work |
+| **Minecraft 26.x and modern releases** | 🟢 Uses the new LWJGL compatibility and renderer path, including normal world-block rendering |
+| **Classic Minecraft 1.x releases** | 🟢 Automatically selects a generation-appropriate Java runtime and renderer |
+| **Alpha, Beta, and legacy releases** | 🟢 Uses an isolated legacy-memory compatibility path without changing modern versions |
+| **Fabric / Forge / NeoForge / Quilt** | 🟢 Shares one Minecraft/loader version model and filters loader releases against the selected game version |
 
 > [!TIP]
-> For a first run, start with **Minecraft 1.21.11 + Fabric**. Attach `latestlog.txt` when reporting an experimental combination.
+> A stable release is still the easiest first run. Very old or loader-heavy combinations remain sensitive to upstream assets and device memory; attach `latestlog.txt` when reporting an issue.
 
 ## 📱 Requirements
 
@@ -262,8 +264,8 @@ Get release assets from [GitHub Releases](../../releases):
 
 | File | Purpose |
 |---|---|
-| `PocketJLauncher-v1.2-iOS.ipa` | Development signing, AltStore, SideStore, and compatible IPA sideloading methods |
-| `PocketJLauncher-v1.2-iOS-TrollStore.tipa` | Supported TrollStore environments |
+| `PocketJLauncher-v1.3-iOS.ipa` | Development signing, AltStore, SideStore, and compatible IPA sideloading methods |
+| `PocketJLauncher-v1.3-iOS-TrollStore.tipa` | Supported TrollStore environments |
 | `SHA256SUMS.txt` | Verifies release-file integrity |
 
 > [!WARNING]

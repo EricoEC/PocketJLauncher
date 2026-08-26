@@ -63,6 +63,8 @@ static NSString *const LauncherVerifiedCompletesKey =
 @property(nonatomic) BOOL jitEnabling;
 @property(nonatomic) BOOL jitReadyFeedback;
 @property(nonatomic) BOOL deferGameLaunchAfterJITEnable;
+@property(nonatomic, copy) NSString *launchTaskPhase;
+@property(nonatomic) BOOL downloadPlanResolved;
 
 @end
 
@@ -81,6 +83,8 @@ static NSString *const LauncherVerifiedCompletesKey =
 }
 
 - (void)postTaskActive:(BOOL)active {
+    double fraction = self.task ? self.task.progress.fractionCompleted : 0.0;
+    if (self.jitReadyFeedback) fraction = 1.0;
     [NSNotificationCenter.defaultCenter
         postNotificationName:LauncherTaskStateDidChangeNotification
                       object:self
@@ -90,19 +94,45 @@ static NSString *const LauncherVerifiedCompletesKey =
                         @"downloading": @(self.activeTaskRequiresDownload),
                         @"loaderInstalling": @(self.loaderInstallTask != nil),
                         @"jitEnabling": @(self.jitEnabling),
-                        @"jitReady": @(self.jitReadyFeedback)
+                        @"jitReady": @(self.jitReadyFeedback),
+                        @"fraction": @(MAX(0.0, MIN(fraction, 1.0))),
+                        @"phase": self.launchTaskPhase ?: @""
                     }];
+}
+
+- (NSString *)phaseForDownloadTask:(MinecraftResourceDownloadTask *)task percent:(NSInteger)percent {
+    NSArray *files = nil, *progresses = nil;
+    [task snapshotFileList:&files progressList:&progresses];
+    NSString *activeFile = nil;
+    for (NSUInteger index = 0; index < MIN(files.count, progresses.count); index++) {
+        NSProgress *fileProgress = progresses[index];
+        if (!fileProgress.finished) { activeFile = files[index]; break; }
+    }
+    NSString *phase = localize(@"正在下载 Minecraft", nil);
+    NSString *lower = activeFile.lowercaseString ?: @"";
+    if ([lower containsString:@"/assets/"] || [lower containsString:@"\\assets\\"]) {
+        phase = localize(@"正在下载资源文件", nil);
+    } else if ([lower containsString:@"/libraries/"] || [lower containsString:@"\\libraries\\"]) {
+        phase = localize(@"正在下载依赖库", nil);
+    } else if ([lower hasSuffix:@".json"]) {
+        phase = localize(@"正在下载版本信息", nil);
+    } else if ([lower hasSuffix:@".jar"]) {
+        phase = localize(@"正在下载游戏客户端", nil);
+    }
+    return [NSString stringWithFormat:localize(@"%@ · %ld%%", nil), phase, (long)percent];
 }
 
 - (void)showJITReadyFeedbackThen:(dispatch_block_t)completion {
     self.deferGameLaunchAfterJITEnable = NO;
     self.jitReadyFeedback = YES;
     self.jitEnabling = YES;
+    self.launchTaskPhase = localize(@"JIT 已开启，可继续游戏", nil);
     [self postTaskActive:YES];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
         (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         self.jitReadyFeedback = NO;
         self.jitEnabling = NO;
+        self.launchTaskPhase = nil;
         self.activeDownloadIdentifier = nil;
         [self postTaskActive:NO];
         if (completion) completion();
@@ -119,11 +149,36 @@ static NSString *const LauncherVerifiedCompletesKey =
 - (NSString *)selectedDownloadIdentifier {
     NSString *gameDirectory =
         getPrefObject(@"general.game_directory") ?: @"";
+    NSString *instancePath = @(getenv("POJAV_GAME_DIR")) ?: @"";
+    NSString *identityPath =
+        [instancePath stringByAppendingPathComponent:@".pocketj-instance-id"];
+    NSString *instanceIdentity = [NSString
+        stringWithContentsOfFile:identityPath
+                       encoding:NSUTF8StringEncoding
+                          error:nil];
+    instanceIdentity = [instanceIdentity
+        stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (instanceIdentity.length == 0 && instancePath.length > 0) {
+        BOOL isDirectory = NO;
+        if ([NSFileManager.defaultManager fileExistsAtPath:instancePath
+                                               isDirectory:&isDirectory] &&
+            isDirectory) {
+            instanceIdentity = NSUUID.UUID.UUIDString;
+            [instanceIdentity writeToFile:identityPath
+                               atomically:YES
+                                 encoding:NSUTF8StringEncoding
+                                    error:nil];
+        }
+    }
     NSString *profileName = PLProfiles.current.selectedProfileName ?: @"";
     NSString *versionId =
         PLProfiles.current.selectedProfile[@"lastVersionId"] ?: @"";
+    // The UUID survives renames but disappears with the instance directory.
+    // Recreating a directory with the same visible name therefore starts with
+    // a clean UI state instead of inheriting "Resume download" from its namesake.
     return [NSString stringWithFormat:@"%@|%@|%@",
-        gameDirectory, profileName, versionId];
+        instanceIdentity.length ? instanceIdentity : gameDirectory,
+        profileName, versionId];
 }
 
 - (NSMutableDictionary *)downloadStatesForKey:(NSString *)key {
@@ -219,6 +274,7 @@ static NSString *const LauncherVerifiedCompletesKey =
         return;
     }
     self.currentTaskPaused = YES;
+    self.launchTaskPhase = localize(@"下载已暂停", nil);
     [self.task pause];
     [self postTaskActive:YES];
 }
@@ -228,6 +284,7 @@ static NSString *const LauncherVerifiedCompletesKey =
         return;
     }
     self.currentTaskPaused = NO;
+    self.launchTaskPhase = localize(@"正在继续下载…", nil);
     [self.task resume];
     [self postTaskActive:YES];
 }
@@ -639,6 +696,7 @@ static NSString *const LauncherVerifiedCompletesKey =
             });
         }];
         self.loaderInstallTask = task;
+        self.launchTaskPhase = localize(@"正在下载模组加载器…", nil);
         [self postTaskActive:YES];
         [task resume];
         return;
@@ -701,6 +759,7 @@ static NSString *const LauncherVerifiedCompletesKey =
         });
     }];
     self.loaderInstallTask = task;
+    self.launchTaskPhase = localize(@"正在下载模组加载器…", nil);
     [self postTaskActive:YES];
     [task resume];
 }
@@ -732,6 +791,9 @@ static NSString *const LauncherVerifiedCompletesKey =
         return;
     }
 
+    // One tap owns the complete launch pipeline. Resource preparation runs
+    // first; when it finishes, invokeAfterJITEnabled enables JIT if needed and
+    // immediately continues into the Minecraft surface.
     self.deferGameLaunchAfterJITEnable = !isJITEnabled(false);
 
     [self setInteractionEnabled:NO forDownloading:YES];
@@ -746,6 +808,11 @@ static NSString *const LauncherVerifiedCompletesKey =
     }
 
     self.task = [MinecraftResourceDownloadTask new];
+    self.downloadPlanResolved = NO;
+    BOOL checksIntegrity = getPrefBool(@"general.check_sha");
+    self.launchTaskPhase = checksIntegrity
+        ? localize(@"正在检查完整性…", nil)
+        : localize(@"正在读取本地游戏文件…", nil);
     self.currentTaskPaused = NO;
     self.activeDownloadIdentifier = self.selectedDownloadIdentifier;
     self.activeTaskRequiresDownload =
@@ -761,6 +828,11 @@ static NSString *const LauncherVerifiedCompletesKey =
         dispatch_async(dispatch_get_main_queue(), ^{
             if (weakSelf.task != downloadTask) return;
             weakSelf.activeTaskRequiresDownload = needsDownload;
+            weakSelf.downloadPlanResolved = YES;
+            weakSelf.launchTaskPhase = needsDownload
+                ? localize(@"正在下载 Minecraft…", nil)
+                : (checksIntegrity ? localize(@"完整性检查完成", nil)
+                                   : localize(@"本地游戏文件已就绪", nil));
             if (needsDownload) {
                 [weakSelf markSelectedDownloadInterrupted];
             } else {
@@ -820,6 +892,8 @@ static NSString *const LauncherVerifiedCompletesKey =
     }
     [self setInteractionEnabled:NO forDownloading:YES];
     self.task = [MinecraftResourceDownloadTask new];
+    self.downloadPlanResolved = YES;
+    self.launchTaskPhase = localize(@"正在下载并解析整合包…", nil);
     self.currentTaskPaused = NO;
     self.activeDownloadIdentifier = self.selectedDownloadIdentifier;
     self.activeTaskRequiresDownload = YES;
@@ -938,6 +1012,15 @@ static NSString *const LauncherVerifiedCompletesKey =
 
     dispatch_async(dispatch_get_main_queue(), ^{
         self.progressText.text = progress.localizedAdditionalDescription;
+
+        if (self.currentTaskPaused) {
+            self.launchTaskPhase = localize(@"下载已暂停", nil);
+        } else if (self.activeTaskRequiresDownload) {
+            NSInteger percent = (NSInteger)llround(progress.fractionCompleted * 100.0);
+            self.launchTaskPhase = [self phaseForDownloadTask:self.task
+                percent:MAX(0, MIN(percent, 100))];
+        }
+        [self postTaskActive:YES];
 
         if (!progress.finished) return;
         [self.progressVC dismissModalViewControllerAnimated:NO];
@@ -1081,6 +1164,7 @@ static NSString *const LauncherVerifiedCompletesKey =
         if (StikDebugEngine.sharedEngine.hasPairingFile) {
             self.jitEnabling = YES;
             self.activeDownloadIdentifier = self.selectedDownloadIdentifier;
+            self.launchTaskPhase = localize(@"正在开启 JIT…", nil);
             self.progressText.text = localize(@"正在开启内置 JIT…", nil);
             [self postTaskActive:YES];
             [StikDebugViewController enableEmbeddedJITWithCompletion:
@@ -1096,6 +1180,7 @@ static NSString *const LauncherVerifiedCompletesKey =
                         }
                     } else {
                         self.jitEnabling = NO;
+                        self.launchTaskPhase = nil;
                         self.activeDownloadIdentifier = nil;
                         [self postTaskActive:NO];
                         self.deferGameLaunchAfterJITEnable = NO;

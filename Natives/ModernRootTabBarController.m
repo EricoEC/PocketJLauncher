@@ -7,6 +7,7 @@
 #import "ModernLaunchViewController.h"
 #import "ModernSettingsViewController.h"
 #import "ModernUITheme.h"
+#import "PocketJUpdateChecker.h"
 #import "stikdebug/StikDebugViewController.h"
 #import "utils.h"
 
@@ -65,6 +66,8 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     [ModernUITheme applyGlobalAppearance];
+    // Check once when the launcher UI is created, even if Settings is never opened.
+    [PocketJUpdateChecker.shared checkForUpdates];
 
     LauncherNavigationController *play = [[LauncherNavigationController alloc]
         initWithRootViewController:[ModernLaunchViewController new]];
@@ -99,12 +102,11 @@
     // iOS 18/26 adaptive tab APIs here; UIKit receives the old, plain setup.
     UITabBarAppearance *appearance = [UITabBarAppearance new];
     [appearance configureWithDefaultBackground];
-    if (@available(iOS 15.0, *)) {
-        appearance.backgroundEffect =
-            [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
+    if (@available(iOS 26.0, *)) {
+        // UIKit owns the native Liquid Glass tab bar.
     } else {
-        appearance.backgroundEffect =
-            [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial];
+        appearance.backgroundEffect = nil;
+        appearance.backgroundColor = UIColor.systemBackgroundColor;
     }
     self.tabBar.standardAppearance = appearance;
     if (@available(iOS 15.0, *)) {

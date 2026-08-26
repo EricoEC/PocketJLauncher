@@ -7,6 +7,7 @@
 #import "LauncherProfilesViewController.h"
 #import "ModernUITheme.h"
 #import "ModManagerViewController.h"
+#import "PocketJResourceLibraryViewController.h"
 //#import "NSFileManager+NRFileManager.h"
 #import "PLProfiles.h"
 #pragma clang diagnostic push
@@ -930,6 +931,13 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     [actions addAction:[UIAlertAction actionWithTitle:localize(@"管理模组", nil)
         style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
             [self presentModManagerForInstanceNamed:name];
+        }]];
+    [actions addAction:[UIAlertAction actionWithTitle:localize(@"光影、材质包与数据包", nil)
+        style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            NSString *path = [self.instancesRoot stringByAppendingPathComponent:name];
+            PocketJResourceLibraryViewController *resources =
+                [[PocketJResourceLibraryViewController alloc] initWithInstanceName:name instancePath:path];
+            [self.navigationController pushViewController:resources animated:YES];
         }]];
     [actions addAction:[UIAlertAction actionWithTitle:localize(@"编辑实例", nil)
         style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {

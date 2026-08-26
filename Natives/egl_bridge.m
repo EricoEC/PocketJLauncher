@@ -18,6 +18,7 @@
 #include "ctxbridges/bridge_tbl.h"
 #include "ctxbridges/osmesa_internal.h"
 #include "utils.h"
+#include "ZinkConfig.h"
 
 int clientAPI;
 
@@ -64,6 +65,15 @@ int pojavInitOpenGL() {
         set_gl_bridge_tbl();
     } else if ([renderer hasPrefix:@"libOSMesa"]) {
         setenv("GALLIUM_DRIVER","zink",1);
+        [ZinkConfig applyZinkEnvironmentFromPreferences];
+        // This exact Mesa build resolves Vulkan through MoltenVK at runtime.
+        // Load it globally before OSMesa so every vk* entry point is available.
+        NSString *moltenVKPath = [NSBundle.mainBundle.privateFrameworksPath
+            stringByAppendingPathComponent:@ RENDERER_NAME_VULKAN];
+        void *moltenVK = dlopen(moltenVKPath.UTF8String, RTLD_NOW | RTLD_GLOBAL);
+        if (!moltenVK) {
+            NSLog(@"[PocketJ Zink] Failed to preload MoltenVK: %s", dlerror());
+        }
         set_osm_bridge_tbl();
     }
     JNI_LWJGL_changeRenderer(renderer.UTF8String);

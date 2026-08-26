@@ -32,6 +32,7 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 @property(nonatomic) NSMutableArray *keyCodeMap, *keyValueMap;
 @property(nonatomic) BOOL importingKeyLayout;
 @property(nonatomic) NSArray<NSString *> *keyLayoutFiles;
+@property(nonatomic) NSInteger selectedControlMode;
 
 @end
 
@@ -51,7 +52,7 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
     [ModernUITheme styleController:self];
     [ModernUITheme styleTableView:self.tableView];
-    self.tableView.sectionFooterHeight = 50;
+    self.tableView.sectionFooterHeight = UITableViewAutomaticDimension;
     
     [self loadGamepadConfigurationFile];
     self.prefControllerTypes = @[@{@"name": @"xbox"}, @{@"name": @"playstation"}];
@@ -61,11 +62,45 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
         @(![NSUserDefaults.standardUserDefaults boolForKey:@"PocketJTouchControlsCollapsed"]),
         @(![NSUserDefaults.standardUserDefaults boolForKey:@"PocketJGamepadControlsCollapsed"])
     ] mutableCopy];
+    self.selectedControlMode = 0;
+    [self installControlModeSelector];
     [self reloadKeyLayoutFiles];
     
     self.editPickMapping = [[UIPickerView alloc] init];
     self.editPickMapping.delegate = self;
     self.editPickMapping.dataSource = self;
+}
+
+- (void)installControlModeSelector {
+    UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 1, 64)];
+    UISegmentedControl *selector = [[UISegmentedControl alloc]
+        initWithItems:@[localize(@"触控键位", nil), localize(@"手柄键位", nil)]];
+    selector.translatesAutoresizingMaskIntoConstraints = NO;
+    selector.selectedSegmentIndex = self.selectedControlMode;
+    selector.selectedSegmentTintColor = ModernUITheme.accentColor;
+    [selector setTitleTextAttributes:@{NSForegroundColorAttributeName: UIColor.whiteColor}
+                            forState:UIControlStateSelected];
+    [selector addTarget:self action:@selector(controlModeDidChange:)
+       forControlEvents:UIControlEventValueChanged];
+    [container addSubview:selector];
+    [NSLayoutConstraint activateConstraints:@[
+        [selector.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:16],
+        [selector.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-16],
+        [selector.centerYAnchor constraintEqualToAnchor:container.centerYAnchor],
+        [selector.heightAnchor constraintEqualToConstant:36],
+    ]];
+    self.tableView.tableHeaderView = container;
+}
+
+- (void)controlModeDidChange:(UISegmentedControl *)sender {
+    self.selectedControlMode = sender.selectedSegmentIndex;
+    // A mode switch replaces the table contents atomically. Avoid animated
+    // section insert/delete combinations that caused the old UI to jump.
+    [UIView performWithoutAnimation:^{
+        [self.tableView reloadData];
+        [self.tableView layoutIfNeeded];
+    }];
+    [self.tableView setContentOffset:CGPointZero animated:NO];
 }
 
 - (void)loadGamepadConfigurationFile {
@@ -128,11 +163,10 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (section == 0) {
-        if (!self.prefSectionsVisibility[0].boolValue) return 0;
+        if (self.selectedControlMode != 0) return 0;
         return self.keyLayoutFiles.count + 3;
     } else {
-        // Sections 1...end are one native "Gamepad Controls" disclosure group.
-        if (!self.prefSectionsVisibility[1].boolValue) return 0;
+        if (self.selectedControlMode != 1) return 0;
         return [self prefContentForIndex:section].count;
     }
 }
@@ -221,76 +255,37 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     if (section == 0) {
-        return localize(@"触控键位", nil);
+        return self.selectedControlMode == 0 ? localize(@"触控键位", nil) : nil;
     }
     if (section == 1) {
-        return localize(@"手柄键位", nil);
+        return self.selectedControlMode == 1 ? localize(@"游戏内键位", nil) : nil;
     }
-    if (!self.prefSectionsVisibility[1].boolValue) return nil;
+    if (self.selectedControlMode != 1) return nil;
     return localize([NSString stringWithFormat:@"controller_configurator.section.%@", self.prefSections[section]], nil);
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
-    if (section > 1) return nil;
-    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-    button.tag = section;
-    button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentFill;
-    button.contentEdgeInsets = UIEdgeInsetsMake(4, 20, 4, 20);
-    button.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
-    NSString *title = section == 0 ? localize(@"触控键位", nil) : localize(@"手柄键位", nil);
-    UIImage *image = [UIImage systemImageNamed:
-        self.prefSectionsVisibility[section].boolValue ? @"chevron.down" : @"chevron.right"];
-    if (@available(iOS 15.0, *)) {
-        UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
-        configuration.title = title;
-        configuration.image = image;
-        configuration.imagePlacement = NSDirectionalRectEdgeTrailing;
-        configuration.imagePadding = 8;
-        configuration.baseForegroundColor = UIColor.secondaryLabelColor;
-        button.configuration = configuration;
-    } else {
-        [button setTitle:title forState:UIControlStateNormal];
-        [button setImage:image forState:UIControlStateNormal];
-        button.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
-        button.tintColor = UIColor.secondaryLabelColor;
-    }
-    [button addTarget:self action:@selector(toggleControlSection:)
-        forControlEvents:UIControlEventTouchUpInside];
-    button.accessibilityHint = localize(@"轻点展开或折叠", nil);
-    return button;
+    return nil;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
-    if (section <= 1) return 48.0;
-    return self.prefSectionsVisibility[1].boolValue ? UITableViewAutomaticDimension : 0.01;
-}
-
-- (void)toggleControlSection:(UIButton *)sender {
-    NSInteger section = sender.tag;
-    if (section < 0 || section >= self.prefSectionsVisibility.count) return;
-    BOOL expanded = !self.prefSectionsVisibility[section].boolValue;
-    self.prefSectionsVisibility[section] = @(expanded);
-    NSString *key = section == 0
-        ? @"PocketJTouchControlsCollapsed" : @"PocketJGamepadControlsCollapsed";
-    [NSUserDefaults.standardUserDefaults setBool:!expanded forKey:key];
-    NSRange range = section == 0 ? NSMakeRange(0, 1)
-        : NSMakeRange(1, self.prefSections.count - 1);
-    [self.tableView reloadSections:[NSIndexSet indexSetWithIndexesInRange:range]
-                  withRowAnimation:UITableViewRowAnimationAutomatic];
+    return [self tableView:tableView titleForHeaderInSection:section].length
+        ? UITableViewAutomaticDimension : 0.01;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     if (section == 0) {
         return localize(@"开启后，手指从屏幕任意位置滑入按键即可触发；滑过按键间隙不会中断，滑入方向键夹角时可同时触发两个方向。", nil);
     }
-    if (!self.prefSectionsVisibility[1].boolValue) return nil;
+    if (self.selectedControlMode != 1) return nil;
     NSString *key = [NSString stringWithFormat:@"controller_configurator.section.footer.%@", self.prefSections[section]];
     NSString *footer = localize(key, nil);
     return [footer isEqualToString:key] ? nil : footer;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
-    if (section > 0 && !self.prefSectionsVisibility[1].boolValue) return 0.01;
+    if ((section == 0 && self.selectedControlMode != 0) ||
+        (section > 0 && self.selectedControlMode != 1)) return 0.01;
     return UITableViewAutomaticDimension;
 }
 

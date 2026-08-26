@@ -17,6 +17,7 @@
 #import "MinecraftOptionUtils.h"
 #import "PLLogOutputView.h"
 #import "PLProfiles.h"
+#import "ZinkConfig.h"
 
 #define fm NSFileManager.defaultManager
 
@@ -338,8 +339,12 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
         // Setup POJAV_RENDERER
         NSString *renderer = [PLProfiles resolveKeyForCurrentProfile:@"renderer"];
         if ([renderer isEqualToString:@"auto"] && automaticJavaVersion >= 25) {
-            renderer = @ RENDERER_NAME_MTL_ANGLE;
-            NSLog(@"[JavaLauncher] Auto-selected ANGLE for Minecraft %@ (required Java %d)",
+            // Minecraft 26.x is known to render incorrectly on the iOS ANGLE
+            // path.  Use the complete Mesa/Zink + MoltenVK stack shipped by
+            // the Java-25 Amethyst fork instead of layering more ANGLE hacks.
+            renderer = @ RENDERER_NAME_VK_ZINK;
+            [ZinkConfig applyZinkEnvironmentFromPreferences];
+            NSLog(@"[JavaLauncher] Auto-selected Mesa/Zink for Minecraft %@ (required Java %d)",
                 minecraftVersion, automaticJavaVersion);
         }
         NSLog(@"[JavaLauncher] RENDERER is set to %@\n", renderer);

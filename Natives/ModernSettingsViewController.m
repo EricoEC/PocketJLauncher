@@ -1,11 +1,14 @@
 #import "ModernSettingsViewController.h"
 
 #import <QuartzCore/QuartzCore.h>
+#import <MessageUI/MessageUI.h>
 
 #import "LauncherPreferences.h"
 #import "LauncherPrefContCfgViewController.h"
 #import "LauncherPrefManageJREViewController.h"
 #import "ModernUITheme.h"
+#import "PocketJUpdateChecker.h"
+#import "PocketJBackgroundSettingsViewController.h"
 #import "stikdebug/StikDebugViewController.h"
 #import "UIKit+hook.h"
 #import "ios_uikit_bridge.h"
@@ -23,8 +26,9 @@ static NSString *const ModernSettingTypeLink = @"link";
 static NSString *const PocketJGitHubURLString = @"https://github.com/EricoEC/PocketJLauncher";
 static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
 
-@interface ModernSettingsViewController ()
+@interface ModernSettingsViewController () <MFMailComposeViewControllerDelegate>
 @property(nonatomic) NSArray<NSDictionary *> *sections;
+@property(nonatomic, copy) NSString *displayedLogPath;
 @end
 
 @implementation ModernSettingsViewController
@@ -94,6 +98,13 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
     [NSNotificationCenter.defaultCenter addObserver:self
         selector:@selector(jitStateDidChange:)
         name:@"PocketJJITStateDidChangeNotification" object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateAvailabilityDidChange:)
+        name:PocketJUpdateAvailabilityDidChangeNotification object:nil];
+}
+
+- (void)updateAvailabilityDidChange:(NSNotification *)notification {
+    [self buildSections];
+    [self.tableView reloadData];
 }
 
 - (void)dealloc {
@@ -173,6 +184,12 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
                            type:ModernSettingTypeNavigation
                            icon:@"cup.and.saucer.fill"
                             key:@"runtime"];
+    NSDictionary *backgroundPane =
+        [self fixedItemWithTitle:localize(@"启动器背景", nil)
+                          value:localize(@"选择图片、裁剪并调整透明度", nil)
+                           type:ModernSettingTypeNavigation
+                           icon:@"photo.on.rectangle.angled"
+                            key:@"launcherBackground"];
     NSMutableDictionary *fluidButtonSlide =
         [[self item:@"fluid_button_slide"
              section:@"control"
@@ -234,6 +251,7 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
                 [self item:@"cosmetica" section:@"general" type:ModernSettingTypeSwitch icon:@"eyeglasses"],
                 [self item:@"debug_logging" section:@"general" type:ModernSettingTypeSwitch icon:@"doc.badge.gearshape"],
                 appIcon,
+                backgroundPane,
                 resetWarnings,
                 resetSettings,
                 eraseDemo,
@@ -303,13 +321,32 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
         @{
             @"title": localize(@"关于", nil),
             @"items": @[
-                [self fixedItemWithTitle:localize(@"版本", nil) value:@"v1.2" type:ModernSettingTypeInformation icon:@"number" key:@""],
+                [self fixedItemWithTitle:localize(@"版本", nil) value:@"v1.3" type:ModernSettingTypeInformation icon:@"number" key:@""],
                 [self fixedItemWithTitle:@"GitHub" value:PocketJGitHubURLString type:ModernSettingTypeLink icon:@"chevron.left.forwardslash.chevron.right" key:@"github"],
                 [self fixedItemWithTitle:localize(@"兼容系统", nil) value:@"iOS 14–27" type:ModernSettingTypeInformation icon:@"iphone" key:@""],
                 creator,
+                @{
+                    @"title": localize(@"软件更新", nil),
+                    @"type": ModernSettingTypeAction,
+                    @"icon": @"arrow.clockwise.circle.fill",
+                    @"key": @"checkUpdates",
+                    @"section": @"",
+                    @"action": @"checkUpdates",
+                    @"glassButton": @YES,
+                },
             ],
         },
     ];
+    NSDictionary *release = PocketJUpdateChecker.shared.availableRelease;
+    if (release) {
+        NSString *tag = release[@"tag_name"] ?: localize(@"新版本", nil);
+        NSMutableDictionary *update = [[self fixedItemWithTitle:localize(@"PocketJ 有新版本", nil)
+            value:tag type:ModernSettingTypeLink icon:@"arrow.down.circle.fill" key:@"availableUpdate"] mutableCopy];
+        update[@"url"] = release[@"html_url"] ?: PocketJGitHubURLString;
+        NSMutableArray *all = [self.sections mutableCopy];
+        [all insertObject:@{@"title": localize(@"软件更新", nil), @"items": @[update]} atIndex:0];
+        self.sections = all;
+    }
 }
 
 - (NSDictionary *)itemAtIndexPath:(NSIndexPath *)indexPath {
@@ -472,6 +509,43 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
             (long)lroundf(control.value), item[@"suffix"]];
         cell.detailTextLabel.text = [self detailForItem:item value:value];
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    } else if ([type isEqualToString:ModernSettingTypeAction] && [item[@"glassButton"] boolValue]) {
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+        button.tag = tag;
+        UIImage *image = [UIImage systemImageNamed:@"arrow.clockwise"];
+        NSString *title = localize(@"检查更新", nil);
+        if (@available(iOS 26.0, *)) {
+            UIButtonConfiguration *configuration = [UIButtonConfiguration glassButtonConfiguration];
+            configuration.title = title;
+            configuration.image = image;
+            configuration.imagePadding = 7.0;
+            configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+            configuration.baseForegroundColor = ModernUITheme.accentColor;
+            button.configuration = configuration;
+        } else if (@available(iOS 15.0, *)) {
+            UIButtonConfiguration *configuration = [UIButtonConfiguration tintedButtonConfiguration];
+            configuration.title = title;
+            configuration.image = image;
+            configuration.imagePadding = 7.0;
+            configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+            configuration.baseForegroundColor = ModernUITheme.accentColor;
+            button.configuration = configuration;
+        } else {
+            [button setTitle:title forState:UIControlStateNormal];
+            [button setImage:image forState:UIControlStateNormal];
+            button.tintColor = ModernUITheme.accentColor;
+            button.backgroundColor = UIColor.secondarySystemBackgroundColor;
+            button.titleEdgeInsets = UIEdgeInsetsMake(0, 7, 0, -7);
+            [ModernUITheme styleContinuousButton:button cornerRadius:20.0];
+        }
+        button.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
+        button.titleLabel.adjustsFontForContentSizeCategory = YES;
+        button.frame = CGRectMake(0.0, 0.0, 148.0, 44.0);
+        button.accessibilityLabel = title;
+        [button addTarget:self action:@selector(glassActionPressed:)
+          forControlEvents:UIControlEventTouchUpInside];
+        cell.accessoryView = button;
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
     } else if ([type isEqualToString:ModernSettingTypeCapability]) {
         BOOL available = [self capabilityForKey:item[@"key"]];
         UILabel *state = [UILabel new];
@@ -564,6 +638,22 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
     cell.detailTextLabel.enabled = enabled;
     if ([cell.accessoryView isKindOfClass:UIControl.class]) {
         [(UIControl *)cell.accessoryView setEnabled:enabled];
+    }
+    // Renderer descriptions and resolution guidance are intentionally verbose.
+    // Use UIKit's self-sizing list content instead of the legacy subtitle label
+    // frames so Dynamic Type, narrow iPhones and translated text wrap cleanly.
+    NSString *key = item[@"key"];
+    if ([key isEqualToString:@"renderer"] || [key isEqualToString:@"resolution"]) {
+        UIListContentConfiguration *content = [UIListContentConfiguration subtitleCellConfiguration];
+        content.text = cell.textLabel.text;
+        content.secondaryText = cell.detailTextLabel.text;
+        content.image = cell.imageView.image;
+        content.textProperties.numberOfLines = 0;
+        content.secondaryTextProperties.numberOfLines = 0;
+        content.textProperties.adjustsFontForContentSizeCategory = YES;
+        content.secondaryTextProperties.adjustsFontForContentSizeCategory = YES;
+        content.imageProperties.tintColor = ModernUITheme.accentColor;
+        cell.contentConfiguration = content;
     }
     return cell;
 }
@@ -790,6 +880,22 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
         [self confirmDestructiveAction:action];
         return;
     }
+    if ([action isEqualToString:@"checkUpdates"]) {
+        cell.userInteractionEnabled = NO;
+        [PocketJUpdateChecker.shared checkForUpdatesWithCompletion:^(NSDictionary *release, NSError *error) {
+            cell.userInteractionEnabled = YES;
+            if (error) {
+                showDialog(localize(@"检查更新失败", nil),
+                    localize(@"请检查网络连接后重试。", nil));
+            } else if (release) {
+                NSString *tag = release[@"tag_name"] ?: @"";
+                showDialog(localize(@"发现新版本", nil), tag);
+            } else {
+                showDialog(localize(@"检查更新", nil), localize(@"已是最新版本", nil));
+            }
+        }];
+        return;
+    }
 
     NSString *path =
         [NSString stringWithFormat:@"%s/latestlog.txt", getenv("POJAV_HOME")];
@@ -801,12 +907,73 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
         UIViewController *viewer = [UIViewController new];
         viewer.title = localize(@"诊断日志", nil);
         UITextView *textView = [UITextView new];
+        textView.translatesAutoresizingMaskIntoConstraints = NO;
         textView.editable = NO;
         textView.font =
             [UIFont monospacedSystemFontOfSize:12 weight:UIFontWeightRegular];
         textView.text = text.length ? text : localize(@"暂无日志", nil);
         textView.adjustsFontForContentSizeCategory = YES;
-        viewer.view = textView;
+        viewer.view.backgroundColor = UIColor.systemBackgroundColor;
+        [viewer.view addSubview:textView];
+
+        UIButton *issueButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        UIButton *mailButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        issueButton.translatesAutoresizingMaskIntoConstraints = NO;
+        mailButton.translatesAutoresizingMaskIntoConstraints = NO;
+        [issueButton setTitle:localize(@"提交 Issue", nil) forState:UIControlStateNormal];
+        [mailButton setTitle:localize(@"发送反馈邮件", nil) forState:UIControlStateNormal];
+        [issueButton setImage:[UIImage systemImageNamed:@"exclamationmark.bubble.fill"]
+                     forState:UIControlStateNormal];
+        [mailButton setImage:[UIImage systemImageNamed:@"envelope.fill"]
+                    forState:UIControlStateNormal];
+        issueButton.tintColor = ModernUITheme.accentColor;
+        mailButton.tintColor = ModernUITheme.accentColor;
+        issueButton.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
+        mailButton.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
+        issueButton.titleLabel.adjustsFontForContentSizeCategory = YES;
+        mailButton.titleLabel.adjustsFontForContentSizeCategory = YES;
+        issueButton.imageEdgeInsets = UIEdgeInsetsMake(0, -6, 0, 0);
+        mailButton.imageEdgeInsets = UIEdgeInsetsMake(0, -6, 0, 0);
+        [issueButton addTarget:self action:@selector(openIssueReporter)
+              forControlEvents:UIControlEventTouchUpInside];
+        [mailButton addTarget:self action:@selector(openFeedbackMail)
+             forControlEvents:UIControlEventTouchUpInside];
+        if (@available(iOS 15.0, *)) {
+            issueButton.configuration = [ModernUITheme
+                actionButtonConfigurationWithTitle:localize(@"提交 Issue", nil)
+                image:[UIImage systemImageNamed:@"exclamationmark.bubble.fill"]
+                tint:ModernUITheme.accentColor prominent:YES];
+            mailButton.configuration = [ModernUITheme
+                actionButtonConfigurationWithTitle:localize(@"发送反馈邮件", nil)
+                image:[UIImage systemImageNamed:@"envelope.fill"]
+                tint:ModernUITheme.accentColor prominent:NO];
+        } else {
+            issueButton.backgroundColor = ModernUITheme.accentColor;
+            [issueButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+            mailButton.backgroundColor = UIColor.secondarySystemBackgroundColor;
+            [ModernUITheme styleContinuousButton:issueButton cornerRadius:14];
+            [ModernUITheme styleContinuousButton:mailButton cornerRadius:14];
+        }
+        UIStackView *buttons = [[UIStackView alloc]
+            initWithArrangedSubviews:@[issueButton, mailButton]];
+        buttons.translatesAutoresizingMaskIntoConstraints = NO;
+        buttons.axis = UILayoutConstraintAxisVertical;
+        buttons.spacing = 10;
+        buttons.distribution = UIStackViewDistributionFillEqually;
+        [viewer.view addSubview:buttons];
+        UILayoutGuide *safe = viewer.view.safeAreaLayoutGuide;
+        [NSLayoutConstraint activateConstraints:@[
+            [textView.topAnchor constraintEqualToAnchor:safe.topAnchor],
+            [textView.leadingAnchor constraintEqualToAnchor:viewer.view.leadingAnchor constant:12],
+            [textView.trailingAnchor constraintEqualToAnchor:viewer.view.trailingAnchor constant:-12],
+            [textView.bottomAnchor constraintEqualToAnchor:buttons.topAnchor constant:-12],
+            [buttons.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:16],
+            [buttons.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-16],
+            [buttons.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-12],
+            [issueButton.heightAnchor constraintGreaterThanOrEqualToConstant:50],
+            [mailButton.heightAnchor constraintGreaterThanOrEqualToConstant:50],
+        ]];
+        self.displayedLogPath = path;
         [self.navigationController pushViewController:viewer animated:YES];
     } else if ([action isEqualToString:@"shareLog"]) {
         if (![NSFileManager.defaultManager fileExistsAtPath:path]) {
@@ -821,6 +988,61 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
         share.popoverPresentationController.sourceRect = cell.bounds;
         [self presentViewController:share animated:YES completion:nil];
     }
+}
+
+- (void)glassActionPressed:(UIButton *)sender {
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:sender.tag % 1000
+                                                inSection:sender.tag / 1000];
+    if (indexPath.section >= self.sections.count ||
+        indexPath.row >= [self.sections[indexPath.section][@"items"] count]) return;
+    [self performAction:[self itemAtIndexPath:indexPath][@"action"]
+               fromCell:[self.tableView cellForRowAtIndexPath:indexPath]];
+}
+
+- (void)openIssueReporter {
+    NSURLComponents *components = [NSURLComponents
+        componentsWithString:[PocketJGitHubURLString stringByAppendingString:@"/issues/new"]];
+    components.queryItems = @[
+        [NSURLQueryItem queryItemWithName:@"title"
+                                   value:localize(@"[Bug] 请简要描述问题", nil)],
+        [NSURLQueryItem queryItemWithName:@"body"
+                                   value:localize(@"请描述复现步骤、Minecraft 版本、加载器与渲染器，并附上 latestlog.txt。", nil)],
+    ];
+    [UIApplication.sharedApplication openURL:components.URL
+                                     options:@{}
+                           completionHandler:nil];
+}
+
+- (void)openFeedbackMail {
+    NSString *subject = localize(@"PocketJ Launcher 错误反馈", nil);
+    NSString *body = localize(@"请在这里描述当时执行了什么操作、使用的 Minecraft 版本，以及遇到的错误：\n\n", nil);
+    if ([MFMailComposeViewController canSendMail]) {
+        MFMailComposeViewController *composer = [MFMailComposeViewController new];
+        composer.mailComposeDelegate = self;
+        [composer setToRecipients:@[@"report@epoxn.com"]];
+        [composer setSubject:subject];
+        [composer setMessageBody:body isHTML:NO];
+        NSData *logData = [NSData dataWithContentsOfFile:self.displayedLogPath];
+        if (logData.length > 0) {
+            [composer addAttachmentData:logData
+                               mimeType:@"text/plain"
+                               fileName:@"latestlog.txt"];
+        }
+        [self presentViewController:composer animated:YES completion:nil];
+        return;
+    }
+    NSURLComponents *components = [NSURLComponents componentsWithString:@"mailto:report@epoxn.com"];
+    components.queryItems = @[
+        [NSURLQueryItem queryItemWithName:@"subject" value:subject],
+        [NSURLQueryItem queryItemWithName:@"body" value:body],
+    ];
+    [UIApplication.sharedApplication openURL:components.URL options:@{} completionHandler:nil];
+}
+
+- (void)mailComposeController:(MFMailComposeViewController *)controller
+          didFinishWithResult:(MFMailComposeResult)result
+                        error:(NSError *)error {
+    [controller dismissViewControllerAnimated:YES completion:nil];
 }
 
 - (void)tableView:(UITableView *)tableView
@@ -846,7 +1068,9 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
         } else if ([item[@"key"] isEqualToString:@"runtime"]) {
             [self.navigationController
                 pushViewController:[LauncherPrefManageJREViewController new]
-                          animated:YES];
+                      animated:YES];
+        } else if ([item[@"key"] isEqualToString:@"launcherBackground"]) {
+            [self.navigationController pushViewController:[PocketJBackgroundSettingsViewController new] animated:YES];
         } else {
             [self.navigationController
                 pushViewController:[LauncherPrefContCfgViewController new]
@@ -854,6 +1078,17 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
         }
     } else if ([type isEqualToString:ModernSettingTypeAction]) {
         [self performAction:item[@"action"] fromCell:cell];
+    }
+}
+
+- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
+    return [[[self itemAtIndexPath:indexPath] objectForKey:@"key"] isEqualToString:@"availableUpdate"];
+}
+
+- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle
+ forRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (editingStyle == UITableViewCellEditingStyleDelete) {
+        [PocketJUpdateChecker.shared dismissAvailableRelease];
     }
 }
 

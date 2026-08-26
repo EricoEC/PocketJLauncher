@@ -5,6 +5,8 @@
 #import "LauncherNavigationController.h"
 #import "LauncherPreferences.h"
 #import "ModernUITheme.h"
+#import "PocketJUpdateChecker.h"
+#import "PocketJBackgroundManager.h"
 #import "PLProfiles.h"
 #import "utils.h"
 
@@ -23,6 +25,9 @@
 @property(nonatomic) BOOL hasSelectedInstance;
 @property(nonatomic) BOOL hasConfiguredVersion;
 @property(nonatomic) BOOL directLaunchWithoutDownload;
+@property(nonatomic) UIButton *updateBanner;
+@property(nonatomic) UIButton *updateCloseButton;
+@property(nonatomic) UIStackView *updateBannerRow;
 @end
 
 @implementation ModernLaunchViewController
@@ -38,6 +43,11 @@
            selector:@selector(launchTaskStateDidChange:)
                name:LauncherTaskStateDidChangeNotification
              object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateAppearanceOrRelease:)
+        name:PocketJUpdateAvailabilityDidChangeNotification object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateAppearanceOrRelease:)
+        name:PocketJBackgroundDidChangeNotification object:nil];
+    [PocketJUpdateChecker.shared checkForUpdates];
     [NSNotificationCenter.defaultCenter
         addObserver:self
            selector:@selector(savedProfileDidChange:)
@@ -58,6 +68,8 @@
     }
     [self setLaunchRunning:navigation.hasActiveLaunchTask];
     [self setLaunchPaused:navigation.isCurrentLaunchTaskPaused];
+    [PocketJBackgroundManager.shared applyToView:self.view];
+    [self refreshUpdateBanner];
     [self reloadContent];
 }
 
@@ -110,6 +122,32 @@
     content.layoutMargins = UIEdgeInsetsMake(14, 18, 44, 18);
     content.layoutMarginsRelativeArrangement = YES;
     [scrollView addSubview:content];
+
+    self.updateBannerRow = [UIStackView new];
+    self.updateBannerRow.axis = UILayoutConstraintAxisHorizontal;
+    self.updateBannerRow.alignment = UIStackViewAlignmentCenter;
+    self.updateBannerRow.spacing = 8;
+    self.updateBannerRow.hidden = YES;
+    self.updateBanner = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.updateBanner.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
+    self.updateBanner.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
+    self.updateBanner.titleLabel.numberOfLines = 2;
+    [self.updateBanner setImage:[UIImage systemImageNamed:@"arrow.down.circle.fill"] forState:UIControlStateNormal];
+    self.updateBanner.tintColor = UIColor.systemBlueColor;
+    self.updateBanner.backgroundColor = ModernUITheme.contentSurfaceBackgroundColor;
+    self.updateBanner.contentEdgeInsets = UIEdgeInsetsMake(14, 16, 14, 16);
+    [ModernUITheme styleContinuousButton:self.updateBanner cornerRadius:18];
+    [self.updateBanner addTarget:self action:@selector(openAvailableUpdate) forControlEvents:UIControlEventPrimaryActionTriggered];
+    [self.updateBannerRow addArrangedSubview:self.updateBanner];
+    self.updateCloseButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [self.updateCloseButton setImage:[UIImage systemImageNamed:@"xmark.circle.fill"] forState:UIControlStateNormal];
+    self.updateCloseButton.tintColor = UIColor.secondaryLabelColor;
+    self.updateCloseButton.accessibilityLabel = localize(@"关闭更新提醒", nil);
+    [self.updateCloseButton addTarget:self action:@selector(dismissAvailableUpdate) forControlEvents:UIControlEventPrimaryActionTriggered];
+    [self.updateCloseButton.widthAnchor constraintEqualToConstant:44].active = YES;
+    [self.updateCloseButton.heightAnchor constraintEqualToConstant:44].active = YES;
+    [self.updateBannerRow addArrangedSubview:self.updateCloseButton];
+    [content addArrangedSubview:self.updateBannerRow];
 
     UIVisualEffectView *hero = [ModernUITheme glassViewWithCornerRadius:28 interactive:YES];
     hero.contentView.layoutMargins = UIEdgeInsetsMake(22, 22, 22, 22);
@@ -318,6 +356,31 @@
         [selectionStack.topAnchor constraintEqualToAnchor:selectionCard.contentView.topAnchor constant:4],
         [selectionStack.bottomAnchor constraintEqualToAnchor:selectionCard.contentView.bottomAnchor constant:-4],
     ]];
+}
+
+- (void)updateAppearanceOrRelease:(NSNotification *)notification {
+    [PocketJBackgroundManager.shared applyToView:self.view];
+    [self refreshUpdateBanner];
+}
+
+- (void)refreshUpdateBanner {
+    NSDictionary *release = PocketJUpdateChecker.shared.availableRelease;
+    self.updateBannerRow.hidden = release == nil;
+    if (release) {
+        NSString *tag = release[@"tag_name"] ?: @"";
+        [self.updateBanner setTitle:[NSString stringWithFormat:localize(@"发现新版本 %@\n点按查看更新内容", nil), tag]
+                            forState:UIControlStateNormal];
+    }
+}
+
+- (void)dismissAvailableUpdate {
+    [PocketJUpdateChecker.shared dismissAvailableRelease];
+}
+
+- (void)openAvailableUpdate {
+    NSString *urlString = PocketJUpdateChecker.shared.availableRelease[@"html_url"];
+    NSURL *url = [NSURL URLWithString:urlString ?: @""];
+    if (url) [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
 }
 
 - (UIButton *)selectionRowWithIcon:(NSString *)icon
@@ -556,6 +619,8 @@
     BOOL loaderInstalling = [notification.userInfo[@"loaderInstalling"] boolValue];
     BOOL jitEnabling = [notification.userInfo[@"jitEnabling"] boolValue];
     BOOL jitReady = [notification.userInfo[@"jitReady"] boolValue];
+    double fraction = [notification.userInfo[@"fraction"] doubleValue];
+    NSString *phase = notification.userInfo[@"phase"];
     if (active) {
         self.directLaunchWithoutDownload =
             ![notification.userInfo[@"downloading"] boolValue];
@@ -563,13 +628,13 @@
     [self setLaunchRunning:active];
     [self setLaunchPaused:paused];
     if (active) {
-        self.statusLabel.text =
+        self.statusLabel.text = phase.length ? phase :
             jitReady ? localize(@"JIT 已开启，可继续游戏", nil) :
             (jitEnabling ? localize(@"正在开启 JIT…", nil) :
             (loaderInstalling ? localize(@"正在安装模组加载器…", nil) :
             (paused ? localize(@"下载已暂停", nil) : localize(@"正在准备 Minecraft…", nil))));
         self.progressView.hidden = NO;
-        self.progressView.progress = jitReady ? 1.0 : 0.05;
+        self.progressView.progress = jitReady ? 1.0 : MAX(0.02, MIN(fraction, 1.0));
         self.playButton.enabled = !loaderInstalling && !jitEnabling;
     } else {
         BOOL wasStopping =

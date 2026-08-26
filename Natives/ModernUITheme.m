@@ -1,4 +1,5 @@
 #import "ModernUITheme.h"
+#import "PocketJBackgroundManager.h"
 
 @implementation ModernUITheme
 
@@ -6,9 +7,24 @@
     return [UIColor colorWithRed:0.10 green:0.72 blue:0.35 alpha:1.0];
 }
 
++ (BOOL)usesNativeLiquidGlass {
+    if (@available(iOS 26.0, *)) return YES;
+    return NO;
+}
+
++ (UIColor *)contentSurfaceBackgroundColor {
+    if (@available(iOS 26.0, *)) return UIColor.clearColor;
+    return UIColor.secondarySystemGroupedBackgroundColor;
+}
+
 + (UINavigationBarAppearance *)navigationAppearance {
     UINavigationBarAppearance *appearance = [UINavigationBarAppearance new];
     [appearance configureWithDefaultBackground];
+    if (@available(iOS 26.0, *)) {
+    } else {
+        appearance.backgroundEffect = nil;
+        appearance.backgroundColor = UIColor.systemBackgroundColor;
+    }
     return appearance;
 }
 
@@ -39,14 +55,15 @@
 }
 
 + (void)styleController:(UIViewController *)controller {
-    controller.view.backgroundColor = UIColor.systemGroupedBackgroundColor;
+    [PocketJBackgroundManager.shared applyToView:controller.view];
     controller.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeAutomatic;
     controller.navigationController.navigationBar.prefersLargeTitles = YES;
     controller.navigationController.navigationBar.tintColor = self.accentColor;
 }
 
 + (void)styleTableView:(UITableView *)tableView {
-    tableView.backgroundColor = UIColor.systemGroupedBackgroundColor;
+    tableView.backgroundColor = PocketJBackgroundManager.shared.enabled
+        ? UIColor.clearColor : UIColor.systemGroupedBackgroundColor;
     tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
     tableView.estimatedRowHeight = 58.0;
     tableView.rowHeight = UITableViewAutomaticDimension;
@@ -75,6 +92,9 @@
         effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial];
     }
     UIVisualEffectView *view = [[UIVisualEffectView alloc] initWithEffect:effect];
+    if (![self usesNativeLiquidGlass]) {
+        view.contentView.backgroundColor = [self contentSurfaceBackgroundColor];
+    }
     view.layer.cornerRadius = cornerRadius;
     view.layer.cornerCurve = kCACornerCurveContinuous;
     view.clipsToBounds = YES;

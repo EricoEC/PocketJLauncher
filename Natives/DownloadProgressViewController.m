@@ -1,5 +1,4 @@
 #import <dlfcn.h>
-#import <objc/runtime.h>
 #import "DownloadProgressViewController.h"
 #import "ModernUITheme.h"
 #import "WFWorkflowProgressView.h"
@@ -29,23 +28,30 @@
     [ModernUITheme styleController:self];
     [ModernUITheme styleTableView:self.tableView];
 
-    // Reveal the native page-sheet material instead of covering it with a
-    // fixed grouped background, especially in light appearance.
-    self.view.backgroundColor = UIColor.clearColor;
-    self.tableView.backgroundColor = UIColor.clearColor;
+    BOOL nativeGlass = ModernUITheme.usesNativeLiquidGlass;
+    UIColor *background = nativeGlass ? UIColor.clearColor : UIColor.systemGroupedBackgroundColor;
+    self.view.backgroundColor = background;
+    self.tableView.backgroundColor = background;
     self.tableView.backgroundView = nil;
-    self.navigationController.view.backgroundColor = UIColor.clearColor;
+    self.navigationController.view.backgroundColor = background;
 
     UINavigationBarAppearance *appearance = [UINavigationBarAppearance new];
-    [appearance configureWithTransparentBackground];
-    appearance.backgroundColor = UIColor.clearColor;
-    appearance.shadowColor = UIColor.clearColor;
+    if (nativeGlass) {
+        [appearance configureWithTransparentBackground];
+        appearance.backgroundColor = UIColor.clearColor;
+        appearance.shadowColor = UIColor.clearColor;
+    } else {
+        [appearance configureWithDefaultBackground];
+        appearance.backgroundColor = UIColor.systemBackgroundColor;
+    }
     self.navigationController.navigationBar.standardAppearance = appearance;
     self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
     self.navigationController.navigationBar.compactAppearance = appearance;
 
-    // Load WFWorkflowProgressView
+    // Restore the launcher's original determinate circular progress: the ring
+    // fills with the real fraction and becomes a centered checkmark at 100%.
     dlopen("/System/Library/PrivateFrameworks/WorkflowUIServices.framework/WorkflowUIServices", RTLD_GLOBAL);
+
 }
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
@@ -97,8 +103,10 @@
             cell.detailTextLabel.text = progress.localizedAdditionalDescription;
             WFWorkflowProgressView *progressView = (id)cell.accessoryView;
             progressView.fractionCompleted = progress.fractionCompleted;
-            [progressView transitionCompletedLayerToVisible:progress.finished animated:NO haptic:NO];
-            [progressView transitionRunningLayerToVisible:!progress.finished animated:NO];
+            [progressView transitionCompletedLayerToVisible:progress.finished
+                                                   animated:NO haptic:NO];
+            [progressView transitionRunningLayerToVisible:!progress.finished
+                                                 animated:NO];
         }
     }
     [self.tableView headerViewForSection:0].textLabel.text = self.progressSummary;
@@ -120,8 +128,10 @@ titleForHeaderInSection:(NSInteger)section {
 
     if (cell == nil) {
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"cell"];
-        WFWorkflowProgressView *progressView = [[NSClassFromString(@"WFWorkflowProgressView") alloc] initWithFrame:CGRectMake(0, 0, 30, 30)];
-        progressView.resolvedTintColor = self.view.tintColor;
+        WFWorkflowProgressView *progressView =
+            [[NSClassFromString(@"WFWorkflowProgressView") alloc]
+                initWithFrame:CGRectMake(0, 0, 30, 30)];
+        progressView.resolvedTintColor = ModernUITheme.accentColor;
         progressView.stopSize = 0;
         cell.accessoryView = progressView;
     }
@@ -132,14 +142,18 @@ titleForHeaderInSection:(NSInteger)section {
     WFWorkflowProgressView *progressView = (id)cell.accessoryView;
     [progressView reset];
     progressView.fractionCompleted = progress.fractionCompleted;
-    [progressView transitionCompletedLayerToVisible:progress.finished animated:NO haptic:NO];
-    [progressView transitionRunningLayerToVisible:!progress.finished animated:NO];
+    [progressView transitionCompletedLayerToVisible:progress.finished
+                                           animated:NO haptic:NO];
+    [progressView transitionRunningLayerToVisible:!progress.finished
+                                         animated:NO];
 
     cell.textLabel.text = self.displayFiles[indexPath.row];
     cell.detailTextLabel.text = progress.localizedAdditionalDescription;
     [ModernUITheme styleCell:cell destructive:NO];
-    cell.backgroundColor = UIColor.clearColor;
-    cell.contentView.backgroundColor = UIColor.clearColor;
+    UIColor *cellBackground = ModernUITheme.usesNativeLiquidGlass
+        ? UIColor.clearColor : UIColor.secondarySystemGroupedBackgroundColor;
+    cell.backgroundColor = cellBackground;
+    cell.contentView.backgroundColor = cellBackground;
     return cell;
 }
 

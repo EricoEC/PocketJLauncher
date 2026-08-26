@@ -328,6 +328,41 @@
 
 - (void)downloadVersion:(NSDictionary *)version {
     [self prepareForDownload];
+    if (!getPrefBool(@"general.check_sha")) {
+        NSString *versionId = version[@"id"];
+        if ([versionId isEqualToString:@"latest-release"]) {
+            versionId = getPrefObject(@"internal.latest_version.release");
+        } else if ([versionId isEqualToString:@"latest-snapshot"]) {
+            versionId = getPrefObject(@"internal.latest_version.snapshot");
+        }
+        NSString *path = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json",
+            getenv("POJAV_GAME_DIR"), versionId];
+        NSMutableDictionary *local = parseJSONFromFile(path);
+        if (!local || local[@"NSErrorObject"]) {
+            [self finishDownloadWithErrorString:localize(@"本地版本文件缺失；完整性检查已关闭，未进行联网修复。", nil)];
+            return;
+        }
+        NSString *parentId = local[@"inheritsFrom"];
+        if (parentId.length) {
+            NSString *parentPath = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json",
+                getenv("POJAV_GAME_DIR"), parentId];
+            NSMutableDictionary *parent = parseJSONFromFile(parentPath);
+            if (!parent || parent[@"NSErrorObject"]) {
+                [self finishDownloadWithErrorString:localize(@"本地基础版本文件缺失；完整性检查已关闭，未进行联网修复。", nil)];
+                return;
+            }
+            [MinecraftResourceUtils processVersion:local inheritsFrom:parent];
+            local = parent;
+        }
+        self.metadata = local;
+        [MinecraftResourceUtils tweakVersionJson:self.metadata];
+        if (self.downloadPlanReady) self.downloadPlanReady(NO);
+        self.progress.totalUnitCount = 1;
+        self.progress.completedUnitCount = 1;
+        self.textProgress.totalUnitCount = 1;
+        self.textProgress.completedUnitCount = 1;
+        return;
+    }
     [self downloadVersionMetadata:version success:^{
         // Integrity-off means existing files are trusted; missing files must
         // still be enumerated and downloaded, especially immediately after a
