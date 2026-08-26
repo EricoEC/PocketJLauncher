@@ -184,7 +184,7 @@ Copyright © 2026 Erico.
 
 ---
 
-# 🇬🇧 English
+# 🇬🇧🇺🇸 English
 
 ## Why PocketJ?
 

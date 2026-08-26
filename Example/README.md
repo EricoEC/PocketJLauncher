@@ -31,17 +31,17 @@ See PocketJ Launcher running across different devices and system generations.
 
 | 预览 | 截图说明 |
 |:---:|---|
-| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0215.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0215.png" width="180" alt="PocketJ v1.3 custom background home"></a> | **自定义启动器背景与首页**<br><br>补充说明：_待填写_ |
-| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0216.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0216.png" width="180" alt="PocketJ v1.3 custom background settings"></a> | **自定义背景下的设置界面**<br><br>补充说明：_待填写_ |
-| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0217.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0217.png" width="300" alt="Minecraft 26.2 title screen on PocketJ"></a> | **Minecraft 26.2 启动与主菜单**<br><br>补充说明：_待填写_ |
-| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0218.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0218.png" width="300" alt="Minecraft 26.x world rendering"></a> | **Minecraft 26.x 世界方块渲染**<br><br>补充说明：_待填写_ |
-| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0219.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0219.png" width="300" alt="Minecraft 26.x pause menu"></a> | **Minecraft 26.x 游戏暂停界面**<br><br>补充说明：_待填写_ |
-| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0220.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0220.png" width="300" alt="Minecraft 26.x landscape rendering"></a> | **Minecraft 26.x 地形与触控界面**<br><br>补充说明：_待填写_ |
-| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0221.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0221.png" width="300" alt="Minecraft 26.x third-person rendering"></a> | **Minecraft 26.x 第三人称渲染**<br><br>补充说明：_待填写_ |
-| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0222.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0222.png" width="180" alt="Modrinth online shaders"></a> | **Modrinth 在线光影包**<br><br>补充说明：_待填写_ |
-| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0223.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0223.png" width="180" alt="CurseForge online shaders"></a> | **CurseForge 在线光影包**<br><br>补充说明：_待填写_ |
-| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0224.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0224.png" width="180" alt="Modrinth online resource packs"></a> | **Modrinth 在线材质包**<br><br>补充说明：_待填写_ |
-| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0225.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0225.png" width="180" alt="Modrinth and CurseForge mod sources"></a> | **Modrinth / CurseForge 双源模组管理**<br><br>补充说明：_待填写_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0215.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0215.png" width="180" alt="PocketJ v1.3 custom background home"></a> | _自定义启动器背景与首页_<br><br>_Custom Launcher Background & Home_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0216.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0216.png" width="180" alt="PocketJ v1.3 custom background settings"></a> | _自定义背景下的设置界面_<br><br>_Settings with Custom Background_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0217.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0217.png" width="300" alt="Minecraft 26.2 title screen on PocketJ"></a> | _Minecraft 26.2 启动与主菜单_<br><br>_Minecraft 26.2 Launch & Main Menu_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0218.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0218.png" width="300" alt="Minecraft 26.x world rendering"></a> | _Minecraft 26.x 世界方块渲染_<br><br>_Minecraft 26.x World Block Rendering_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0219.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0219.png" width="300" alt="Minecraft 26.x pause menu"></a> | _Minecraft 26.x 游戏暂停界面_<br><br>_Minecraft 26.x Pause Menu_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0220.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0220.png" width="300" alt="Minecraft 26.x landscape rendering"></a> | _Minecraft 远古版 rd-20090515_<br><br>_Minecraft Ancient Edition rd-20090515_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0221.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0221.png" width="300" alt="Minecraft 26.x third-person rendering"></a> | _Minecraft 远古版 rd-20090515_<br><br>_Minecraft Ancient Edition rd-20090515_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0222.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0222.png" width="180" alt="Modrinth online shaders"></a> | _Modrinth 在线光影包_<br><br>_Modrinth Online Shaders_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0223.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0223.png" width="180" alt="CurseForge online shaders"></a> | _CurseForge 在线光影包_<br><br>_CurseForge Online Shaders_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0224.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0224.png" width="180" alt="Modrinth online resource packs"></a> | _Modrinth 在线材质包_<br><br>_Modrinth Online Resource Packs_ |
+| <a href="v1.3%E6%9B%B4%E6%96%B0/IMG_0225.png"><img src="v1.3%E6%9B%B4%E6%96%B0/IMG_0225.png" width="180" alt="Modrinth and CurseForge mod sources"></a> | _Modrinth / CurseForge 双源模组管理_<br><br>_Modrinth / CurseForge Dual-Source Mod Management_ |
 
 </details>
 

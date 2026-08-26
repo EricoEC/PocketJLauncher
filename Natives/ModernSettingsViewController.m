@@ -443,18 +443,24 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
          cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSDictionary *item = [self itemAtIndexPath:indexPath];
     NSString *type = item[@"type"];
+    NSString *reuseIdentifier = [NSString stringWithFormat:@"NativeSettingCell.%@",
+        type ?: @"default"];
     UITableViewCell *cell =
-        [tableView dequeueReusableCellWithIdentifier:@"NativeSettingCell"];
+        [tableView dequeueReusableCellWithIdentifier:reuseIdentifier];
     if (!cell) {
         cell = [[UITableViewCell alloc]
             initWithStyle:UITableViewCellStyleSubtitle
-          reuseIdentifier:@"NativeSettingCell"];
+          reuseIdentifier:reuseIdentifier];
     }
 
+    if (@available(iOS 14.0, *)) {
+        cell.contentConfiguration = nil;
+    }
     cell.accessoryType = UITableViewCellAccessoryNone;
     cell.accessoryView = nil;
     cell.selectionStyle = UITableViewCellSelectionStyleDefault;
     cell.accessibilityHint = nil;
+    cell.accessibilityIdentifier = nil;
     cell.textLabel.text = [self titleForItem:item];
     cell.detailTextLabel.text = [self detailForItem:item];
     cell.textLabel.numberOfLines = 0;
@@ -710,43 +716,7 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
 
 - (CGFloat)tableView:(UITableView *)tableView
     heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    NSDictionary *item = [self itemAtIndexPath:indexPath];
-    NSString *type = item[@"type"];
-    NSString *title = [self titleForItem:item] ?: @"";
-    NSString *detail = [self detailForItem:item] ?: @"";
-    if ([type isEqualToString:ModernSettingTypeInformation] ||
-        [type isEqualToString:ModernSettingTypeLink]) {
-        detail = item[@"value"] ?: @"";
-    }
-
-    CGFloat accessoryWidth = 28.0;
-    if ([type isEqualToString:ModernSettingTypeSwitch] ||
-        [type isEqualToString:ModernSettingTypeCapability]) {
-        accessoryWidth = 76.0;
-    } else if ([type isEqualToString:ModernSettingTypeSlider]) {
-        accessoryWidth = MIN(132.0, MAX(84.0,
-            CGRectGetWidth(tableView.bounds) * 0.28));
-    } else if ([type isEqualToString:ModernSettingTypeLink]) {
-        accessoryWidth = 52.0;
-    }
-
-    // Account for grouped insets, image, accessory and the cell's internal
-    // margins. Text gets the real remaining width and grows vertically for any
-    // language or Dynamic Type size instead of overlapping the next row.
-    CGFloat textWidth = CGRectGetWidth(tableView.bounds) -
-        32.0 - 44.0 - accessoryWidth - 32.0;
-    textWidth = MAX(textWidth, 120.0);
-    UIFont *titleFont = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
-    UIFont *detailFont = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
-    NSStringDrawingOptions options =
-        NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading;
-    CGFloat titleHeight = ceil([title boundingRectWithSize:
-        CGSizeMake(textWidth, CGFLOAT_MAX) options:options
-        attributes:@{NSFontAttributeName: titleFont} context:nil].size.height);
-    CGFloat detailHeight = detail.length ? ceil([detail boundingRectWithSize:
-        CGSizeMake(textWidth, CGFLOAT_MAX) options:options
-        attributes:@{NSFontAttributeName: detailFont} context:nil].size.height) : 0;
-    return MAX(62.0, titleHeight + detailHeight + (detail.length ? 22.0 : 28.0));
+    return UITableViewAutomaticDimension;
 }
 
 - (NSIndexPath *)indexPathForControl:(UIControl *)control {
@@ -762,8 +732,10 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
         debugLogEnabled = control.isOn;
     }
     if ([item[@"key"] isEqualToString:@"auto_ram"]) {
-        [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:indexPath.section]
-                      withRowAnimation:UITableViewRowAnimationAutomatic];
+        [UIView performWithoutAnimation:^{
+            [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:indexPath.section]
+                          withRowAnimation:UITableViewRowAnimationNone];
+        }];
     }
 }
 
@@ -778,8 +750,17 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
     UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
     NSString *displayValue =
         [NSString stringWithFormat:@"%ld%@", (long)value, item[@"suffix"]];
-    cell.detailTextLabel.text = [self detailForItem:item value:displayValue];
-    control.accessibilityValue = cell.detailTextLabel.text;
+    NSString *detail = [self detailForItem:item value:displayValue];
+    cell.detailTextLabel.text = detail;
+    if (@available(iOS 14.0, *)) {
+        if ([cell.contentConfiguration isKindOfClass:UIListContentConfiguration.class]) {
+            UIListContentConfiguration *content =
+                (UIListContentConfiguration *)cell.contentConfiguration;
+            content.secondaryText = detail;
+            cell.contentConfiguration = content;
+        }
+    }
+    control.accessibilityValue = detail;
 }
 
 - (void)showPickerForItem:(NSDictionary *)item
