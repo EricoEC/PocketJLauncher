@@ -362,5 +362,5 @@ Copyright © 2026 Erico.
 
 <p align="right"><a href="#pocketj-launcher">⬆️ Back to top</a></p>
 
-[pairing-tool-release]: https://github.com/EricoEC/PocketJLauncher/releases/tag/pairing-tool-v1.0
-[pairing-tool-releases]: https://github.com/EricoEC/PocketJLauncher/releases
+[pairing-tool-release]: ../../releases/tag/pairing-tool-v1.0
+[pairing-tool-releases]: ../../releases
