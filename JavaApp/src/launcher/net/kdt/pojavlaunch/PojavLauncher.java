@@ -78,6 +78,15 @@ public class PojavLauncher {
         MinecraftAccount account = MinecraftAccount.load(args[0]);
         JMinecraftVersionList.Version version = Tools.getVersionInfo(args[1]);
         System.out.println("Launching Minecraft " + version.id);
+        String[] versionNumbers = version.id.split("[^0-9]+");
+        int minecraftMajor = versionNumbers.length > 0 ? parseVersionComponent(versionNumbers[0]) : 0;
+        int minecraftMinor = versionNumbers.length > 1 ? parseVersionComponent(versionNumbers[1]) : 0;
+        if (minecraftMajor > 26 || (minecraftMajor == 26 && minecraftMinor >= 3)) {
+            // Load before Minecraft's SDL monitor initialization so JNI_OnLoad
+            // can register LWJGL 3.4-only invocation overloads. Older versions
+            // never load the compatibility bridge.
+            System.loadLibrary("lwjgl341compat");
+        }
         String configPath;
         if (version.logging != null) {
             if (version.logging.client.file.id.equals("client-1.12.xml")) {
@@ -91,5 +100,13 @@ public class PojavLauncher {
         }
 
         Tools.launchMinecraft(account, version);
+    }
+
+    private static int parseVersionComponent(String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
     }
 }

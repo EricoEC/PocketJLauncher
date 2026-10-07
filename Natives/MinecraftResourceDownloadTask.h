@@ -7,6 +7,9 @@
 @property NSMutableArray *fileList, *progressList;
 @property NSMutableDictionary* metadata;
 @property(nonatomic, copy) void(^handleError)(void);
+/// A newly-created instance must resolve and verify its version files once,
+/// even when the user's normal launch-time integrity check is disabled.
+@property(nonatomic) BOOL forceIntegrityCheck;
 /// Called after the original downloader has checked local metadata, client,
 /// libraries and assets and knows whether any file must be downloaded.
 @property(nonatomic, copy) void(^downloadPlanReady)(BOOL needsDownload);

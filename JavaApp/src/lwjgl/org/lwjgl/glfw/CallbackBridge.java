@@ -41,4 +41,5 @@ public class CallbackBridge {
 
     public static native String nativeClipboard(int action, byte[] copy);
     public static native void nativeSetGrabbing(boolean grab);
+    public static native void nativeSetIMEEnabled(boolean enabled);
 }

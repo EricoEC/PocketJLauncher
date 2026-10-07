@@ -7,7 +7,7 @@
   **掌上 Java，不只是“能启动”。**  
   A modern Minecraft: Java Edition launcher built for iPhone and iPad.
 
-  [![Version](https://img.shields.io/badge/version-v1.3-20c66b?style=for-the-badge)](../../releases)
+  [![Version](https://img.shields.io/badge/version-v1.4-20c66b?style=for-the-badge)](../../releases)
   ![Platform](https://img.shields.io/badge/iOS%20%7C%20iPadOS-14--27-111111?style=for-the-badge&logo=apple&logoColor=white)
   [![License](https://img.shields.io/badge/license-GPL--3.0-7c5cff?style=for-the-badge)](LICENSE)
   ![Languages](https://img.shields.io/badge/UI-简体中文%20%7C%20English-28a8ea?style=for-the-badge)
@@ -28,7 +28,7 @@
 
 同时，PocketJ 不只关注功能完整性，也持续针对 iOS 环境优化启动流程、资源加载和渲染体验。相比早期移动端 Java 启动方案，PocketJ 在保持兼容性的基础上，对启动链路、运行效率和设备适配进行了大量优化，目标是在 iPhone 和 iPad 上提供更快速、更稳定、更接近桌面体验的 Minecraft Java 运行效果。
 
-它基于 GPL-3.0 项目 [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) 持续开发，并继承了 [PojavLauncher](https://github.com/PojavLauncherTeam) 与 Boardwalk 生态的工作。v1.3 在保留成熟 JVM 与启动内核的基础上，将全世代 Minecraft、在线资源和个性化体验整合进 PocketJ 的 iOS 工作流。
+它基于 GPL-3.0 项目 [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) 持续开发，并继承了 [PojavLauncher](https://github.com/PojavLauncherTeam) 与 Boardwalk 生态的工作。v1.4 在保留成熟 JVM 与启动内核的基础上，继续完善全世代 Minecraft、在线资源和个性化体验，并补齐现代 Minecraft 26.3 的运行与输入兼容。
 
 ### 📸 查看真实运行截图
 
@@ -75,11 +75,11 @@
 
 </details>
 
-## ✅ v1.3 全版本兼容地图
+## ✅ v1.4 全版本兼容地图
 
 | 组合 | 当前定位 |
 |---|---|
-| **Minecraft 26.x 与现代版本** | 🟢 已接入新版 LWJGL 兼容层和对应渲染链，可正常呈现世界方块 |
+| **Minecraft 26.x 与现代版本** | 🟢 接入新版 LWJGL / SDL 输入兼容与对应渲染链；NeoForge 版本列表匹配至 26.3 |
 | **Minecraft 1.x 经典正式版** | 🟢 按版本世代自动匹配 Java Runtime 和渲染器 |
 | **Alpha / Beta 与远古版本** | 🟢 具备独立旧版内存兼容路径，不干扰现代版本 |
 | **Fabric / Forge / NeoForge / Quilt** | 🟢 统一 Minecraft 版本和 Loader 版本模型，依据实例筛选对应加载器版本 |
@@ -100,8 +100,8 @@
 
 | 文件 | 用途 |
 |---|---|
-| `PocketJLauncher-v1.3-iOS.ipa` | 开发者签名、AltStore、SideStore 及兼容的 IPA 侧载方式 |
-| `PocketJLauncher-v1.3-iOS-TrollStore.tipa` | 适用于受支持的 TrollStore 环境 |
+| `PocketJLauncher-v1.4-iOS.ipa` | AltStore、SideStore 及兼容的 IPA 侧载方式，由安装工具按需签名 |
+| `PocketJLauncher-v1.4-iOS-TrollStore.tipa` | 适用于受支持的 TrollStore 环境 |
 | `SHA256SUMS.txt` | 校验下载文件是否完整、是否与发布产物一致 |
 
 > [!WARNING]
@@ -192,7 +192,7 @@ Many mobile Java launchers stop at opening the game. PocketJ aims to bring a com
 
 At the same time, PocketJ focuses not only on feature completeness, but also on improving the iOS Java runtime experience. Compared with earlier mobile Java launcher solutions, PocketJ introduces continuous optimizations across the launch pipeline, resource loading, rendering experience, and device adaptation, aiming to provide a faster, more stable Minecraft Java experience closer to desktop launchers on iPhone and iPad.
 
-PocketJ is developed from the GPL-3.0 licensed [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) project and inherits substantial work from the [PojavLauncher](https://github.com/PojavLauncherTeam) and Boardwalk ecosystems. Version 1.3 keeps the mature JVM and launch core while unifying every Minecraft generation, online resources, and personalization in an iOS-first workflow.
+PocketJ is developed from the GPL-3.0 licensed [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) project and inherits substantial work from the [PojavLauncher](https://github.com/PojavLauncherTeam) and Boardwalk ecosystems. Version 1.4 keeps the mature JVM and launch core while refining cross-generation Minecraft support, online resources, and personalization in an iOS-first workflow, including modern Minecraft 26.3 runtime and input compatibility.
 
 ### 📸 See PocketJ running on real devices
 
@@ -239,11 +239,11 @@ Visit the [screenshot gallery](Example/README.md) to browse iOS 27, iPadOS 18, i
 
 </details>
 
-## ✅ v1.3 full-version compatibility map
+## ✅ v1.4 full-version compatibility map
 
 | Combination | Current status |
 |---|---|
-| **Minecraft 26.x and modern releases** | 🟢 Uses the new LWJGL compatibility and renderer path, including normal world-block rendering |
+| **Minecraft 26.x and modern releases** | 🟢 Includes LWJGL / SDL input compatibility and the matching renderer path; NeoForge version matching includes 26.3 |
 | **Classic Minecraft 1.x releases** | 🟢 Automatically selects a generation-appropriate Java runtime and renderer |
 | **Alpha, Beta, and legacy releases** | 🟢 Uses an isolated legacy-memory compatibility path without changing modern versions |
 | **Fabric / Forge / NeoForge / Quilt** | 🟢 Shares one Minecraft/loader version model and filters loader releases against the selected game version |
@@ -264,8 +264,8 @@ Get release assets from [GitHub Releases](../../releases):
 
 | File | Purpose |
 |---|---|
-| `PocketJLauncher-v1.3-iOS.ipa` | Development signing, AltStore, SideStore, and compatible IPA sideloading methods |
-| `PocketJLauncher-v1.3-iOS-TrollStore.tipa` | Supported TrollStore environments |
+| `PocketJLauncher-v1.4-iOS.ipa` | For AltStore, SideStore, and compatible IPA sideloading methods; the installer signs it as needed |
+| `PocketJLauncher-v1.4-iOS-TrollStore.tipa` | Supported TrollStore environments |
 | `SHA256SUMS.txt` | Verifies release-file integrity |
 
 > [!WARNING]

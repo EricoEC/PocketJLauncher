@@ -13,6 +13,11 @@
 
 #import "ios_uikit_bridge.h"
 #import "JavaLauncher.h"
+
+// Minecraft 26.x may select LWJGL's GLFW_NO_API path, which bypasses
+// pojavInitOpenGL()/vk_init(). Install the Metal source hook before Java starts
+// so MoltenVK shader compilation is covered regardless of that path.
+extern void PocketJInstallMetalShaderPatchForVulkan(void);
 #import "LauncherPreferences.h"
 #import "MinecraftOptionUtils.h"
 #import "PLLogOutputView.h"
@@ -231,16 +236,23 @@ int PocketJRequiredJavaVersionForMinecraft(NSString *versionID) {
     }
 
     NSString *lower = versionID.lowercaseString;
+    // Loader profile IDs start with the loader's own version (for example
+    // fabric-loader-0.19.5-26.3). Find the Minecraft era, not the first number.
     NSRegularExpression *expression = [NSRegularExpression
-        regularExpressionWithPattern:@"^(\\d+)(?:\\.(\\d+))?" options:0 error:nil];
+        regularExpressionWithPattern:@"(?<![0-9])((?:2[6-9]|[3-9][0-9])|1)\\.(\\d+)(?:\\.(\\d+))?"
+        options:0 error:nil];
     NSTextCheckingResult *match = [expression firstMatchInString:lower options:0
         range:NSMakeRange(0, lower.length)];
     NSInteger majorVersion = 0;
     NSInteger minorVersion = 0;
+    NSInteger patchVersion = 0;
     if (match.numberOfRanges > 1) {
         majorVersion = [[lower substringWithRange:[match rangeAtIndex:1]] integerValue];
         if (match.numberOfRanges > 2 && [match rangeAtIndex:2].location != NSNotFound) {
             minorVersion = [[lower substringWithRange:[match rangeAtIndex:2]] integerValue];
+        }
+        if (match.numberOfRanges > 3 && [match rangeAtIndex:3].location != NSNotFound) {
+            patchVersion = [[lower substringWithRange:[match rangeAtIndex:3]] integerValue];
         }
     }
 
@@ -248,9 +260,7 @@ int PocketJRequiredJavaVersionForMinecraft(NSString *versionID) {
     if (majorVersion >= 26) {
         required = 25;
     } else if (majorVersion == 1 && minorVersion >= 20) {
-        NSArray<NSString *> *parts = [lower componentsSeparatedByString:@"."];
-        NSInteger patch = parts.count > 2 ? [parts[2] integerValue] : 0;
-        required = (minorVersion > 20 || patch >= 5) ? 21 : 17;
+        required = (minorVersion > 20 || patchVersion >= 5) ? 21 : 17;
     } else if (majorVersion == 1 && minorVersion >= 17) {
         required = 17;
     }
@@ -476,6 +486,9 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     // Minecraft 26.2 loads LWJGL SPVC. Reuse the SPIRV-Cross C library already
     // signed and embedded in the app instead of extracting desktop natives.
     margv[++margc] = "-Dorg.lwjgl.spvc.libname=spirv-cross-c-shared.0";
+    // Minecraft 26.3 uses SDL3 for its window and input backend. Load the
+    // signed iOS SDL library from the app bundle, not a desktop native jar.
+    margv[++margc] = "-Dorg.lwjgl.sdl.libname=SDL3";
     //margv[++margc] = "-Dorg.lwjgl.util.NoChecks=true";
     margv[++margc] = "-Dlog4j2.formatMsgNoLookups=true";
 
@@ -597,7 +610,15 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     NSArray<NSString *> *bundledLibraries = [[NSFileManager.defaultManager
         contentsOfDirectoryAtPath:librariesPath error:nil]
         sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
-    BOOL useModernLWJGL = !launchJar && minVersion >= 25;
+    // Select the LWJGL ABI from the actual Minecraft target, not the minimum
+    // Java version passed by a stale/migrated profile. A Java 25 override must
+    // not route older Minecraft versions into the 3.4.1 SDL-era bindings.
+    NSString *lwjglTargetVersion = [launchTarget isKindOfClass:NSDictionary.class]
+        ? launchTarget[@"id"] : @"";
+    BOOL useModernLWJGL = !launchJar &&
+        PocketJRequiredJavaVersionForMinecraft(lwjglTargetVersion) >= 25;
+    NSLog(@"[JavaLauncher] LWJGL %@ selected for target %@ (Java minimum %d)",
+        useModernLWJGL ? @"3.4.1" : @"legacy", lwjglTargetVersion, minVersion);
     for (NSString *library in bundledLibraries) {
         if (![library.pathExtension.lowercaseString isEqualToString:@"jar"]) continue;
         if ([library isEqualToString:@"lwjgl.jar"] && useModernLWJGL) continue;
@@ -632,6 +653,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
         return -2;
     }
 
+    PocketJInstallMetalShaderPatchForVulkan();
     NSLog(@"[Init] Calling JLI_Launch");
 
     // Cr4shed known issue: exit after crash dump,

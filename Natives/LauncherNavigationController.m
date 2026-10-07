@@ -807,16 +807,22 @@ static NSString *const LauncherVerifiedCompletesKey =
         };
     }
 
+    BOOL interruptedDownload = self.selectedProfileHasInterruptedDownload;
+    BOOL needsInitialDownload = self.selectedProfileNeedsDownload;
     self.task = [MinecraftResourceDownloadTask new];
+    // The blue initial-download action is the one exception to the global
+    // integrity preference: a fresh instance has no local version metadata to
+    // launch from, so resolve and verify its complete download plan once.
+    self.task.forceIntegrityCheck = needsInitialDownload && !interruptedDownload;
     self.downloadPlanResolved = NO;
-    BOOL checksIntegrity = getPrefBool(@"general.check_sha");
+    BOOL checksIntegrity = getPrefBool(@"general.check_sha") ||
+        self.task.forceIntegrityCheck;
     self.launchTaskPhase = checksIntegrity
         ? localize(@"正在检查完整性…", nil)
         : localize(@"正在读取本地游戏文件…", nil);
     self.currentTaskPaused = NO;
     self.activeDownloadIdentifier = self.selectedDownloadIdentifier;
-    self.activeTaskRequiresDownload =
-        [self selectedProfileNeedsDownload];
+    self.activeTaskRequiresDownload = needsInitialDownload;
     MinecraftResourceDownloadTask *downloadTask = self.task;
     if (self.activeTaskRequiresDownload) {
         [self markSelectedDownloadInterrupted];

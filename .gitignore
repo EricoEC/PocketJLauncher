@@ -9,6 +9,7 @@
 /Natives/build
 /Natives/external/UnzipKit
 .DS_Store
+com.apple.DeveloperTools/
 xcshareddata/
 xcuserdata/
 project.xcworkspace/

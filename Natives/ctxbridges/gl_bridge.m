@@ -14,6 +14,9 @@ static egl_library handle;
 
 typedef id<MTLLibrary> (*PocketJNewLibraryIMP)(id, SEL, NSString *, MTLCompileOptions *, NSError **);
 static PocketJNewLibraryIMP pocketjOriginalNewLibrary;
+typedef void (^PocketJMetalLibraryCompletion)(id<MTLLibrary>, NSError *);
+typedef void (*PocketJNewLibraryAsyncIMP)(id, SEL, NSString *, MTLCompileOptions *, PocketJMetalLibraryCompletion);
+static PocketJNewLibraryAsyncIMP pocketjOriginalNewLibraryAsync;
 
 static NSString *PocketJPatchCloudBufferFetches(NSString *source) {
     if ([source rangeOfString:@"_uCloudFaces"].location == NSNotFound ||
@@ -67,10 +70,48 @@ static NSString *PocketJPatchCloudBufferFetches(NSString *source) {
     return patched;
 }
 
+// SPIRV-Cross in this MoltenVK build can emit a vertex-pulling helper named
+// `vertex(...)`. `vertex` is an MSL stage qualifier, so Apple's Metal compiler
+// rejects the otherwise valid helper declaration and every call to it. Rename
+// only function-call identifiers in that generated helper shader; the MSL
+// stage declaration (`vertex <type> main(...)`) is left untouched.
+static NSString *PocketJPatchReservedMetalFunctionNames(NSString *source) {
+    if ([source rangeOfString:@"float3 vertex(thread const int& index)"].location == NSNotFound) {
+        return source;
+    }
+
+    NSError *error = nil;
+    NSRegularExpression *expression = [NSRegularExpression
+        regularExpressionWithPattern:@"\\bvertex(?=\\s*\\()"
+        options:0 error:&error];
+    if (!expression) {
+        NSLog(@"[PocketJ Vulkan] Could not create MSL identifier patch: %@", error);
+        return source;
+    }
+
+    NSUInteger matches = [expression numberOfMatchesInString:source options:0
+        range:NSMakeRange(0, source.length)];
+    if (matches == 0) return source;
+
+    NSString *patched = [expression stringByReplacingMatchesInString:source options:0
+        range:NSMakeRange(0, source.length) withTemplate:@"pjl_vertex"];
+    NSLog(@"[PocketJ Vulkan] Renamed %lu Metal vertex-pulling helper identifier(s)",
+        (unsigned long)matches);
+    return patched;
+}
+
 static id<MTLLibrary> PocketJNewLibraryWithSource(id self, SEL selector,
     NSString *source, MTLCompileOptions *options, NSError **error) {
+    source = PocketJPatchReservedMetalFunctionNames(source);
     return pocketjOriginalNewLibrary(self, selector,
         PocketJPatchCloudBufferFetches(source), options, error);
+}
+
+static void PocketJNewLibraryWithSourceAsync(id self, SEL selector,
+    NSString *source, MTLCompileOptions *options, PocketJMetalLibraryCompletion completion) {
+    source = PocketJPatchReservedMetalFunctionNames(source);
+    pocketjOriginalNewLibraryAsync(self, selector,
+        PocketJPatchCloudBufferFetches(source), options, completion);
 }
 
 static void PocketJInstallMetalShaderPatch(void) {
@@ -78,15 +119,41 @@ static void PocketJInstallMetalShaderPatch(void) {
     dispatch_once(&onceToken, ^{
         id<MTLDevice> device = MTLCreateSystemDefaultDevice();
         SEL selector = @selector(newLibraryWithSource:options:error:);
-        Method method = class_getInstanceMethod(object_getClass(device) ? [device class] : Nil, selector);
+        Class deviceClass = device ? [device class] : Nil;
+        Method method = class_getInstanceMethod(deviceClass, selector);
         if (!method) {
             NSLog(@"[PocketJ ANGLE] Metal shader compile hook unavailable");
             return;
         }
         pocketjOriginalNewLibrary = (PocketJNewLibraryIMP)method_getImplementation(method);
-        method_setImplementation(method, (IMP)PocketJNewLibraryWithSource);
-        NSLog(@"[PocketJ ANGLE] Metal shader compile hook installed on %@", NSStringFromClass(device.class));
+        // Add an override on the concrete device class. method_setImplementation()
+        // can alter an inherited implementation shared by other Metal classes,
+        // and may miss dispatch when the concrete class overrides the selector.
+        class_replaceMethod(deviceClass, selector, (IMP)PocketJNewLibraryWithSource,
+            method_getTypeEncoding(method));
+
+        // MoltenVK uses Metal's asynchronous source compiler on the Vulkan path.
+        // Hook it as well as the synchronous API used by ANGLE.
+        SEL asyncSelector = @selector(newLibraryWithSource:options:completionHandler:);
+        Method asyncMethod = class_getInstanceMethod(deviceClass, asyncSelector);
+        if (asyncMethod) {
+            pocketjOriginalNewLibraryAsync = (PocketJNewLibraryAsyncIMP)method_getImplementation(asyncMethod);
+            class_replaceMethod(deviceClass, asyncSelector, (IMP)PocketJNewLibraryWithSourceAsync,
+                method_getTypeEncoding(asyncMethod));
+            NSLog(@"[PocketJ Vulkan] Async Metal shader compile hook installed on %@",
+                NSStringFromClass(deviceClass));
+        } else {
+            NSLog(@"[PocketJ Vulkan] Async Metal shader compile selector unavailable on %@",
+                NSStringFromClass(deviceClass));
+        }
+        NSLog(@"[PocketJ ANGLE] Metal shader compile hook installed on %@", NSStringFromClass(deviceClass));
     });
+}
+
+// Called by the Vulkan bridge before MoltenVK creates its first shader library.
+// The ANGLE path continues to install the same hook through dlsym_EGL().
+void PocketJInstallMetalShaderPatchForVulkan(void) {
+    PocketJInstallMetalShaderPatch();
 }
 
 void dlsym_EGL() {

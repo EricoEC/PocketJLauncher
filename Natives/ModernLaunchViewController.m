@@ -47,7 +47,6 @@
         name:PocketJUpdateAvailabilityDidChangeNotification object:nil];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateAppearanceOrRelease:)
         name:PocketJBackgroundDidChangeNotification object:nil];
-    [PocketJUpdateChecker.shared checkForUpdates];
     [NSNotificationCenter.defaultCenter
         addObserver:self
            selector:@selector(savedProfileDidChange:)

@@ -1,0 +1,13 @@
+Minecraft 26.3 SDL3 compatibility components
+
+libSDL3.dylib: SDL3 for iOS with UIKit embedding adaptations from
+https://github.com/Gsjsjzhznsz/Air-Minecraft-iOS-Launcher
+Source commit for the bundled binary: 9d7100b71ce993b79432110a2431095e93ebeec9
+SDL3 is distributed under the zlib license. Its source and license are at
+https://github.com/libsdl-org/SDL
+
+lwjgl-sdl.jar: LWJGL 3.4.1 SDL binding from the same launcher repository.
+LWJGL is distributed under the BSD 3-Clause license. Source and license:
+https://github.com/LWJGL/lwjgl3
+
+The launcher retains its existing GPLv3 obligations and notices.

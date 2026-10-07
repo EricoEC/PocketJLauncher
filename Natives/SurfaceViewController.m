@@ -664,14 +664,19 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
 
 - (void)keyboardGesture:(UIGestureRecognizer*)gestureRecognizer {
     if (gestureRecognizer.state == UIGestureRecognizerStateBegan) {
-        if (self.inputTextField.isFirstResponder) {
-            [self.inputTextField resignFirstResponder];
-            self.inputTextField.alpha = 1.0f;
-        } else {
-            [self.inputTextField becomeFirstResponder];
-            // Insert an undeletable space
-            self.inputTextField.text = @" ";
-        }
+        [self setNativeKeyboardVisible:!self.inputTextField.isFirstResponder];
+    }
+}
+
+- (void)setNativeKeyboardVisible:(BOOL)visible {
+    if (visible) {
+        if (self.inputTextField.isFirstResponder) return;
+        // Keep one undeletable character so UIKit continues to deliver deletes.
+        self.inputTextField.text = @" ";
+        [self.inputTextField becomeFirstResponder];
+    } else if (self.inputTextField.isFirstResponder) {
+        [self.inputTextField resignFirstResponder];
+        self.inputTextField.alpha = 1.0f;
     }
 }
 
@@ -945,14 +950,7 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
             switch (keycode) {
                 case SPECIALBTN_KEYBOARD:
                     if (held == 0) {
-                        if (self.inputTextField.isFirstResponder) {
-                            [self.inputTextField resignFirstResponder];
-                            self.inputTextField.alpha = 1.0f;
-                        } else {
-                            [self.inputTextField becomeFirstResponder];
-                            // Insert an undeletable space
-                            self.inputTextField.text = @" ";
-                        }
+                        [self setNativeKeyboardVisible:!self.inputTextField.isFirstResponder];
                     }
                     break;
 

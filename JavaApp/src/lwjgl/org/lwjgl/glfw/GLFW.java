@@ -320,7 +320,9 @@ public class GLFW
     GLFW_STICKY_KEYS          = 0x33002,
     GLFW_STICKY_MOUSE_BUTTONS = 0x33003,
     GLFW_LOCK_KEY_MODS        = 0x33004,
-    GLFW_RAW_MOUSE_MOTION     = 0x33005;
+    GLFW_RAW_MOUSE_MOTION     = 0x33005,
+    GLFW_UNLIMITED_MOUSE_BUTTONS = 0x33006,
+    GLFW_IME                  = 0x33007;
 
     /** Cursor state. */
     public static final int
@@ -1145,6 +1147,9 @@ public class GLFW
     }
 
     public static void glfwSetInputMode(@NativeType("GLFWwindow *") long window, int mode, int value) {
+        GLFWWindowProperties properties = internalGetWindow(window);
+        int previousValue = properties.inputModes.getOrDefault(
+            mode, mode == GLFW_CURSOR ? GLFW_CURSOR_NORMAL : GLFW_FALSE);
         if (mode == GLFW_CURSOR) {
             switch (value) {
                 case GLFW_CURSOR_DISABLED:
@@ -1152,9 +1157,24 @@ public class GLFW
                     break;
                 default: CallbackBridge.nativeSetGrabbing(false);
             }
+        } else if (mode == GLFW_IME && previousValue != value) {
+            CallbackBridge.nativeSetIMEEnabled(value == GLFW_TRUE);
         }
 
-        internalGetWindow(window).inputModes.put(mode, value);
+        properties.inputModes.put(mode, value);
+        if (mode == GLFW_IME && previousValue != value && mGLFWIMEStatusCallback != null) {
+            mGLFWIMEStatusCallback.invoke(window);
+        }
+    }
+
+    public static void glfwSetPreeditCursorRectangle(@NativeType("GLFWwindow *") long window,
+                                                      int x, int y, int width, int height) {
+        // Minecraft 26.x calls this while a text field owns focus. UIKit owns
+        // the real candidate window, so the rectangle itself is not needed;
+        // enabling IME opens the native keyboard and feeds status back above.
+        if (glfwGetInputMode(window, GLFW_IME) != GLFW_TRUE) {
+            glfwSetInputMode(window, GLFW_IME, GLFW_TRUE);
+        }
     }
     public static String glfwGetKeyName(int key, int scancode) {
         // TODO keyname list from GLFW

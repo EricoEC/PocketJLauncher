@@ -25,6 +25,7 @@ CGPoint lastVirtualMousePoint;
 - (void)sendTouchPoint:(CGPoint)location withEvent:(int)event;
 - (void)updateSavedResolution;
 - (void)updateGrabState;
+- (void)setNativeKeyboardVisible:(BOOL)visible;
 
 + (GameSurfaceView *)surface;
 + (BOOL)isRunning;

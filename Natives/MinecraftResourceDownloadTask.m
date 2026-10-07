@@ -328,7 +328,7 @@
 
 - (void)downloadVersion:(NSDictionary *)version {
     [self prepareForDownload];
-    if (!getPrefBool(@"general.check_sha")) {
+    if (!getPrefBool(@"general.check_sha") && !self.forceIntegrityCheck) {
         NSString *versionId = version[@"id"];
         if ([versionId isEqualToString:@"latest-release"]) {
             versionId = getPrefObject(@"internal.latest_version.release");
@@ -561,7 +561,7 @@
 }
 
 - (BOOL)checkSHA:(NSString *)sha forFile:(NSString *)path altName:(NSString *)altName logSuccess:(BOOL)logSuccess {
-    if (getPrefBool(@"general.check_sha")) {
+    if (getPrefBool(@"general.check_sha") || self.forceIntegrityCheck) {
         return [self checkSHAIgnorePref:sha forFile:path altName:altName logSuccess:logSuccess];
     } else {
         return [NSFileManager.defaultManager fileExistsAtPath:path];

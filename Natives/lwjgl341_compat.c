@@ -9,9 +9,116 @@ static jmethodID PocketJLWJGLCallback;
 
 typedef void (*PocketJFFICallback)(void *, void *, void **, void *);
 
+/*
+ * LWJGL 3.4 adds the (int, pointer) boolean invocation overload used by
+ * SDL_GetDisplayBounds. The bundled iOS LWJGL core predates that overload,
+ * so register this narrow ABI adapter only when the 3.4 compatibility dylib
+ * is explicitly loaded for the modern Minecraft runtime.
+ */
+static jboolean PocketJInvokePZIntPointer(
+    JNIEnv *environment, jclass clazz, jint integer, jlong pointer, jlong functionAddress) {
+    (void)environment;
+    (void)clazz;
+    if (functionAddress == 0) return JNI_FALSE;
+    typedef uint8_t (*PocketJIntPointerBooleanFunction)(int32_t, void *);
+    PocketJIntPointerBooleanFunction function =
+        (PocketJIntPointerBooleanFunction)(uintptr_t)functionAddress;
+    return function((int32_t)integer, (void *)(uintptr_t)pointer)
+        ? JNI_TRUE : JNI_FALSE;
+}
+
+/*
+ * RenderPearl's Vulkan probe calls SDL_Vulkan_GetPresentationSupport with
+ * (VkInstance *, VkPhysicalDevice *, uint32_t). LWJGL 3.4 routes this through
+ * a JNI overload that is absent from the bundled iOS JNI bridge, so forward
+ * the exact SDL function-pointer ABI here as well.
+ */
+static jboolean PocketJInvokePPZ(
+    JNIEnv *environment, jclass clazz,
+    jlong firstPointer, jlong secondPointer, jint integer, jlong functionAddress) {
+    (void)environment;
+    (void)clazz;
+    if (functionAddress == 0) return JNI_FALSE;
+    typedef uint8_t (*PocketJPointerPointerIntBooleanFunction)(void *, void *, uint32_t);
+    PocketJPointerPointerIntBooleanFunction function =
+        (PocketJPointerPointerIntBooleanFunction)(uintptr_t)functionAddress;
+    return function((void *)(uintptr_t)firstPointer,
+                    (void *)(uintptr_t)secondPointer,
+                    (uint32_t)integer)
+        ? JNI_TRUE : JNI_FALSE;
+}
+
+/* Minecraft 26.3's movement tutorial resolves translated key labels through
+ * SDL_GetKeyFromScancode(int, SDL_Keymod, bool). LWJGL 3.4 added this JNI
+ * invocation signature; the bundled iOS invoke table predates it. */
+static jint PocketJInvokeCIIntShortBoolean(
+    JNIEnv *environment, jclass clazz,
+    jint scancode, jshort modifiers, jboolean keyEvent, jlong functionAddress) {
+    (void)environment;
+    (void)clazz;
+    if (functionAddress == 0) return 0;
+    typedef int32_t (*PocketJIntShortBooleanFunction)(int32_t, int32_t, uint8_t);
+    PocketJIntShortBooleanFunction function =
+        (PocketJIntShortBooleanFunction)(uintptr_t)functionAddress;
+    return (jint)function((int32_t)scancode, (int32_t)modifiers,
+                          keyEvent ? 1 : 0);
+}
+
+/* LWJGL 3.4 SDL3 window creation: SDL_CreateWindow(title, width, height, flags). */
+static jlong PocketJInvokePJPIntIntLong(
+    JNIEnv *environment, jclass clazz,
+    jlong titlePointer, jint width, jint height, jlong flags, jlong functionAddress) {
+    (void)environment;
+    (void)clazz;
+    if (functionAddress == 0) return 0;
+    typedef void *(*PocketJCreateWindowFunction)(const char *, int32_t, int32_t, uint64_t);
+    PocketJCreateWindowFunction function =
+        (PocketJCreateWindowFunction)(uintptr_t)functionAddress;
+    return (jlong)(uintptr_t)function(
+        (const char *)(uintptr_t)titlePointer,
+        (int32_t)width,
+        (int32_t)height,
+        (uint64_t)flags);
+}
+
+/* LWJGL 3.4 SDL3 surface creation: SDL_CreateSurfaceFrom(w, h, format, pixels, pitch). */
+static jlong PocketJInvokePPIntIntIntLongInt(
+    JNIEnv *environment, jclass clazz,
+    jint width, jint height, jint format, jlong pixels, jint pitch,
+    jlong functionAddress) {
+    (void)environment;
+    (void)clazz;
+    if (functionAddress == 0) return 0;
+    typedef void *(*PocketJCreateSurfaceFromFunction)(int32_t, int32_t, uint32_t, void *, int32_t);
+    PocketJCreateSurfaceFromFunction function =
+        (PocketJCreateSurfaceFromFunction)(uintptr_t)functionAddress;
+    return (jlong)(uintptr_t)function(
+        (int32_t)width,
+        (int32_t)height,
+        (uint32_t)format,
+        (void *)(uintptr_t)pixels,
+        (int32_t)pitch);
+}
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     (void)reserved;
     PocketJLWJGLVM = vm;
+    JNIEnv *environment = NULL;
+    if ((*vm)->GetEnv(vm, (void **)&environment, JNI_VERSION_1_6) != JNI_OK) {
+        return JNI_ERR;
+    }
+    jclass jniClass = (*environment)->FindClass(environment, "org/lwjgl/system/JNI");
+    if (!jniClass) return JNI_ERR;
+    JNINativeMethod methods[] = {
+        {"invokePZ", "(IJJ)Z", (void *)PocketJInvokePZIntPointer},
+        {"invokePPZ", "(JJIJ)Z", (void *)PocketJInvokePPZ},
+        {"invokeCI", "(ISZJ)I", (void *)PocketJInvokeCIIntShortBoolean},
+        {"invokePJP", "(JIIJJ)J", (void *)PocketJInvokePJPIntIntLong},
+        {"invokePP", "(IIIJIJ)J", (void *)PocketJInvokePPIntIntIntLongInt}
+    };
+    if ((*environment)->RegisterNatives(environment, jniClass, methods, 5) != JNI_OK) {
+        return JNI_ERR;
+    }
     return JNI_VERSION_1_6;
 }
 

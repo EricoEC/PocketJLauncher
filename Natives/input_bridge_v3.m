@@ -17,6 +17,8 @@
 #include <libgen.h>
 #include <stdlib.h>
 #include <stdatomic.h>
+#include <stdint.h>
+#include <string.h>
 
 #include "jni.h"
 #include "glfw_keycodes.h"
@@ -24,6 +26,181 @@
 #include "utils.h"
 
 #include "JavaLauncher.h"
+
+// Minecraft 26.3 switched from GLFW callbacks to SDL3 events. Keep the
+// existing GLFW path intact for older versions and resolve SDL only after the
+// game has loaded its bundled, signed iOS library. SDL_Event is a 128-byte
+// union; the fields below mirror the SDL3 ABI used by LWJGL 3.4.1.
+typedef struct {
+    uint32_t type, reserved;
+    uint64_t timestamp;
+    uint32_t windowID, which;
+    int32_t scancode;
+    uint32_t key;
+    uint16_t mod, raw;
+    bool down, repeat;
+} PJSDLKeyEvent;
+typedef struct {
+    uint32_t type, reserved;
+    uint64_t timestamp;
+    uint32_t windowID, which, state;
+    float x, y, xrel, yrel;
+} PJSDLMouseMotionEvent;
+typedef struct {
+    uint32_t type, reserved;
+    uint64_t timestamp;
+    uint32_t windowID, which;
+    uint8_t button;
+    bool down;
+    uint8_t clicks, padding;
+    float x, y;
+} PJSDLMouseButtonEvent;
+typedef struct {
+    uint32_t type, reserved;
+    uint64_t timestamp;
+    uint32_t windowID, which;
+    float x, y;
+    uint32_t direction;
+    float mouseX, mouseY;
+    int32_t integerX, integerY;
+} PJSDLWheelEvent;
+typedef struct {
+    uint32_t type, reserved;
+    uint64_t timestamp;
+    uint32_t windowID;
+    const char *text;
+} PJSDLTextEvent;
+typedef struct {
+    uint32_t type, reserved;
+    uint64_t timestamp;
+    uint32_t windowID;
+    int32_t width, height;
+} PJSDLWindowEvent;
+typedef union { uint32_t type; uint8_t bytes[128]; } PJSDLEvent;
+
+static void *pjSDLHandle;
+static void **(*pjSDLGetWindows)(int *count);
+static uint32_t (*pjSDLGetWindowID)(void *window);
+static bool (*pjSDLPushEvent)(void *event);
+static const bool *(*pjSDLGetKeyboardState)(int *count);
+static uint16_t (*pjSDLGetModState)(void);
+static void (*pjSDLSetModState)(uint16_t mods);
+static void (*pjSDLFree)(void *pointer);
+static float pjSDLLastX, pjSDLLastY;
+static char pjSDLTextRing[256][8];
+static atomic_uint pjSDLTextIndex;
+
+static uint32_t pjSDLWindowID(void) {
+    static dispatch_once_t sdlLoadOnce;
+    dispatch_once(&sdlLoadOnce, ^{
+        NSString *path = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"Frameworks/libSDL3.dylib"];
+        pjSDLHandle = dlopen(path.fileSystemRepresentation, RTLD_NOW | RTLD_LOCAL);
+        if (!pjSDLHandle) {
+            NSLog(@"[PocketJ SDL3] Library load failed: %s", dlerror());
+            return;
+        }
+        pjSDLGetWindows = dlsym(pjSDLHandle, "SDL_GetWindows");
+        pjSDLGetWindowID = dlsym(pjSDLHandle, "SDL_GetWindowID");
+        pjSDLPushEvent = dlsym(pjSDLHandle, "SDL_PushEvent");
+        pjSDLGetKeyboardState = dlsym(pjSDLHandle, "SDL_GetKeyboardState");
+        pjSDLGetModState = dlsym(pjSDLHandle, "SDL_GetModState");
+        pjSDLSetModState = dlsym(pjSDLHandle, "SDL_SetModState");
+        pjSDLFree = dlsym(pjSDLHandle, "SDL_free");
+    });
+    if (!pjSDLGetWindows || !pjSDLGetWindowID || !pjSDLPushEvent || !pjSDLFree) return 0;
+    int count = 0;
+    void **windows = pjSDLGetWindows(&count);
+    uint32_t windowID = count > 0 && windows ? pjSDLGetWindowID(windows[0]) : 0;
+    if (windows) pjSDLFree(windows);
+    return windowID;
+}
+
+static int pjSDLScancode(int key) {
+    if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z) return key - GLFW_KEY_A + 4;
+    if (key >= GLFW_KEY_1 && key <= GLFW_KEY_9) return key - GLFW_KEY_1 + 30;
+    if (key >= GLFW_KEY_F1 && key <= GLFW_KEY_F12) return key - GLFW_KEY_F1 + 58;
+    switch (key) {
+        case GLFW_KEY_0: return 39;
+        case GLFW_KEY_ENTER: return 40;
+        case GLFW_KEY_ESCAPE: return 41;
+        case GLFW_KEY_BACKSPACE: return 42;
+        case GLFW_KEY_TAB: return 43;
+        case GLFW_KEY_SPACE: return 44;
+        case GLFW_KEY_MINUS: return 45;
+        case GLFW_KEY_EQUAL: return 46;
+        case GLFW_KEY_LEFT_BRACKET: return 47;
+        case GLFW_KEY_RIGHT_BRACKET: return 48;
+        case GLFW_KEY_BACKSLASH: return 49;
+        case GLFW_KEY_SEMICOLON: return 51;
+        case GLFW_KEY_APOSTROPHE: return 52;
+        case GLFW_KEY_GRAVE_ACCENT: return 53;
+        case GLFW_KEY_COMMA: return 54;
+        case GLFW_KEY_PERIOD: return 55;
+        case GLFW_KEY_SLASH: return 56;
+        case GLFW_KEY_DPAD_RIGHT: return 79;
+        case GLFW_KEY_DPAD_LEFT: return 80;
+        case GLFW_KEY_DPAD_DOWN: return 81;
+        case GLFW_KEY_DPAD_UP: return 82;
+        case GLFW_KEY_LEFT_CONTROL: return 224;
+        case GLFW_KEY_LEFT_SHIFT: return 225;
+        case GLFW_KEY_LEFT_ALT: return 226;
+        case GLFW_KEY_LEFT_SUPER: return 227;
+        case GLFW_KEY_RIGHT_CONTROL: return 228;
+        case GLFW_KEY_RIGHT_SHIFT: return 229;
+        case GLFW_KEY_RIGHT_ALT: return 230;
+        case GLFW_KEY_RIGHT_SUPER: return 231;
+        default: return 0;
+    }
+}
+
+static void pjSDLSendKey(int key, int action) {
+    uint32_t windowID = pjSDLWindowID();
+    int scancode = pjSDLScancode(key);
+    if (!windowID || !scancode) return;
+    PJSDLEvent event = {0};
+    PJSDLKeyEvent *value = (PJSDLKeyEvent *)&event;
+    value->type = action ? 0x300 : 0x301;
+    value->windowID = windowID;
+    value->scancode = scancode;
+    value->key = scancode >= 4 && scancode <= 29 ? 'a' + scancode - 4
+        : scancode >= 30 && scancode <= 38 ? '1' + scancode - 30
+        : scancode == 39 ? '0' : scancode == 44 ? ' '
+        : scancode == 40 ? '\r' : scancode == 41 ? 27
+        : scancode == 42 ? '\b' : scancode == 43 ? '\t'
+        : ((uint32_t)scancode | 0x40000000u);
+    value->down = action != 0;
+    value->repeat = action == 2;
+    pjSDLPushEvent(&event);
+    // SDL_PushEvent queues a synthetic event but does not update the state
+    // array that Minecraft also polls for movement and modifier keys.
+    if (pjSDLGetKeyboardState) {
+        int count = 0;
+        bool *state = (bool *)pjSDLGetKeyboardState(&count);
+        if (state && scancode < count) state[scancode] = action != 0;
+    }
+    if (pjSDLGetModState && pjSDLSetModState && scancode >= 224 && scancode <= 231) {
+        static const uint16_t bits[] = {0x40, 0x01, 0x100, 0x400, 0x80, 0x02, 0x200, 0x800};
+        uint16_t mods = pjSDLGetModState();
+        mods = action ? mods | bits[scancode - 224] : mods & ~bits[scancode - 224];
+        pjSDLSetModState(mods);
+    }
+}
+
+static BOOL pjSDLSendCharacter(jchar character) {
+    uint32_t windowID = pjSDLWindowID();
+    if (!windowID) return NO;
+    NSString *text = [NSString stringWithCharacters:&character length:1];
+    const char *utf8 = text.UTF8String;
+    if (!utf8 || strlen(utf8) >= sizeof(pjSDLTextRing[0])) return NO;
+    unsigned index = atomic_fetch_add(&pjSDLTextIndex, 1) % 256;
+    strlcpy(pjSDLTextRing[index], utf8, sizeof(pjSDLTextRing[index]));
+    PJSDLEvent event = {0};
+    PJSDLTextEvent *value = (PJSDLTextEvent *)&event;
+    value->type = 0x303;
+    value->windowID = windowID;
+    value->text = pjSDLTextRing[index];
+    return pjSDLPushEvent(&event) ? YES : NO;
+}
 
 jint (*orig_ProcessImpl_forkAndExec)(JNIEnv *env, jobject process, jint mode, jbyteArray helperpath, jbyteArray prog, jbyteArray argBlock, jint argc, jbyteArray envBlock, jint envc, jbyteArray dir, jintArray std_fds, jboolean redirectErrorStream);
 jlong (*orig_ProcessHandleImpl_isAlive0)(JNIEnv *env, jclass clazz, jlong jpid);
@@ -417,6 +594,15 @@ JNIEXPORT void JNICALL Java_org_lwjgl_glfw_CallbackBridge_nativeSetGrabbing(JNIE
     });
 }
 
+JNIEXPORT void JNICALL Java_org_lwjgl_glfw_CallbackBridge_nativeSetIMEEnabled(JNIEnv* env, jclass clazz, jboolean enabled) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIViewController *root = UIWindow.mainWindow.rootViewController;
+        if ([root isKindOfClass:SurfaceViewController.class]) {
+            [(SurfaceViewController *)root setNativeKeyboardVisible:enabled];
+        }
+    });
+}
+
 JNIEXPORT jboolean JNICALL Java_org_lwjgl_glfw_CallbackBridge_nativeIsGrabbing(JNIEnv* env, jclass clazz) {
     return isGrabbing;
 }
@@ -444,7 +630,7 @@ BOOL CallbackBridge_nativeSendChar(jchar codepoint /* jint codepoint */) {
         }
         return YES;
     }
-    return NO;
+    return pjSDLSendCharacter(codepoint);
 }
 
 BOOL CallbackBridge_nativeSendCharMods(jchar codepoint, int mods) {
@@ -456,7 +642,9 @@ BOOL CallbackBridge_nativeSendCharMods(jchar codepoint, int mods) {
         }
         return YES;
     }
-    return NO;
+    // GLFW 3.4 removed the deprecated char-mods callback. Modern Minecraft
+    // registers the regular char callback only, so preserve text input there.
+    return CallbackBridge_nativeSendChar(codepoint);
 }
 /*
 JNIEXPORT void JNICALL Java_org_lwjgl_glfw_CallbackBridge_nativeSendCursorEnter(JNIEnv* env, jclass clazz, jint entered) {
@@ -466,7 +654,25 @@ JNIEXPORT void JNICALL Java_org_lwjgl_glfw_CallbackBridge_nativeSendCursorEnter(
 }
 */
 void CallbackBridge_nativeSendCursorPos(char event, CGFloat x, CGFloat y) {
-    if (!GLFW_invoke_CursorPos || !isInputReady) return;
+    if (!GLFW_invoke_CursorPos) {
+        uint32_t windowID = pjSDLWindowID();
+        if (!windowID) return;
+        PJSDLEvent sdlEvent = {0};
+        PJSDLMouseMotionEvent *motion = (PJSDLMouseMotionEvent *)&sdlEvent;
+        motion->type = 0x400;
+        motion->windowID = windowID;
+        motion->x = (float)x;
+        motion->y = (float)y;
+        motion->xrel = (float)x - pjSDLLastX;
+        motion->yrel = (float)y - pjSDLLastY;
+        pjSDLLastX = motion->x;
+        pjSDLLastY = motion->y;
+        cursorX = x;
+        cursorY = y;
+        pjSDLPushEvent(&sdlEvent);
+        return;
+    }
+    if (!isInputReady) return;
 
     switch (event) {
         case ACTION_DOWN:
@@ -529,6 +735,10 @@ char getKeyModifiers(int key, int action) {
 }
 
 void CallbackBridge_nativeSendKey(int key, int scancode, int action, int mods) {
+    if (!GLFW_invoke_Key && pjSDLWindowID()) {
+        pjSDLSendKey(key, action);
+        return;
+    }
     if (GLFW_invoke_Key && isInputReady) {
         keyDownBuffer[MAX(0, key-31)]=(jbyte)action;
         if (mods == 0) {
@@ -551,6 +761,22 @@ void CallbackBridge_nativeSendKey(int key, int scancode, int action, int mods) {
 }
 
 void CallbackBridge_nativeSendMouseButton(int button, int action, int mods) {
+    if (!GLFW_invoke_MouseButton && button >= 0) {
+        uint32_t windowID = pjSDLWindowID();
+        if (windowID) {
+            PJSDLEvent event = {0};
+            PJSDLMouseButtonEvent *value = (PJSDLMouseButtonEvent *)&event;
+            value->type = action ? 0x401 : 0x402;
+            value->windowID = windowID;
+            value->button = button == 1 ? 3 : button == 2 ? 2 : 1;
+            value->down = action != 0;
+            value->clicks = 1;
+            value->x = (float)cursorX;
+            value->y = (float)cursorY;
+            pjSDLPushEvent(&event);
+        }
+        return;
+    }
     if (isInputReady) {
         if (button == -1) {
         } else if (GLFW_invoke_MouseButton) {
@@ -570,6 +796,19 @@ void CallbackBridge_nativeSendMouseButton(int button, int action, int mods) {
 void CallbackBridge_nativeSendScreenSize(int width, int height) {
     windowWidth = width;
     windowHeight = height;
+    if (!GLFW_invoke_FramebufferSize) {
+        uint32_t windowID = pjSDLWindowID();
+        if (windowID) {
+            PJSDLEvent event = {0};
+            PJSDLWindowEvent *value = (PJSDLWindowEvent *)&event;
+            value->type = 0x207;
+            value->windowID = windowID;
+            value->width = width;
+            value->height = height;
+            pjSDLPushEvent(&event);
+        }
+        return;
+    }
     
     if (isInputReady) {
         if (GLFW_invoke_FramebufferSize) {
@@ -592,6 +831,21 @@ void CallbackBridge_nativeSendScreenSize(int width, int height) {
 }
 
 void CallbackBridge_nativeSendScroll(CGFloat xoffset, CGFloat yoffset) {
+    if (!GLFW_invoke_Scroll) {
+        uint32_t windowID = pjSDLWindowID();
+        if (windowID) {
+            PJSDLEvent event = {0};
+            PJSDLWheelEvent *value = (PJSDLWheelEvent *)&event;
+            value->type = 0x403;
+            value->windowID = windowID;
+            value->x = (float)xoffset;
+            value->y = (float)yoffset;
+            value->mouseX = (float)cursorX;
+            value->mouseY = (float)cursorY;
+            pjSDLPushEvent(&event);
+        }
+        return;
+    }
     if (GLFW_invoke_Scroll && isInputReady) {
         if (isUseStackQueueCall) {
             sendDataFloat(EVENT_TYPE_SCROLL, xoffset, yoffset, 0, 0);

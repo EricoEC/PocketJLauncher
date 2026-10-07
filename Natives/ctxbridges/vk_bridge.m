@@ -2,6 +2,8 @@
 #include <dlfcn.h>
 #include "bridge_tbl.h"
 #include "vk_bridge.h"
+
+extern void PocketJInstallMetalShaderPatchForVulkan(void);
 #include "utils.h"
 
 // Vulkan rendering bypasses the bridge: Minecraft owns the swapchain and queue
@@ -12,6 +14,7 @@
 static vk_render_window_t g_dummy;
 
 static bool vk_init(void) {
+    PocketJInstallMetalShaderPatchForVulkan();
     void* h = dlopen("@rpath/" RENDERER_NAME_VULKAN, RTLD_GLOBAL);
     if (!h) {
         NSLog(@"VKBridge: dlopen %s failed: %s", RENDERER_NAME_VULKAN, dlerror());

@@ -86,8 +86,25 @@
             uint32_t bundledVer = 5 << 16 | 13 << 8 | 0;
             uint32_t requiredVer = (char)version[0].intValue << 16 | (char)version[1].intValue << 8 | (char)version[2].intValue;
             if (requiredVer > bundledVer) {
-                NSLog(@"[MCDL] Warning: JNA version required by %@ is %@ > 5.13.0, skipping JNA replacement.", json[@"id"], versionStr);
-                continue;
+                // Keep the established behavior for releases before 26.3.
+                // Pinning all Minecraft versions to JNA 5.13 breaks versions
+                // whose JNA/JNA-platform pair was already validated together.
+                NSString *minecraftVersion = [json[@"id"] isKindOfClass:NSString.class]
+                    ? json[@"id"] : @"";
+                NSRegularExpression *versionExpression = [NSRegularExpression
+                    regularExpressionWithPattern:@"(?<![0-9])26\\.(\\d+)"
+                    options:0 error:nil];
+                NSTextCheckingResult *versionMatch = [versionExpression
+                    firstMatchInString:minecraftVersion options:0
+                    range:NSMakeRange(0, minecraftVersion.length)];
+                NSInteger minorVersion = versionMatch.numberOfRanges > 1
+                    ? [[minecraftVersion substringWithRange:[versionMatch rangeAtIndex:1]] integerValue]
+                    : 0;
+                if (minorVersion < 3) {
+                    NSLog(@"[MCDL] %@ requests JNA %@; preserving its declared version", minecraftVersion, versionStr);
+                    continue;
+                }
+                NSLog(@"[MCDL] %@ requests JNA %@; using bundled iOS-compatible 5.13.0", minecraftVersion, versionStr);
             }
             library[@"name"] = @"net.java.dev.jna:jna:5.13.0";
             library[@"downloads"][@"artifact"][@"path"] = @"net/java/dev/jna/jna/5.13.0/jna-5.13.0.jar";

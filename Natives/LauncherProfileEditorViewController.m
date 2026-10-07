@@ -359,7 +359,13 @@
         } else {
             NSArray *parts = [minecraftVersion componentsSeparatedByString:@"."];
             if (parts.count < 2) continue;
-            NSString *prefix = [NSString stringWithFormat:@"%@.%@.", parts[1], parts.count > 2 ? parts[2] : @"0"];
+            // NeoForge used to omit the leading "1." from Minecraft versions
+            // (1.21.11 -> 21.11.x), but current versions keep the full ID
+            // (26.3 -> 26.3.x). Match the metadata using the correct era.
+            NSArray *neoForgeParts = [parts.firstObject isEqualToString:@"1"]
+                ? [parts subarrayWithRange:NSMakeRange(1, parts.count - 1)]
+                : parts;
+            NSString *prefix = [[neoForgeParts componentsJoinedByString:@"."] stringByAppendingString:@"."];
             if (![value hasPrefix:prefix]) continue;
         }
         if (value.length && ![result containsObject:value]) [result addObject:value];

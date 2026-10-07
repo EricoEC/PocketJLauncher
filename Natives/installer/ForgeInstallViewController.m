@@ -547,7 +547,12 @@ static LauncherNavigationController *PocketJLauncherNavigationController(UIViewC
         NSString *minorComponent = components[1];
         
         if ([self isNumeric:majorComponent] && [self isNumeric:minorComponent]) {
-            NSString *mcVersion = [NSString stringWithFormat:@"1.%@.%@", majorComponent, minorComponent];
+            // NeoForge's pre-26 scheme omits Minecraft's leading "1." (21.11
+            // means 1.21.11). Minecraft 26+ uses its full major.minor ID.
+            NSInteger major = majorComponent.integerValue;
+            NSString *mcVersion = major >= 26
+                ? [NSString stringWithFormat:@"%@.%@", majorComponent, minorComponent]
+                : [NSString stringWithFormat:@"1.%@.%@", majorComponent, minorComponent];
             return mcVersion;
         }
     }

@@ -321,7 +321,7 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
         @{
             @"title": localize(@"关于", nil),
             @"items": @[
-                [self fixedItemWithTitle:localize(@"版本", nil) value:@"v1.3" type:ModernSettingTypeInformation icon:@"number" key:@""],
+                [self fixedItemWithTitle:localize(@"版本", nil) value:@"v1.4" type:ModernSettingTypeInformation icon:@"number" key:@""],
                 [self fixedItemWithTitle:@"GitHub" value:PocketJGitHubURLString type:ModernSettingTypeLink icon:@"chevron.left.forwardslash.chevron.right" key:@"github"],
                 [self fixedItemWithTitle:localize(@"兼容系统", nil) value:@"iOS 14–27" type:ModernSettingTypeInformation icon:@"iphone" key:@""],
                 creator,
@@ -863,8 +863,14 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
     }
     if ([action isEqualToString:@"checkUpdates"]) {
         cell.userInteractionEnabled = NO;
+        UIView *previousAccessoryView = cell.accessoryView;
+        UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc]
+            initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+        [spinner startAnimating];
+        cell.accessoryView = spinner;
         [PocketJUpdateChecker.shared checkForUpdatesWithCompletion:^(NSDictionary *release, NSError *error) {
             cell.userInteractionEnabled = YES;
+            cell.accessoryView = previousAccessoryView;
             if (error) {
                 showDialog(localize(@"检查更新失败", nil),
                     localize(@"请检查网络连接后重试。", nil));
