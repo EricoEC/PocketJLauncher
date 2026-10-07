@@ -22,6 +22,14 @@
 
 # 🇨🇳 简体中文
 
+> [!TIP]
+> ## 🧰 不知道去哪里找配对文件？用 PocketJ 配对工具
+> 配对工具支持 macOS、Windows 和 Linux。连接 iPhone 后可生成配对文件，导出到手机后，在 PocketJ「设置 → 运行环境 → JIT → 导入配对文件」中选择它；也可以直接传入 PocketJ。
+>
+> [⬇️ 下载 PocketJ 配对工具 v1.0][pairing-tool-release] · [查看全部 Releases][pairing-tool-releases]
+>
+> 如果工具发布了新版本，优先在配对工具对应的 Release 下载最新版；此处直达链接会随新版本更新，全部 Releases 链接可作为备用入口。
+
 ## 为什么选择 PocketJ？
 
 很多移动端 Java 启动器止步于“把游戏打开”。PocketJ 更想把桌面启动器的完整体验带到 iOS：**在一个原生应用里完成 JIT、实例、Java、模组、整合包、账户、控制与诊断。**
@@ -186,6 +194,14 @@ Copyright © 2026 Erico.
 
 # 🇬🇧🇺🇸 English
 
+> [!TIP]
+> ## 🧰 Need a device pairing file? Use PocketJ Pairing Tool
+> The tool runs on macOS, Windows, and Linux. Connect your iPhone to create a pairing file, export it to your phone, then import it in PocketJ under **Settings → Runtime → JIT → Import Pairing File**. You can also send it directly to PocketJ.
+>
+> [⬇️ Download PocketJ Pairing Tool v1.0][pairing-tool-release] · [Browse all Releases][pairing-tool-releases]
+>
+> When a newer tool version is released, use its Release for the latest download. This direct link will be updated with the next version; the Releases page remains a fallback.
+
 ## Why PocketJ?
 
 Many mobile Java launchers stop at opening the game. PocketJ aims to bring a complete desktop-launcher workflow to iOS: **JIT, instances, Java runtimes, mods, modpacks, accounts, controls, and diagnostics—all inside one native app.**
@@ -345,3 +361,6 @@ Thanks to Amethyst-iOS, PojavLauncher, Boardwalk, StikDebug, Fabric, Quilt, Modr
 Copyright © 2026 Erico.
 
 <p align="right"><a href="#pocketj-launcher">⬆️ Back to top</a></p>
+
+[pairing-tool-release]: https://github.com/EricoEC/PocketJLauncher/releases/tag/pairing-tool-v1.0
+[pairing-tool-releases]: https://github.com/EricoEC/PocketJLauncher/releases
