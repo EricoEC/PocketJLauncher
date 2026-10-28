@@ -1,7 +1,7 @@
 package org.lwjgl.glfw;
 
 import java.util.*;
-import net.kdt.pojavlaunch.Tools;
+import com.erico.pocketj.Tools;
 
 public class GLFWWindowProperties {
     public int width, height;

@@ -1,6 +1,7 @@
 # Prerequisite variables
 SOURCEDIR := src
 OUTPUTDIR := build
+NAMESPACE_STAMP := $(OUTPUTDIR)/.namespace-com.erico.pocketj-v1
 
 SOURCES := $(shell find $(SOURCEDIR) -type f -name '*.java' ! -path '$(SOURCEDIR)/lwjgl341_patch/*')
 CLASSES := $(SOURCES:$(SOURCEDIR)/%.java=$(OUTPUTDIR)/%.class)
@@ -15,7 +16,16 @@ TARGETS := $(TARGETS:$(SOURCEDIR)/%=$(OUTPUTDIR)/%.jar)
 JCFLAGS := -cp "$(subst $() $(),:,$(wildcard $(SOURCEDIR)/*/):$(wildcard libs/*/*.jar))" -XDignore.symbol.file
 
 all: $(TARGETS) $(OUTPUTDIR)/lwjgl341.jar
-	
+
+# A namespace migration must invalidate old class trees/JARs, including on CI
+# or when the GUI reuses a staged directory from an earlier checkout.
+$(NAMESPACE_STAMP):
+	@mkdir -p $(OUTPUTDIR)
+	@rm -rf $(OUTPUTDIR)/launcher $(OUTPUTDIR)/classes $(OUTPUTDIR)/lwjgl $(OUTPUTDIR)/lwjgl341_patch
+	@rm -f $(OUTPUTDIR)/launcher.jar $(OUTPUTDIR)/lwjgl.jar $(OUTPUTDIR)/lwjgl341.jar
+	@touch $@
+
+
 # Sometimes the CI produces empty class file resulting in broken jar, so we check and abort here
 check_empty_classes:
 	@set -e
@@ -27,7 +37,7 @@ check_empty_classes:
 	fi
 
 # Rules for building java class
-$(CLASSES): $(OUTPUTDIR)/%.class: $(SOURCEDIR)/%.java
+$(CLASSES): $(OUTPUTDIR)/%.class: $(SOURCEDIR)/%.java $(NAMESPACE_STAMP)
 	@set -e
 	$(eval TARGET=$(word 2, $(subst /, ,$@)))
 	@mkdir -p $(OUTPUTDIR)/classes
@@ -40,7 +50,7 @@ $(CLASSES): $(OUTPUTDIR)/%.class: $(SOURCEDIR)/%.java
 		cp "$$class_file" "$$destination"; \
 	 done
 
-$(LWJGL341_PATCH_CLASSES): $(OUTPUTDIR)/lwjgl341_patch/%.class: $(SOURCEDIR)/lwjgl341_patch/%.java
+$(LWJGL341_PATCH_CLASSES): $(OUTPUTDIR)/lwjgl341_patch/%.class: $(SOURCEDIR)/lwjgl341_patch/%.java $(NAMESPACE_STAMP)
 	@set -e
 	@mkdir -p $(OUTPUTDIR)/lwjgl341_patch
 	@echo "Compiling LWJGL 3.4.1 compatibility patch $<"

@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import "ControllerInput.h"
 #import "../LauncherPreferences.h"
 #import "../PLProfiles.h"
@@ -32,7 +33,7 @@ BOOL leftShiftHeld;
     }
     
     NSString *controlFile = [PLProfiles resolveKeyForCurrentProfile:@"defaultGamepadCtrl"];
-    NSString *gamepadPath = [NSString stringWithFormat:@"%s/controlmap/gamepads/%@", getenv("POJAV_HOME"), controlFile];
+    NSString *gamepadPath = [NSString stringWithFormat:@"%s/controlmap/gamepads/%@", PocketJGetEnv("POCKETJ_HOME"), controlFile];
     NSMutableDictionary *gamepadJSON = parseJSONFromFile(gamepadPath);
     
     gameMap = gamepadJSON[@"mGameMappingList"];

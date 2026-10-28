@@ -7,13 +7,28 @@
   **掌上 Java，不只是“能启动”。**  
   A modern Minecraft: Java Edition launcher built for iPhone and iPad.
 
-  [![Version](https://img.shields.io/badge/version-v1.4-20c66b?style=for-the-badge)](../../releases)
+  [![Version](https://img.shields.io/badge/version-v1.5-20c66b?style=for-the-badge)](../../releases)
   ![Platform](https://img.shields.io/badge/iOS%20%7C%20iPadOS-14--27-111111?style=for-the-badge&logo=apple&logoColor=white)
   [![License](https://img.shields.io/badge/license-GPL--3.0-7c5cff?style=for-the-badge)](LICENSE)
   ![Languages](https://img.shields.io/badge/UI-简体中文%20%7C%20English-28a8ea?style=for-the-badge)
 
   [简体中文](#-简体中文) · [English](#-english) · [下载 Releases](../../releases) · [反馈问题](../../issues/new/choose)
 </div>
+
+> **PocketJ Launcher v1.5**
+>
+> 本次新增集中在模组管理、资源与世界存档工作流、第三方账户、启动诊断，
+> 以及更明确的版本更新提醒。也整理了 PocketJ 的 Java 启动命名和 26.3 SDL
+> 输入状态同步；既有版本兼容能力沿用 v1.4，不重复算作本次新增。
+>
+> This release focuses on native mod management, resource and world workflows,
+> third-party accounts, startup diagnostics, and clearer update prompts. It also
+> completes the PocketJ Java namespace migration and SDL 26.3 input-state work;
+> compatibility delivered in v1.4 is retained rather than listed as new here.
+>
+> v1.5 本地 Release 包已构建；Minecraft 26.3 菜单点按与更新弹窗仍需实际使用确认。
+> 本次改动、已知边界和复测步骤见[实施记录](IMPLEMENTATION_v1.5.md)与
+> [验证清单 / Testing](V1.5_TESTING.md)。
 
 > [!IMPORTANT]
 > PocketJ Launcher 是社区维护的开源项目，并非 Mojang Studios 或 Microsoft 的官方产品。Minecraft 是 Microsoft Corporation 的商标。
@@ -22,13 +37,21 @@
 
 # 🇨🇳 简体中文
 
+> [!TIP]
+> ## 🧰 不知道去哪里找配对文件？用 PocketJ 配对工具
+> 配对工具支持 macOS、Windows 和 Linux。连接 iPhone 后可生成配对文件，导出到手机后，在 PocketJ「设置 → 运行环境 → JIT → 导入配对文件」中选择它；也可以直接传入 PocketJ。
+>
+> [⬇️ 下载 PocketJ 配对工具 v1.0][pairing-tool-release] · [查看全部 Releases][pairing-tool-releases]
+>
+> 如果工具发布了新版本，优先在配对工具对应的 Release 下载最新版；此处直达链接会随新版本更新，全部 Releases 链接可作为备用入口。
+
 ## 为什么选择 PocketJ？
 
 很多移动端 Java 启动器止步于“把游戏打开”。PocketJ 更想把桌面启动器的完整体验带到 iOS：**在一个原生应用里完成 JIT、实例、Java、模组、整合包、账户、控制与诊断。**
 
 同时，PocketJ 不只关注功能完整性，也持续针对 iOS 环境优化启动流程、资源加载和渲染体验。相比早期移动端 Java 启动方案，PocketJ 在保持兼容性的基础上，对启动链路、运行效率和设备适配进行了大量优化，目标是在 iPhone 和 iPad 上提供更快速、更稳定、更接近桌面体验的 Minecraft Java 运行效果。
 
-它基于 GPL-3.0 项目 [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) 持续开发，并继承了 [PojavLauncher](https://github.com/PojavLauncherTeam) 与 Boardwalk 生态的工作。v1.4 在保留成熟 JVM 与启动内核的基础上，继续完善全世代 Minecraft、在线资源和个性化体验，并补齐现代 Minecraft 26.3 的运行与输入兼容。
+它基于 GPL-3.0 项目 [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) 持续开发，并继承了 [PojavLauncher](https://github.com/PojavLauncherTeam) 与 Boardwalk 生态的工作。v1.5 延续 v1.4 的 Minecraft 版本兼容基础，重点完善原生模组管理、第三方账户、启动诊断和版本更新流程。
 
 ### 📸 查看真实运行截图
 
@@ -75,7 +98,9 @@
 
 </details>
 
-## ✅ v1.4 全版本兼容地图
+## ✅ Minecraft 兼容基线
+
+以下是 v1.4 已建立、v1.5 继续保留的兼容范围，不作为 v1.5 新增亮点。v1.5 另含 SDL3 输入状态修复；26.3 菜单交互仍需设备复测。
 
 | 组合 | 当前定位 |
 |---|---|
@@ -96,13 +121,15 @@
 
 ## ⬇️ 安装
 
-前往 [GitHub Releases](../../releases) 下载：
+前往 [Releases](../../releases) 下载：
 
 | 文件 | 用途 |
 |---|---|
-| `PocketJLauncher-v1.4-iOS.ipa` | AltStore、SideStore 及兼容的 IPA 侧载方式，由安装工具按需签名 |
-| `PocketJLauncher-v1.4-iOS-TrollStore.tipa` | 适用于受支持的 TrollStore 环境 |
+| `PocketJLauncher-v1.5-iOS.ipa` | AltStore、SideStore 及兼容的 IPA 侧载方式，由安装工具按需签名 |
+| `PocketJLauncher-v1.5-iOS-TrollStore.tipa` | 适用于受支持的 TrollStore 环境 |
 | `SHA256SUMS.txt` | 校验下载文件是否完整、是否与发布产物一致 |
+
+自动检查只识别 PocketJ Launcher 稳定版，配对工具版本不会混入；“关于”中的手动检查会实时查询，并遵循跳过/延后例外规则。
 
 > [!WARNING]
 > 普通签名证书不一定包含 Java 所需的 JIT、扩展虚拟地址空间和更高内存 entitlement。安装成功不等于这些能力均已生效。
@@ -176,7 +203,7 @@ NOTICE.md                   修改声明及上游归属
 
 PocketJ Launcher 主项目依据 **GNU GPL v3.0** 发布。项目包含源自 StikDebug 的修改代码，其许可证及归属见 [NOTICE.md](NOTICE.md) 与 [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES/)。分发修改版本或二进制时，请同时履行适用的源代码、版权、许可证及无担保声明义务。
 
-感谢 Amethyst-iOS、PojavLauncher、Boardwalk、StikDebug、Fabric、Quilt、Modrinth 及所有第三方组件贡献者。上游代码版权归各自作者所有。
+感谢 PojavLauncher 上游项目的贡献。其他第三方组件的版权、许可证与必要归属信息按各自要求列于 [NOTICE.md](NOTICE.md) 和 [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES/)；上游代码版权仍归各自作者所有。
 
 Copyright © 2026 Erico.
 
@@ -186,13 +213,21 @@ Copyright © 2026 Erico.
 
 # 🇬🇧🇺🇸 English
 
+> [!TIP]
+> ## 🧰 Need a device pairing file? Use PocketJ Pairing Tool
+> The tool runs on macOS, Windows, and Linux. Connect your iPhone to create a pairing file, export it to your phone, then import it in PocketJ under **Settings → Runtime → JIT → Import Pairing File**. You can also send it directly to PocketJ.
+>
+> [⬇️ Download PocketJ Pairing Tool v1.0][pairing-tool-release] · [Browse all Releases][pairing-tool-releases]
+>
+> When a newer tool version is released, use its Release for the latest download. This direct link will be updated with the next version; the Releases page remains a fallback.
+
 ## Why PocketJ?
 
 Many mobile Java launchers stop at opening the game. PocketJ aims to bring a complete desktop-launcher workflow to iOS: **JIT, instances, Java runtimes, mods, modpacks, accounts, controls, and diagnostics—all inside one native app.**
 
 At the same time, PocketJ focuses not only on feature completeness, but also on improving the iOS Java runtime experience. Compared with earlier mobile Java launcher solutions, PocketJ introduces continuous optimizations across the launch pipeline, resource loading, rendering experience, and device adaptation, aiming to provide a faster, more stable Minecraft Java experience closer to desktop launchers on iPhone and iPad.
 
-PocketJ is developed from the GPL-3.0 licensed [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) project and inherits substantial work from the [PojavLauncher](https://github.com/PojavLauncherTeam) and Boardwalk ecosystems. Version 1.4 keeps the mature JVM and launch core while refining cross-generation Minecraft support, online resources, and personalization in an iOS-first workflow, including modern Minecraft 26.3 runtime and input compatibility.
+PocketJ is developed from the GPL-3.0 licensed [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) project and inherits substantial work from the [PojavLauncher](https://github.com/PojavLauncherTeam) and Boardwalk ecosystems. Version 1.5 retains the Minecraft compatibility baseline from v1.4 and focuses on native mod management, third-party accounts, startup diagnostics, and release updates.
 
 ### 📸 See PocketJ running on real devices
 
@@ -239,7 +274,9 @@ Visit the [screenshot gallery](Example/README.md) to browse iOS 27, iPadOS 18, i
 
 </details>
 
-## ✅ v1.4 full-version compatibility map
+## ✅ Minecraft compatibility baseline
+
+The following compatibility was established in v1.4 and is retained in v1.5; it is not presented as new in this release. v1.5 also includes SDL3 input-state fixes, while 26.3 menu interaction still needs device retesting.
 
 | Combination | Current status |
 |---|---|
@@ -260,13 +297,15 @@ Visit the [screenshot gallery](Example/README.md) to browse iOS 27, iPadOS 18, i
 
 ## ⬇️ Downloads
 
-Get release assets from [GitHub Releases](../../releases):
+Get release assets from [Releases](../../releases):
 
 | File | Purpose |
 |---|---|
-| `PocketJLauncher-v1.4-iOS.ipa` | For AltStore, SideStore, and compatible IPA sideloading methods; the installer signs it as needed |
-| `PocketJLauncher-v1.4-iOS-TrollStore.tipa` | Supported TrollStore environments |
+| `PocketJLauncher-v1.5-iOS.ipa` | For AltStore, SideStore, and compatible IPA sideloading methods; the installer signs it as needed |
+| `PocketJLauncher-v1.5-iOS-TrollStore.tipa` | Supported TrollStore environments |
 | `SHA256SUMS.txt` | Verifies release-file integrity |
+
+Automatic checks select stable PocketJ Launcher releases and exclude pairing-tool versions. Manual checks in About query again and bypass the skip/reminder rules.
 
 > [!WARNING]
 > A signing certificate may install the app without granting JIT, extended virtual address space, or increased-memory entitlements.
@@ -340,8 +379,11 @@ Project home: [github.com/EricoEC/PocketJLauncher](https://github.com/EricoEC/Po
 
 The PocketJ Launcher main project is distributed under **GNU GPL v3.0**. It includes modified StikDebug-derived code; see [NOTICE.md](NOTICE.md) and [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES/) for applicable attribution and license texts. Binary and modified-source distribution must preserve all applicable source, copyright, license, and warranty-notice obligations.
 
-Thanks to Amethyst-iOS, PojavLauncher, Boardwalk, StikDebug, Fabric, Quilt, Modrinth, and every third-party contributor. Copyright in upstream code remains with its respective authors.
+Thanks to the PojavLauncher upstream project. Copyright, license, and required attribution notices for other third-party components are recorded in [NOTICE.md](NOTICE.md) and [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES/); upstream code remains the property of its respective authors.
 
 Copyright © 2026 Erico.
 
 <p align="right"><a href="#pocketj-launcher">⬆️ Back to top</a></p>
+
+[pairing-tool-release]: ../../releases/tag/pairing-tool-v1.0
+[pairing-tool-releases]: ../../releases

@@ -1,6 +1,8 @@
+#include "PocketJEnvironment.h"
 #import "MinecraftResourceDownloadTask.h"
 #import "ModrinthAPI.h"
 #import "PLProfiles.h"
+#import "PocketJArchiveService.h"
 
 @implementation ModrinthAPI
 
@@ -79,13 +81,15 @@
 
 - (void)downloader:(MinecraftResourceDownloadTask *)downloader submitDownloadTasksFromPackage:(NSString *)packagePath toPath:(NSString *)destPath {
     NSError *error;
+    if (![PocketJArchiveService validateArchive:packagePath error:&error]) { [downloader finishDownloadWithErrorString:error.localizedDescription]; return; }
     UZKArchive *archive = [[UZKArchive alloc] initWithPath:packagePath error:&error];
     if (error) {
         [downloader finishDownloadWithErrorString:[NSString stringWithFormat:@"Failed to open modpack package: %@", error.localizedDescription]];
         return;
     }
 
-    NSData *indexData = [archive extractDataFromFile:@"modrinth.index.json" error:&error];
+    NSString *indexPath=self.archiveRootPrefix.length ? [self.archiveRootPrefix stringByAppendingPathComponent:@"modrinth.index.json"]:@"modrinth.index.json";
+    NSData *indexData = [archive extractDataFromFile:indexPath error:&error];
     NSDictionary* indexDict = [NSJSONSerialization JSONObjectWithData:indexData options:kNilOptions error:&error];
     if (error) {
         [downloader finishDownloadWithErrorString:[NSString stringWithFormat:@"Failed to parse modrinth.index.json: %@", error.localizedDescription]];
@@ -93,6 +97,9 @@
     }
 
     for (NSDictionary *indexFile in indexDict[@"files"]) {
+        NSString *relative=indexFile[@"path"];
+        if (![relative isKindOfClass:NSString.class] || [relative hasPrefix:@"/"] || [relative containsString:@"\\"] || [relative.pathComponents containsObject:@".."] || [relative containsString:@":"]) { [downloader finishDownloadWithErrorString:@"Unsafe modpack file path."]; return; }
+        if ([indexFile[@"env"][@"client"] isEqual:@"unsupported"]) continue;
 /*
         if ([indexFile[@"downloads"] count] > 1) {
             [downloader finishDownloadWithErrorString:[NSString stringWithFormat:@"Unhandled multiple files download %@", indexFile[@"downloads"]]];
@@ -111,13 +118,15 @@
         }
     }
 
-    [ModpackUtils archive:archive extractDirectory:@"overrides" toPath:destPath error:&error];
+    NSString *overrides=self.archiveRootPrefix.length ? [self.archiveRootPrefix stringByAppendingPathComponent:@"overrides"]:@"overrides";
+    [ModpackUtils archive:archive extractDirectory:overrides toPath:destPath error:&error];
     if (error) {
         [downloader finishDownloadWithErrorString:[NSString stringWithFormat:@"Failed to extract overrides from modpack package: %@", error.localizedDescription]];
         return;
     }
 
-    [ModpackUtils archive:archive extractDirectory:@"client-overrides" toPath:destPath error:&error];
+    NSString *clientOverrides=self.archiveRootPrefix.length ? [self.archiveRootPrefix stringByAppendingPathComponent:@"client-overrides"]:@"client-overrides";
+    [ModpackUtils archive:archive extractDirectory:clientOverrides toPath:destPath error:&error];
     if (error) {
         [downloader finishDownloadWithErrorString:[NSString stringWithFormat:@"Failed to extract client-overrides from modpack package: %@", error.localizedDescription]];
         return;
@@ -129,7 +138,7 @@
     // Download dependency client json (if available)
     NSDictionary<NSString *, NSString *> *depInfo = [ModpackUtils infoForDependencies:indexDict[@"dependencies"]];
     if (depInfo[@"json"]) {
-        NSString *jsonPath = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("POJAV_GAME_DIR"), depInfo[@"id"]];
+        NSString *jsonPath = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", PocketJGetEnv("POCKETJ_GAME_DIR"), depInfo[@"id"]];
         // Reserve a progress unit immediately. With an unknown size the task
         // would otherwise be attached only after its response arrives, leaving
         // a small window where the whole modpack appears complete too early.

@@ -1,8 +1,11 @@
+#include "PocketJEnvironment.h"
 #import "PLLogOutputView.h"
 #import <MessageUI/MessageUI.h>
 #import "SurfaceViewController.h"
 #import "ModernUITheme.h"
 #import "utils.h"
+#import "PocketJCrashDiagnostics.h"
+#import "PocketJGameStartup.h"
 
 @interface PLLogOutputView()<UITableViewDataSource, UITableViewDelegate, MFMailComposeViewControllerDelegate>
 @property(nonatomic) UITableView* logTableView;
@@ -21,9 +24,8 @@ static PLLogOutputView* current;
     self.navController = [[UINavigationController alloc] initWithRootViewController:vc];
     self.navigationBar = self.navController.navigationBar;
     
-    frame.origin.y = frame.size.height;
+    frame.origin = CGPointZero;
     self = [super initWithFrame:frame];
-    frame.origin.y = 0;
 
     logLines = [NSMutableArray new];
     self.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
@@ -112,7 +114,7 @@ static PLLogOutputView* current;
 }
 
 - (NSString *)latestLogPath {
-    return [NSString stringWithFormat:@"%s/latestlog.txt", getenv("POJAV_HOME")];
+    return [NSString stringWithFormat:@"%s/latestlog.txt", PocketJGetEnv("POCKETJ_HOME")];
 }
 
 - (void)actionSubmitIssue {
@@ -203,8 +205,22 @@ static PLLogOutputView* current;
     [self.logTableView reloadData];
 }
 
+- (void)actionShowStartupLog {
+    if (fatalErrorOccurred) return;
+    if (!canAppendToLog) {
+        NSString *tail = [PocketJCrashDiagnostics tailAtPath:self.latestLogPath limit:64 * 1024];
+        [logLines removeAllObjects];
+        for (NSString *line in [tail componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet]) {
+            if (line.length) [logLines addObject:line];
+        }
+        [self.logTableView reloadData];
+        [self actionStartStopLogOutput];
+    }
+    if (self.navController.view.hidden) [self actionToggleLogOutput];
+}
+
 - (void)actionShareLatestlog {
-    NSString *latestlogPath = [NSString stringWithFormat:@"file://%s/latestlog.txt", getenv("POJAV_HOME")];
+    NSString *latestlogPath = [NSString stringWithFormat:@"file://%s/latestlog.txt", PocketJGetEnv("POCKETJ_HOME")];
     UIActivityViewController *activityVC = [[UIActivityViewController alloc] initWithActivityItems:@[@"latestlog.txt",
         [NSURL URLWithString:latestlogPath]] applicationActivities:nil];
     activityVC.popoverPresentationController.sourceView = self.navigationBar;
@@ -228,15 +244,20 @@ static PLLogOutputView* current;
         return;
     }
 
-    UIViewAnimationOptions opt = self.navController.view.hidden ? UIViewAnimationOptionCurveEaseOut : UIViewAnimationOptionCurveEaseIn;
-    [UIView transitionWithView:self duration:0.4 options:UIViewAnimationOptionCurveEaseOut animations:^(void){
-        CGRect frame = self.frame;
-        frame.origin.y = self.navController.view.hidden ? 0 : frame.size.height;
-        self.navController.view.hidden = NO;
-        self.frame = frame;
-    } completion: ^(BOOL finished) {
-        self.navController.view.hidden = self.frame.origin.y != 0;
-    }];
+    // The navigation controller owns its root view's frame. UIKit may reset
+    // that frame during log updates/layout, so never infer visibility from it.
+    UIView *container = self.navController.view;
+    BOOL show = container.hidden;
+    [container.layer removeAllAnimations];
+    container.hidden = !show;
+    container.alpha = 1;
+    if (show) {
+        container.alpha = 0;
+        [UIView animateWithDuration:0.2 delay:0
+                            options:UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{ container.alpha = 1; }
+                         completion:nil];
+    }
 }
 
 + (void)_appendToLog:(NSString *)line {
@@ -270,7 +291,10 @@ static PLLogOutputView* current;
 }
 
 + (BOOL)handleExitCode:(int)code {
+    if (code==0) return NO;
     if (!current) return NO;
+    PJStartupSnapshot startup = PocketJGameStartupSnapshot();
+    PocketJGameStartupFinish(startup.session, code);
     dispatch_async(dispatch_get_main_queue(), ^(void){
         if (current.navController.view.hidden) {
             [current actionToggleLogOutput];
@@ -307,9 +331,8 @@ static PLLogOutputView* current;
         }
         [current actionClearLogOutput];
         [self _appendToLog:@"... (latestlog.txt)"];
-        NSString *latestlogPath = [NSString stringWithFormat:@"%s/latestlog.txt", getenv("POJAV_HOME")];
-        NSString *linesStr = [NSString stringWithContentsOfFile:latestlogPath
-            encoding:NSUTF8StringEncoding error:nil];
+        NSString *latestlogPath = [NSString stringWithFormat:@"%s/latestlog.txt", PocketJGetEnv("POCKETJ_HOME")];
+        NSString *linesStr = [PocketJCrashDiagnostics tailAtPath:latestlogPath limit:512*1024];
         NSArray *lines = [linesStr componentsSeparatedByCharactersInSet:
             NSCharacterSet.newlineCharacterSet];
 
@@ -317,6 +340,11 @@ static PLLogOutputView* current;
         for (int i = (lines.count > 100) ? lines.count - 100 : 0; i < lines.count; i++) {
             [self _appendToLog:lines[i]];
         }
+
+        NSDictionary *diagnosis=[PocketJCrashDiagnostics analyze:linesStr];
+        [self _appendToLog:@"----------------"];
+        [self _appendToLog:localize(diagnosis[@"title"],nil)];
+        [self _appendToLog:localize(diagnosis[@"hint"],nil)];
 
         fatalErrorOccurred = YES;
     });

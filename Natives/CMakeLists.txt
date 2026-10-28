@@ -101,11 +101,15 @@ add_library(lwjgl341compat SHARED
 target_link_libraries(lwjgl341compat)
 
 # PocketJ Launcher
+add_library(proxy_server_ios SHARED touchcontroller/PocketJTouchTransport.c)
+
 add_executable(PocketJLauncher
   dyld_bypass_validation.m
   dyld_patch_platform.m
   main.m
   main_hook.m
+  PocketJEnvironment.c
+  PocketJLegacyRenderAliases.m
   JavaLauncher.m
   external/fishhook/fishhook.c
   UIKit+hook.m
@@ -113,6 +117,8 @@ add_executable(PocketJLauncher
   authenticator/BaseAuthenticator.m
   authenticator/LocalAuthenticator.m
   authenticator/MicrosoftAuthenticator.m
+  authenticator/YggdrasilAuthenticator.m
+  authenticator/PocketJAccountIdentity.m
 
   ctxbridges/gl_bridge.m
   ctxbridges/osm_bridge.m
@@ -152,6 +158,8 @@ add_executable(PocketJLauncher
   DownloadProgressViewController.m
   FileListViewController.m
   GameSurfaceView.m
+  PocketJGameStartup.c
+  PocketJStartupOverlay.m
   JavaGUIViewController.m
   LauncherMenuViewController.m
   LauncherNavigationController.m
@@ -167,11 +175,20 @@ add_executable(PocketJLauncher
   MinecraftResourceDownloadTask.m
   MinecraftResourceUtils.m
   ModManagerViewController.m
+  PocketJModStore.m
+  PocketJDownloadClient.m
+  PocketJAddonService.m
+  PocketJInstanceContext.m
+  PocketJArchiveService.m
+  PocketJCrashDiagnostics.m
+  PocketJModSearchIndex.m
+  touchcontroller/PocketJTouchController.m
     ModernRootTabBarController.m
     ModernLaunchViewController.m
     ModernSettingsViewController.m
   ModernUITheme.m
   PocketJUpdateChecker.m
+  PocketJUpdatePrompt.m
   PocketJBackgroundManager.m
   PocketJBackgroundSettingsViewController.m
   PocketJResourceLibraryViewController.m
@@ -203,6 +220,7 @@ endif()
 
 target_link_libraries(PocketJLauncher
   PUBLIC AFNetworking
+  proxy_server_ios
   lzma
   "-F'${CMAKE_CURRENT_LIST_DIR}/build'"
   "-F'${CMAKE_CURRENT_LIST_DIR}/resources/Frameworks'"
@@ -232,3 +250,8 @@ set_target_properties(PocketJLauncher PROPERTIES
   MACOSX_BUNDLE TRUE
   MACOSX_FRAMEWORK_IDENTIFIER org.cmake.ExecutableTarget
   MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/Info.plist")
+
+# Java 25 libjli locates the host entry point through dlsym(RTLD_DEFAULT,
+# "main"). Export it on the actual native executable, not the Xcode wrapper.
+# Keep dynamic exports available (including callbacks discovered with dlsym).
+target_link_options(PocketJLauncher PRIVATE "-Wl,-export_dynamic" "-Wl,-u,_main")

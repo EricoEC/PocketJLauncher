@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import "AFNetworking.h"
 #import "ForgeInstallViewController.h"
 #import "LauncherNavigationController.h"
@@ -870,7 +871,7 @@ static LauncherNavigationController *PocketJLauncherNavigationController(UIViewC
             }
             NSArray *beforeVersions = [NSFileManager.defaultManager
                 contentsOfDirectoryAtPath:[NSString stringWithFormat:
-                    @"%s/versions", getenv("POJAV_GAME_DIR")] error:nil] ?: @[];
+                    @"%s/versions", PocketJGetEnv("POCKETJ_GAME_DIR")] error:nil] ?: @[];
             NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
             [defaults setObject:self.targetInstanceName ?: @""
                          forKey:@"PocketJPendingLoaderInstance"];

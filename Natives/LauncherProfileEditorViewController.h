@@ -3,7 +3,7 @@
 
 @interface LauncherProfileEditorViewController : PLPrefTableViewController
 @property(nonatomic) NSMutableDictionary* profile;
-/// The directory name under POJAV_HOME/instances. It is the canonical,
+/// The directory name under POCKETJ_HOME/instances. It is the canonical,
 /// read-only instance name shown by the editor.
 @property(nonatomic, copy) NSString *instanceName;
 @property(nonatomic, copy) BOOL (^renameInstance)(

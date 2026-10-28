@@ -14,3 +14,5 @@ void UIKit_returnToSplitView();
 void launchInitialViewController(UIWindow *window);
 
 void AWTInputBridge_sendKey(int keycode);
+void PocketJRegisterSDLWindow(void *window);
+void PocketJRefreshSDLGrabState(void);

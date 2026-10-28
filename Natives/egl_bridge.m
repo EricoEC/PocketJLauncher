@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import "SurfaceViewController.h"
 
 #include "jni.h"
@@ -16,9 +17,11 @@
 
 #include "glfw_keycodes.h"
 #include "ctxbridges/bridge_tbl.h"
+#include "PocketJRenderBridge.h"
 #include "ctxbridges/osmesa_internal.h"
 #include "utils.h"
 #include "ZinkConfig.h"
+#include "PocketJGameStartup.h"
 
 int clientAPI;
 
@@ -32,34 +35,36 @@ void JNI_LWJGL_changeRenderer(const char* value_c) {
     (*env)->CallStaticObjectMethod(env, clazz, method, key, value);
 }
 
-void pojavTerminate() {
+void pocketjTerminate() {
     CallbackBridge_nativeSetInputReady(NO);
     if (!br_terminate) return;
     br_terminate();
 }
 
-void* pojavGetCurrentContext() {
+void* pocketjGetCurrentContext() {
     return br_get_current();
 }
 
-int pojavInit(BOOL useStackQueue) {
+int pocketjInit(BOOL useStackQueue) {
     clientAPI = GLFW_OPENGL_API;
     isInputReady = 1;
     isUseStackQueueCall = useStackQueue;
     return JNI_TRUE;
 }
 
-int pojavInitOpenGL() {
-    NSString *renderer = NSProcessInfo.processInfo.environment[@"POJAV_RENDERER"];
+int pocketjInitOpenGL() {
+    const char *rendererValue = PocketJGetEnv("POCKETJ_RENDERER");
+    NSString *renderer = rendererValue ? @(rendererValue) : nil;
+    PocketJGameStartupRendering(![renderer hasPrefix:@"libOSMesa"]);
     BOOL isAuto = [renderer isEqualToString:@"auto"];
     if (isAuto || [renderer isEqualToString:@ RENDERER_NAME_GL4ES]) {
         // At this point, if renderer is still auto (unspecified major version), pick gl4es
         renderer = @ RENDERER_NAME_GL4ES;
-        setenv("POJAV_RENDERER", renderer.UTF8String, 1);
+        PocketJSetEnv("POCKETJ_RENDERER", renderer.UTF8String, 1);
         set_gl_bridge_tbl();
     } else if ([renderer isEqualToString:@ RENDERER_NAME_MOBILEGLUES]) {
         renderer = @ RENDERER_NAME_MOBILEGLUES;
-        setenv("POJAV_RENDERER", renderer.UTF8String, 1);
+        PocketJSetEnv("POCKETJ_RENDERER", renderer.UTF8String, 1);
         set_gl_bridge_tbl();
     } else if ([renderer isEqualToString:@ RENDERER_NAME_MTL_ANGLE]) {
         set_gl_bridge_tbl();
@@ -84,34 +89,34 @@ int pojavInitOpenGL() {
     //return 0;
 }
 
-void pojavSetWindowHint(int hint, int value) {
+void pocketjSetWindowHint(int hint, int value) {
     if (hint == GLFW_CLIENT_API) {
         clientAPI = value;
-    } else if (strcmp(getenv("POJAV_RENDERER"), "auto")==0 && hint == GLFW_CONTEXT_VERSION_MAJOR) {
+    } else if (strcmp(PocketJGetEnv("POCKETJ_RENDERER"), "auto")==0 && hint == GLFW_CONTEXT_VERSION_MAJOR) {
         switch (value) {
             case 1:
             case 2:
-                setenv("POJAV_RENDERER", RENDERER_NAME_GL4ES, 1);
+                PocketJSetEnv("POCKETJ_RENDERER", RENDERER_NAME_GL4ES, 1);
                 JNI_LWJGL_changeRenderer(RENDERER_NAME_GL4ES);
                 break;
             // case 4: use Zink?
             default:
-                setenv("POJAV_RENDERER", RENDERER_NAME_MOBILEGLUES, 1);
+                PocketJSetEnv("POCKETJ_RENDERER", RENDERER_NAME_MOBILEGLUES, 1);
                 JNI_LWJGL_changeRenderer(RENDERER_NAME_MOBILEGLUES);
                 break;
         }
     }
 }
 
-void pojavSwapBuffers() {
+void pocketjSwapBuffers() {
     br_swap_buffers();
 }
 
-void pojavMakeCurrent(basic_render_window_t* window) {
+void pocketjMakeCurrent(basic_render_window_t* window) {
     br_make_current(window);
 }
 
-void* pojavCreateContext(basic_render_window_t* contextSrc) {
+void* pocketjCreateContext(basic_render_window_t* contextSrc) {
     if (clientAPI == GLFW_NO_API) {
         // Game has selected Vulkan API to render
         return (__bridge void *)SurfaceViewController.surface.layer;
@@ -120,13 +125,13 @@ void* pojavCreateContext(basic_render_window_t* contextSrc) {
     static BOOL inited = NO;
     if (!inited) {
         inited = YES;
-        pojavInitOpenGL();
+        pocketjInitOpenGL();
     }
 
     return br_init_context(contextSrc);
 }
 
-void pojavSwapInterval(int interval) {
+void pocketjSwapInterval(int interval) {
     if (!br_swap_interval) return;
     br_swap_interval(interval);
 }

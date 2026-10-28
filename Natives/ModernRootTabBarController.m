@@ -8,10 +8,49 @@
 #import "ModernSettingsViewController.h"
 #import "ModernUITheme.h"
 #import "PocketJUpdateChecker.h"
+#import "PocketJUpdatePrompt.h"
 #import "stikdebug/StikDebugViewController.h"
 #import "utils.h"
 
+@interface ModernRootTabBarController ()
+@property(nonatomic) BOOL pendingAutomaticUpdatePrompt;
+@property(nonatomic) NSString *automaticallyPromptedTag;
+@end
+
 @implementation ModernRootTabBarController
+
+- (void)updateCheckFinished:(NSNotification *)notification {
+    if (![notification.userInfo[@"checkFinished"] boolValue] || [notification.userInfo[@"manual"] boolValue]) return;
+    self.pendingAutomaticUpdatePrompt = YES;
+    [self presentPendingAutomaticUpdate];
+}
+
+- (void)presentPendingAutomaticUpdate {
+    if (!self.pendingAutomaticUpdatePrompt || !self.viewIfLoaded.window ||
+        UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
+    self.pendingAutomaticUpdatePrompt = NO;
+    NSDictionary *release = PocketJUpdateChecker.shared.availableRelease;
+    NSString *tag = release[@"tag_name"];
+    if (!tag || [tag isEqual:self.automaticallyPromptedTag]) return;
+    if ([PocketJUpdateChecker.shared shouldPromptForRelease:release manual:NO]) {
+        self.automaticallyPromptedTag = tag;
+        [PocketJUpdatePrompt showRelease:release from:self manual:NO];
+    }
+}
+
+- (void)launcherDidBecomeActive:(NSNotification *)notification {
+    if (!self.viewIfLoaded.window) return; // Do not start launcher network checks over a running game.
+    self.automaticallyPromptedTag = nil;
+    [PocketJUpdateChecker.shared checkForUpdates];
+    [self presentPendingAutomaticUpdate];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    [self presentPendingAutomaticUpdate];
+}
+
+- (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; }
 
 - (void)openJITSettingsWithConfigurationPrompt:(BOOL)showPrompt {
     if (self.viewControllers.count < 5) return;
@@ -66,6 +105,10 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     [ModernUITheme applyGlobalAppearance];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateCheckFinished:)
+        name:PocketJUpdateAvailabilityDidChangeNotification object:PocketJUpdateChecker.shared];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(launcherDidBecomeActive:)
+        name:UIApplicationDidBecomeActiveNotification object:nil];
     // Check once when the launcher UI is created, even if Settings is never opened.
     [PocketJUpdateChecker.shared checkForUpdates];
 

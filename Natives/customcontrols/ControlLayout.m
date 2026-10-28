@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import "ControlButton.h"
 #import "ControlLayout.h"
 #import "ControlSubButton.h"
@@ -24,7 +25,7 @@
 - (void)loadControlFile:(NSString *)name {
     [self removeAllButtons];
 
-    NSString *controlFilePath = [NSString stringWithFormat:@"%s/controlmap/%@", getenv("POJAV_HOME"), name];
+    NSString *controlFilePath = [NSString stringWithFormat:@"%s/controlmap/%@", PocketJGetEnv("POCKETJ_HOME"), name];
 
     self.layoutDictionary = parseJSONFromFile(controlFilePath);
     if (self.layoutDictionary[@"NSErrorObject"] != nil) {

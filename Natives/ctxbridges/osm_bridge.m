@@ -1,5 +1,7 @@
+#include "PocketJEnvironment.h"
 #import <Foundation/Foundation.h>
 #import "SurfaceViewController.h"
+#import "PocketJGameStartup.h"
 
 #include <dlfcn.h>
 #include "environ.h"
@@ -12,7 +14,7 @@
 static osmesa_library handle;
 
 void dlsym_OSMesa() {
-    void* dl_handle = dlopen([NSString stringWithFormat:@"@rpath/%s", getenv("POJAV_RENDERER")].UTF8String, RTLD_GLOBAL);
+    void* dl_handle = dlopen([NSString stringWithFormat:@"@rpath/%s", PocketJGetEnv("POCKETJ_RENDERER")].UTF8String, RTLD_GLOBAL);
     NSCAssert(dl_handle, @(dlerror()));
     handle.OSMesaMakeCurrent = dlsym(dl_handle,"OSMesaMakeCurrent");
     handle.OSMesaGetCurrentContext = dlsym(dl_handle,"OSMesaGetCurrentContext");
@@ -78,10 +80,12 @@ void osm_swap_buffers() {
     osm_apply_current_ll();
     handle.glFinish(); // this will force osmesa to write the last rendered image into the buffer
     osm_render_window_t bundle = currentBundle->osm;
+    uint64_t session = PocketJGameStartupSnapshot().session;
     dispatch_async(dispatch_get_main_queue(), ^{
     CGDataProviderRef bitmapProvider = CGDataProviderCreateWithData(NULL, bundle.buffer, windowWidth * windowHeight * 4, NULL);
     CGImageRef bitmap = CGImageCreate(windowWidth, windowHeight, 8, 32, 4 * windowWidth, bundle.color_space, kCGImageAlphaNoneSkipLast | kCGBitmapByteOrderDefault, bitmapProvider, NULL, FALSE, kCGRenderingIntentDefault);
     SurfaceViewController.surface.layer.contents = (__bridge id)bitmap;
+    if (bitmap) PocketJGameStartupPresented(session);
     CGImageRelease(bitmap);
     CGDataProviderRelease(bitmapProvider);
     });

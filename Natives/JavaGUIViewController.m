@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import "customcontrols/ControlLayout.h"
 #import "customcontrols/CustomControlsUtils.h"
 #import "JavaGUIViewController.h"
@@ -313,7 +314,7 @@ void AWTInputBridge_sendKey(int keycode) {
         [self.closeButton.heightAnchor constraintEqualToConstant:44.0]
     ]];
 
-    setenv("POJAV_SKIP_JNI_GLFW", "1", 1);
+    PocketJSetEnv("POCKETJ_SKIP_JNI_GLFW", "1", 1);
  
     // Register the display loop
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{

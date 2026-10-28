@@ -13,6 +13,7 @@ typedef void(^Callback)(id status, BOOL success);
 + (NSDictionary *)tokenDataOfProfile:(NSString *)profile;
 
 - (id)initWithInput:(NSString *)string;
+- (id)initWithData:(NSMutableDictionary *)data;
 - (void)loginWithCallback:(Callback)callback;
 - (void)refreshTokenWithCallback:(Callback)callback;
 - (BOOL)saveChanges;

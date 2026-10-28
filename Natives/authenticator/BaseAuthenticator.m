@@ -1,8 +1,11 @@
+#include "PocketJEnvironment.h"
 #import <Security/Security.h>
 #import "BaseAuthenticator.h"
 #import "../LauncherPreferences.h"
 #import "../ios_uikit_bridge.h"
 #import "../utils.h"
+#import "YggdrasilAuthenticator.h"
+#import "PocketJAccountIdentity.h"
 
 @implementation BaseAuthenticator
 
@@ -18,25 +21,12 @@ static BaseAuthenticator *current = nil;
 + (void)setCurrent:(BaseAuthenticator *)auth {
     current = auth;
 }
++ (NSDictionary *)tokenDataOfProfile:(NSString *)profile {
+    return [profile hasPrefix:@"yggdrasil__"] ? [YggdrasilAuthenticator tokenDataOfProfile:profile]:[MicrosoftAuthenticator tokenDataOfProfile:profile];
+}
 
 + (NSString *)storageKeyForAuthData:(NSDictionary *)authData {
-    BOOL isMicrosoft =
-        [authData[@"expiresAt"] longLongValue] > 0 ||
-        [authData[@"xuid"] length] > 0 ||
-        [authData[@"xboxGamertag"] length] > 0;
-    NSString *type = isMicrosoft ? @"microsoft" : @"local";
-    NSString *identity = isMicrosoft
-        ? (authData[@"xuid"] ?: authData[@"profileId"] ?: authData[@"username"])
-        : authData[@"username"];
-    if (identity.length == 0) {
-        identity = NSUUID.UUID.UUIDString;
-    }
-    NSCharacterSet *unsafe =
-        [[NSCharacterSet alphanumericCharacterSet] invertedSet];
-    NSString *safeIdentity =
-        [[identity componentsSeparatedByCharactersInSet:unsafe]
-            componentsJoinedByString:@"-"];
-    return [NSString stringWithFormat:@"%@__%@", type, safeIdentity];
+    return [PocketJAccountIdentity storageKey:authData];
 }
 
 + (id)loadSavedName:(NSString *)name {
@@ -44,7 +34,7 @@ static BaseAuthenticator *current = nil;
         return nil;
     }
     NSString *path = [NSString
-        stringWithFormat:@"%s/accounts/%@.json", getenv("POJAV_HOME"), name];
+        stringWithFormat:@"%s/accounts/%@.json", PocketJGetEnv("POCKETJ_HOME"), name];
     NSMutableDictionary *authData = parseJSONFromFile(path);
     if (authData[@"NSErrorObject"] != nil) {
         NSError *error = ((NSError *)authData[@"NSErrorObject"]);
@@ -56,7 +46,8 @@ static BaseAuthenticator *current = nil;
 
     NSString *storageKey = [self storageKeyForAuthData:authData];
     BOOL isMicrosoft = [storageKey hasPrefix:@"microsoft__"];
-    authData[@"accountType"] = isMicrosoft ? @"microsoft" : @"local";
+    BOOL isYggdrasil=[storageKey hasPrefix:@"yggdrasil__"];
+    authData[@"accountType"] = isYggdrasil ? @"yggdrasil" : (isMicrosoft ? @"microsoft" : @"local");
     authData[@"storageKey"] = storageKey;
 
     // Migrate legacy username-based files to the stable identity key. Once the
@@ -65,7 +56,7 @@ static BaseAuthenticator *current = nil;
     if (![name isEqualToString:storageKey]) {
         NSString *migratedPath = [NSString
             stringWithFormat:@"%s/accounts/%@.json",
-            getenv("POJAV_HOME"), storageKey];
+            PocketJGetEnv("POCKETJ_HOME"), storageKey];
         NSError *migrationError = nil;
         if (![NSFileManager.defaultManager fileExistsAtPath:migratedPath]) {
             migrationError = saveJSONToFile(authData, migratedPath);
@@ -78,6 +69,7 @@ static BaseAuthenticator *current = nil;
         }
     }
 
+    if (isYggdrasil) return [[YggdrasilAuthenticator alloc] initWithData:authData];
     return isMicrosoft
         ? [[MicrosoftAuthenticator alloc] initWithData:authData]
         : [[LocalAuthenticator alloc] initWithData:authData];
@@ -110,11 +102,11 @@ static BaseAuthenticator *current = nil;
         [BaseAuthenticator storageKeyForAuthData:self.authData];
     BOOL isMicrosoft = [storageKey hasPrefix:@"microsoft__"];
     self.authData[@"accountType"] =
-        isMicrosoft ? @"microsoft" : @"local";
+        [storageKey hasPrefix:@"yggdrasil__"] ? @"yggdrasil" : (isMicrosoft ? @"microsoft" : @"local");
     self.authData[@"storageKey"] = storageKey;
     NSString *newPath = [NSString
         stringWithFormat:@"%s/accounts/%@.json",
-        getenv("POJAV_HOME"), storageKey];
+        PocketJGetEnv("POCKETJ_HOME"), storageKey];
     NSString *oldUsername = self.authData[@"oldusername"];
     NSMutableDictionary *persistedAuthData = self.authData.mutableCopy;
     [persistedAuthData removeObjectForKey:@"oldusername"];
@@ -138,6 +130,7 @@ static BaseAuthenticator *current = nil;
             NSString *candidatePath =
                 [accountsPath stringByAppendingPathComponent:file];
             NSDictionary *candidate = parseJSONFromFile(candidatePath);
+            if ([candidate[@"accountType"] isEqual:@"yggdrasil"]) continue;
             BOOL candidateIsMicrosoft =
                 [candidate[@"accountType"] isEqualToString:@"microsoft"] ||
                 [candidate[@"expiresAt"] longLongValue] > 0 ||

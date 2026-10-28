@@ -25,5 +25,6 @@
 
 - (void)downloadVersion:(NSDictionary *)version;
 - (void)downloadModpackFromAPI:(ModpackAPI *)api detail:(NSDictionary *)modDetail atIndex:(NSUInteger)selectedVersion;
+- (void)installLocalModpackFromAPI:(ModpackAPI *)api package:(NSString *)package;
 
 @end

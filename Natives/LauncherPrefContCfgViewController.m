@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -33,6 +34,8 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 @property(nonatomic) BOOL importingKeyLayout;
 @property(nonatomic) NSArray<NSString *> *keyLayoutFiles;
 @property(nonatomic) NSInteger selectedControlMode;
+@property(nonatomic) UISegmentedControl *controlModeSelector;
+@property(nonatomic) UIFont *controlModeFont;
 
 @end
 
@@ -72,11 +75,13 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 }
 
 - (void)installControlModeSelector {
-    UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 1, 64)];
+    UIView *container = [[UIView alloc] initWithFrame:
+        CGRectMake(0, 0, MAX(CGRectGetWidth(self.tableView.bounds), 320), 64)];
     UISegmentedControl *selector = [[UISegmentedControl alloc]
         initWithItems:@[localize(@"触控键位", nil), localize(@"手柄键位", nil)]];
     selector.translatesAutoresizingMaskIntoConstraints = NO;
     selector.selectedSegmentIndex = self.selectedControlMode;
+    self.controlModeSelector = selector;
     selector.selectedSegmentTintColor = ModernUITheme.accentColor;
     [selector setTitleTextAttributes:@{NSForegroundColorAttributeName: UIColor.whiteColor}
                             forState:UIControlStateSelected];
@@ -86,13 +91,43 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
     [NSLayoutConstraint activateConstraints:@[
         [selector.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:16],
         [selector.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-16],
-        [selector.centerYAnchor constraintEqualToAnchor:container.centerYAnchor],
-        [selector.heightAnchor constraintEqualToConstant:36],
+        [selector.topAnchor constraintEqualToAnchor:container.topAnchor constant:14],
+        [selector.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-14],
+        [selector.heightAnchor constraintGreaterThanOrEqualToConstant:36],
     ]];
     self.tableView.tableHeaderView = container;
 }
 
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    UIView *header = self.tableView.tableHeaderView;
+    if (!header) return;
+    // tableHeaderView is frame-sized by UIKit, not by its internal constraints.
+    // Refit only when needed so rotation / Dynamic Type do not cause reload loops.
+    UIFont *font = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
+    if (![self.controlModeFont isEqual:font]) {
+        self.controlModeFont = font;
+        [self.controlModeSelector setTitleTextAttributes:@{NSFontAttributeName: font}
+                                               forState:UIControlStateNormal];
+        [self.controlModeSelector setTitleTextAttributes:@{
+            NSFontAttributeName: font,
+            NSForegroundColorAttributeName: UIColor.whiteColor
+        } forState:UIControlStateSelected];
+    }
+    CGFloat width = CGRectGetWidth(self.tableView.bounds);
+    if (width <= 0) return;
+    CGFloat height = ceil([header systemLayoutSizeFittingSize:CGSizeMake(width, 0)
+        withHorizontalFittingPriority:UILayoutPriorityRequired
+        verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height);
+    if (fabs(CGRectGetWidth(header.frame) - width) > 0.5 ||
+        fabs(CGRectGetHeight(header.frame) - height) > 0.5) {
+        header.frame = CGRectMake(0, 0, width, height);
+        self.tableView.tableHeaderView = header;
+    }
+}
+
 - (void)controlModeDidChange:(UISegmentedControl *)sender {
+    [self.view endEditing:YES];
     self.selectedControlMode = sender.selectedSegmentIndex;
     // A mode switch replaces the table contents atomically. Avoid animated
     // section insert/delete combinations that caused the old UI to jump.
@@ -100,11 +135,12 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
         [self.tableView reloadData];
         [self.tableView layoutIfNeeded];
     }];
-    [self.tableView setContentOffset:CGPointZero animated:NO];
+    [self.tableView setContentOffset:CGPointMake(0, -self.tableView.adjustedContentInset.top)
+                          animated:NO];
 }
 
 - (void)loadGamepadConfigurationFile {
-    NSString *gamepadPath = [NSString stringWithFormat:@"%s/controlmap/gamepads/%@", getenv("POJAV_HOME"), getPrefObject(@"control.default_gamepad_ctrl")];
+    NSString *gamepadPath = [NSString stringWithFormat:@"%s/controlmap/gamepads/%@", PocketJGetEnv("POCKETJ_HOME"), getPrefObject(@"control.default_gamepad_ctrl")];
     self.currentMappings = parseJSONFromFile(gamepadPath);
     self.currentFileName = [getPrefObject(@"control.default_ctrl") stringByDeletingPathExtension];
     NSPredicate *filterPredicate = [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *dict) {
@@ -123,7 +159,7 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 
 - (void)reloadKeyLayoutFiles {
     NSString *path =
-        [NSString stringWithFormat:@"%s/controlmap", getenv("POJAV_HOME")];
+        [NSString stringWithFormat:@"%s/controlmap", PocketJGetEnv("POCKETJ_HOME")];
     NSMutableArray<NSString *> *files = [NSMutableArray array];
     for (NSString *file in
             [NSFileManager.defaultManager contentsOfDirectoryAtPath:path
@@ -179,6 +215,7 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellID];
     if (cell == nil) {
         cell = [[UITableViewCell alloc] initWithStyle:cellStyle reuseIdentifier:cellID];
+        cell.textLabel.numberOfLines = 0;
         cell.detailTextLabel.numberOfLines = 0;
         cell.detailTextLabel.lineBreakMode = NSLineBreakByWordWrapping;
         cell.selectionStyle = UITableViewCellSelectionStyleGray;
@@ -275,7 +312,11 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     if (section == 0) {
-        return localize(@"开启后，手指从屏幕任意位置滑入按键即可触发；滑过按键间隙不会中断，滑入方向键夹角时可同时触发两个方向。", nil);
+        // A collapsed section must not provide text: UIKit can still render it
+        // outside a near-zero-height footer, over the mode selector above it.
+        return self.selectedControlMode == 0
+            ? localize(@"开启后，手指从屏幕任意位置滑入按键即可触发；滑过按键间隙不会中断，滑入方向键夹角时可同时触发两个方向。", nil)
+            : nil;
     }
     if (self.selectedControlMode != 1) return nil;
     NSString *key = [NSString stringWithFormat:@"controller_configurator.section.footer.%@", self.prefSections[section]];
@@ -284,9 +325,13 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
-    if ((section == 0 && self.selectedControlMode != 0) ||
-        (section > 0 && self.selectedControlMode != 1)) return 0.01;
-    return UITableViewAutomaticDimension;
+    return [self tableView:tableView titleForFooterInSection:section].length
+        ? UITableViewAutomaticDimension : 0.01;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView estimatedHeightForFooterInSection:(NSInteger)section {
+    return [self tableView:tableView titleForFooterInSection:section].length
+        ? UITableViewAutomaticDimension : 0.01;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -344,7 +389,7 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
     if (fileName.length == 0) {
         fileName = @"default.json";
     }
-    return [NSString stringWithFormat:@"%s/controlmap/%@", getenv("POJAV_HOME"), fileName];
+    return [NSString stringWithFormat:@"%s/controlmap/%@", PocketJGetEnv("POCKETJ_HOME"), fileName];
 }
 
 - (void)exportKeyLayout {
@@ -406,7 +451,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
         fileName = [fileName stringByAppendingPathExtension:@"json"];
     }
     NSString *controlMapDirectory =
-        [NSString stringWithFormat:@"%s/controlmap", getenv("POJAV_HOME")];
+        [NSString stringWithFormat:@"%s/controlmap", PocketJGetEnv("POCKETJ_HOME")];
     [NSFileManager.defaultManager createDirectoryAtPath:controlMapDirectory
                             withIntermediateDirectories:YES
                                              attributes:nil
@@ -456,7 +501,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
 
     NSString *fileName = self.keyLayoutFiles[indexPath.row - 1];
     NSString *path = [NSString stringWithFormat:
-        @"%s/controlmap/%@", getenv("POJAV_HOME"), fileName];
+        @"%s/controlmap/%@", PocketJGetEnv("POCKETJ_HOME"), fileName];
     NSError *error = nil;
     if (![NSFileManager.defaultManager removeItemAtPath:path error:&error]) {
         showDialog(localize(@"无法删除键位", nil), error.localizedDescription);
@@ -531,7 +576,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
 
 - (void)actionOpenFilePicker:(void (^)(NSString *name))handler {
     FileListViewController *vc = [[FileListViewController alloc] init];
-    vc.listPath = [NSString stringWithFormat:@"%s/controlmap/gamepads", getenv("POJAV_HOME")];
+    vc.listPath = [NSString stringWithFormat:@"%s/controlmap/gamepads", PocketJGetEnv("POCKETJ_HOME")];
     
     vc.whenItemSelected = handler;
     vc.modalPresentationStyle = UIModalPresentationPopover;
@@ -574,7 +619,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
             showDialog(localize(@"custom_controls.control_menu.save.error.json", nil), error.localizedDescription);
             return;
         }
-        BOOL success = [jsonData writeToFile:[NSString stringWithFormat:@"%s/controlmap/gamepads/%@.json", getenv("POJAV_HOME"), field.text] options:NSDataWritingAtomic error:&error];
+        BOOL success = [jsonData writeToFile:[NSString stringWithFormat:@"%s/controlmap/gamepads/%@.json", PocketJGetEnv("POCKETJ_HOME"), field.text] options:NSDataWritingAtomic error:&error];
         if (!success) {
             showDialog(localize(@"custom_controls.control_menu.save.error.write", nil), error.localizedDescription);
             return;
@@ -600,7 +645,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
 }
 
 - (void)exitButtonSelector {
-    NSString *gamepadPath = [NSString stringWithFormat:@"%s/controlmap/gamepads/%@", getenv("POJAV_HOME"), getPrefObject(@"control.default_gamepad_ctrl")];
+    NSString *gamepadPath = [NSString stringWithFormat:@"%s/controlmap/gamepads/%@", PocketJGetEnv("POCKETJ_HOME"), getPrefObject(@"control.default_gamepad_ctrl")];
     if([self.currentMappings isEqualToDictionary:parseJSONFromFile(gamepadPath)]) {
         [self dismissModalViewController];
     } else {

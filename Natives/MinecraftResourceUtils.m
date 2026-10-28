@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #include <CommonCrypto/CommonDigest.h>
 
 #import "authenticator/BaseAuthenticator.h"
@@ -111,7 +112,7 @@
             library[@"downloads"][@"artifact"][@"url"] = @"https://repo1.maven.org/maven2/net/java/dev/jna/jna/5.13.0/jna-5.13.0.jar";
             library[@"downloads"][@"artifact"][@"sha1"] = @"1200e7ebeedbe0d10062093f32925a912020e747";
         } else if ([library[@"name"] hasPrefix:@"org.ow2.asm:asm-all:"]) {
-            // Early versions of the ASM library get repalced with 5.0.4 because Pojav's LWJGL is compiled for
+            // Early versions of the ASM library get repalced with 5.0.4 because the bundled LWJGL is compiled for
             // Java 8, which is not supported by old ASM versions. Mod loaders like Forge, which depend on this
             // library, often include lwjgl in their class transformations, which causes errors with old ASM versions.
             if(version[0].intValue >= 5) continue;
@@ -148,11 +149,11 @@
      * untouched and expose it through a short, URI-safe symlink used only by
      * the processed modern-loader JVM arguments.
      */
-    NSString *gameDirectory = @(getenv("POJAV_GAME_DIR"));
+    NSString *gameDirectory = @(PocketJGetEnv("POCKETJ_GAME_DIR"));
     NSString *loaderGameDirectory = gameDirectory;
-    NSString *pojavHome = @(getenv("POJAV_HOME"));
-    if (pojavHome.length && gameDirectory.length) {
-        NSString *aliasPath = [pojavHome stringByAppendingPathComponent:@".pocketj-loader-runtime"];
+    NSString *pocketjHome = @(PocketJGetEnv("POCKETJ_HOME"));
+    if (pocketjHome.length && gameDirectory.length) {
+        NSString *aliasPath = [pocketjHome stringByAppendingPathComponent:@".pocketj-loader-runtime"];
         NSFileManager *fileManager = NSFileManager.defaultManager;
         NSString *existingTarget = [fileManager destinationOfSymbolicLinkAtPath:aliasPath error:nil];
         if (![existingTarget isEqualToString:gameDirectory]) {
@@ -209,7 +210,7 @@
 
     if ([version isKindOfClass:NSString.class]){
         // Find in inheritsFrom
-        NSDictionary *versionDict = parseJSONFromFile([NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("POJAV_GAME_DIR"), version]);
+        NSDictionary *versionDict = parseJSONFromFile([NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", PocketJGetEnv("POCKETJ_GAME_DIR"), version]);
         NSAssert(versionDict != nil, @"version should not be null");
         if (versionDict[@"inheritsFrom"] == nil) {
             // How then?

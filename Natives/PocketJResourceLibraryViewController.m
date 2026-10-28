@@ -2,6 +2,13 @@
 #import "ModernUITheme.h"
 #import "utils.h"
 #import "ios_uikit_bridge.h"
+#import "PocketJAddonService.h"
+#import "PocketJAddonVersionPicker.h"
+#import "PocketJInstanceContext.h"
+#import "PocketJDownloadClient.h"
+#import "PocketJArchiveService.h"
+#import "PocketJModStore.h"
+#import "SurfaceViewController.h"
 #if __has_include("CurseForgeSecrets.local.h")
 #import "CurseForgeSecrets.local.h"
 #else
@@ -13,6 +20,7 @@ static NSArray<NSDictionary *> *PocketJResourceKinds(void) {
         @{@"title": localize(@"光影包", nil), @"folder": @"shaderpacks", @"type": @"shader", @"icon": @"sun.max.fill"},
         @{@"title": localize(@"材质包", nil), @"folder": @"resourcepacks", @"type": @"resourcepack", @"icon": @"paintpalette.fill"},
         @{@"title": localize(@"数据包", nil), @"folder": @"datapacks", @"type": @"datapack", @"icon": @"externaldrive.fill"},
+        @{@"title": localize(@"世界存档", nil), @"folder": @"saves", @"type": @"world", @"icon": @"globe.europe.africa.fill"},
     ];
 }
 
@@ -23,6 +31,10 @@ static NSArray<NSDictionary *> *PocketJResourceKinds(void) {
 @property(nonatomic) NSArray<NSDictionary *> *results;
 @property(nonatomic) NSInteger provider;
 @property(nonatomic) NSCache<NSString *, UIImage *> *iconCache;
+@property(nonatomic) PocketJAddonService *addonService;
+@property(nonatomic) NSString *instanceID;
+@property(nonatomic) NSUInteger generation;
+@property(nonatomic) BOOL installing;
 @end
 
 @interface PocketJResourceLibraryViewController () <UIDocumentPickerDelegate>
@@ -41,6 +53,7 @@ static NSArray<NSDictionary *> *PocketJResourceKinds(void) {
     return self;
 }
 - (NSDictionary *)kind { return PocketJResourceKinds()[self.selectedKind]; }
+- (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; [self reloadFiles]; }
 - (NSString *)folder {
     NSString *folder;
     if ([self.kind[@"type"] isEqualToString:@"datapack"]) {
@@ -71,6 +84,9 @@ static NSArray<NSDictionary *> *PocketJResourceKinds(void) {
     }
     NSArray *items = [NSFileManager.defaultManager contentsOfDirectoryAtPath:self.folder error:nil] ?: @[];
     self.files = [items filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(NSString *name, NSDictionary *bindings) {
+        NSString *path=[self.folder stringByAppendingPathComponent:name];
+        if ([[NSFileManager.defaultManager attributesOfItemAtPath:path error:nil][NSFileType] isEqual:NSFileTypeSymbolicLink]) return NO;
+        if ([self.kind[@"type"] isEqual:@"world"]) return [NSFileManager.defaultManager fileExistsAtPath:[path stringByAppendingPathComponent:@"level.dat"]];
         return ![name hasPrefix:@"."];
     }]];
     [self.tableView reloadData];
@@ -94,6 +110,7 @@ static NSArray<NSDictionary *> *PocketJResourceKinds(void) {
         UISwitch *toggle = [UISwitch new]; toggle.on = !disabled; toggle.tag = indexPath.row;
         [toggle addTarget:self action:@selector(toggleFile:) forControlEvents:UIControlEventValueChanged];
         cell.accessoryView = toggle;
+        if ([self.kind[@"type"] isEqual:@"world"]) { cell.accessoryView=nil; cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator; cell.detailTextLabel.text=localize(@"点击导出世界存档",nil); }
     }
     [ModernUITheme styleCell:cell destructive:NO];
     return cell;
@@ -104,6 +121,8 @@ static NSArray<NSDictionary *> *PocketJResourceKinds(void) {
         self.selectedKind = indexPath.row;
         if ([self.kind[@"type"] isEqualToString:@"datapack"]) [self chooseWorldFromCell:[tableView cellForRowAtIndexPath:indexPath]];
         else [self reloadFiles];
+    } else if ([self.kind[@"type"] isEqual:@"world"]) {
+        [self exportResource:self.files[indexPath.row] source:[tableView cellForRowAtIndexPath:indexPath]];
     }
 }
 - (void)chooseWorldFromCell:(UITableViewCell *)cell {
@@ -124,10 +143,41 @@ static NSArray<NSDictionary *> *PocketJResourceKinds(void) {
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath { return indexPath.section == 1; }
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)style forRowAtIndexPath:(NSIndexPath *)indexPath {
     if (style != UITableViewCellEditingStyleDelete) return;
-    [NSFileManager.defaultManager removeItemAtPath:[self.folder stringByAppendingPathComponent:self.files[indexPath.row]] error:nil];
-    [self reloadFiles];
+    [self confirmDeleteResource:self.files[indexPath.row]];
+}
+- (void)confirmDeleteResource:(NSString *)name {
+    if ([SurfaceViewController isRunning]) { showDialog(localize(@"无法修改资源",nil),localize(@"请先退出游戏再修改资源。",nil)); return; }
+    NSString *path=[self.folder stringByAppendingPathComponent:name];
+    UIAlertController *alert=[UIAlertController alertControllerWithTitle:localize(@"永久删除？",nil) message:name preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:localize(@"取消",nil) style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:localize(@"删除",nil) style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+        if ([SurfaceViewController isRunning]) return;
+        NSError *error=nil; [NSFileManager.defaultManager removeItemAtPath:path error:&error];
+        if (error) showDialog(localize(@"删除失败",nil),error.localizedDescription); [self reloadFiles];
+    }]]; [self presentViewController:alert animated:YES completion:nil];
+}
+- (UISwipeActionsConfiguration *)tableView:(UITableView *)table trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)index {
+    if (index.section!=1 || index.row>=self.files.count) return nil;
+    NSString *name=self.files[index.row];
+    UIContextualAction *remove=[UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive title:localize(@"删除",nil) handler:^(UIContextualAction *action,UIView *view,void (^done)(BOOL)) { done(YES); [self confirmDeleteResource:name]; }];
+    UIContextualAction *export=[UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal title:localize(@"导出",nil) handler:^(UIContextualAction *action,UIView *view,void (^done)(BOOL)) { done(YES); [self exportResource:name source:[table cellForRowAtIndexPath:index]]; }];
+    UISwipeActionsConfiguration *config=[UISwipeActionsConfiguration configurationWithActions:@[remove,export]]; config.performsFirstActionWithFullSwipe=NO; return config;
+}
+- (void)exportResource:(NSString *)name source:(UIView *)source {
+    NSString *path=[self.folder stringByAppendingPathComponent:name]; BOOL world=[self.kind[@"type"] isEqual:@"world"];
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
+        NSError *error=nil; NSURL *url=world ? [PocketJArchiveService exportWorld:path error:&error]:[NSURL fileURLWithPath:path];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (error || !url) { showDialog(localize(@"导出失败",nil),error.localizedDescription); return; }
+            UIActivityViewController *share=[[UIActivityViewController alloc] initWithActivityItems:@[url] applicationActivities:nil];
+            share.popoverPresentationController.sourceView=source ?: self.view; share.popoverPresentationController.sourceRect=source ? source.bounds:self.view.bounds;
+            if (world) share.completionWithItemsHandler=^(UIActivityType type,BOOL done,NSArray *items,NSError *error) { [NSFileManager.defaultManager removeItemAtPath:url.path.stringByDeletingLastPathComponent error:nil]; };
+            [self presentViewController:share animated:YES completion:nil];
+        });
+    });
 }
 - (void)toggleFile:(UISwitch *)toggle {
+    if ([SurfaceViewController isRunning]) { toggle.on=!toggle.on; showDialog(localize(@"无法修改资源",nil),localize(@"请先退出游戏再修改资源。",nil)); return; }
     if (toggle.tag >= self.files.count) return;
     NSString *old = self.files[toggle.tag];
     BOOL disabled = [old hasSuffix:@".disabled"];
@@ -137,6 +187,7 @@ static NSArray<NSDictionary *> *PocketJResourceKinds(void) {
     [self reloadFiles];
 }
 - (void)importFile {
+    if ([SurfaceViewController isRunning]) { showDialog(localize(@"无法修改资源",nil),localize(@"请先退出游戏再修改资源。",nil)); return; }
     if ([self.kind[@"type"] isEqualToString:@"datapack"] && !self.selectedWorld.length) {
         [self chooseWorldFromCell:[self.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:self.selectedKind inSection:0]]]; return;
     }
@@ -145,12 +196,22 @@ static NSArray<NSDictionary *> *PocketJResourceKinds(void) {
     [self presentViewController:picker animated:YES completion:nil];
 }
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
-    for (NSURL *url in urls) {
-        NSString *target = [self.folder stringByAppendingPathComponent:url.lastPathComponent];
-        [NSFileManager.defaultManager removeItemAtPath:target error:nil];
-        [NSFileManager.defaultManager copyItemAtURL:url toURL:[NSURL fileURLWithPath:target] error:nil];
-    }
-    [self reloadFiles];
+    if ([SurfaceViewController isRunning]) return;
+    NSString *folder=self.folder; BOOL world=[self.kind[@"type"] isEqual:@"world"];
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
+        NSMutableArray *errors=[NSMutableArray array];
+        for (NSURL *url in urls) {
+            BOOL scoped=[url startAccessingSecurityScopedResource]; NSError *error=nil;
+            if (world) [PocketJArchiveService installWorld:url saves:folder name:url.lastPathComponent.stringByDeletingPathExtension error:&error];
+            else if ([PocketJArchiveService validateArchive:url.path error:&error]) {
+                // Import never removes an existing resource on name collision.
+                [NSFileManager.defaultManager copyItemAtURL:url toURL:[NSURL fileURLWithPath:[folder stringByAppendingPathComponent:url.lastPathComponent]] error:&error];
+            }
+            if (scoped) [url stopAccessingSecurityScopedResource];
+            if (error) [errors addObject:[NSString stringWithFormat:@"%@: %@",url.lastPathComponent,error.localizedDescription]];
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{ if (errors.count) showDialog(localize(@"导入失败",nil),[errors componentsJoinedByString:@"\n"]); [self reloadFiles]; });
+    });
 }
 - (void)browseOnline {
     if ([self.kind[@"type"] isEqualToString:@"datapack"] && !self.selectedWorld.length) {
@@ -158,8 +219,8 @@ static NSArray<NSDictionary *> *PocketJResourceKinds(void) {
     }
     PocketJOnlineResourceViewController *online = [PocketJOnlineResourceViewController new];
     online.kind = self.kind; online.destination = self.folder;
-    NSDictionary *profile = [NSDictionary dictionaryWithContentsOfFile:[self.instancePath stringByAppendingPathComponent:@"launcher_profiles.plist"]];
-    online.gameVersion = profile[@"lastVersionId"] ?: @"";
+    online.gameVersion = [[PocketJInstanceContext alloc] initWithInstancePath:self.instancePath].minecraftVersion;
+    online.instanceID = [[PocketJModStore alloc] initWithInstancePath:self.instancePath].instanceID;
     [self.navigationController pushViewController:online animated:YES];
 }
 @end
@@ -168,12 +229,14 @@ static NSArray<NSDictionary *> *PocketJResourceKinds(void) {
 - (void)viewDidLoad {
     [super viewDidLoad]; self.title = [NSString stringWithFormat:localize(@"在线%@", nil), self.kind[@"title"]];
     self.iconCache = [NSCache new];
+    self.addonService=[[PocketJAddonService alloc] initWithCurseForgeKey:POCKETJ_CURSEFORGE_API_KEY];
     [ModernUITheme styleController:self]; [ModernUITheme styleTableView:self.tableView];
     UISearchController *search = [UISearchController new]; search.searchResultsUpdater = self;
     search.obscuresBackgroundDuringPresentation = NO; self.navigationItem.searchController = search;
     UISegmentedControl *provider = [[UISegmentedControl alloc] initWithItems:@[@"Modrinth", @"CurseForge"]];
     provider.selectedSegmentIndex = 0; [provider addTarget:self action:@selector(providerChanged:) forControlEvents:UIControlEventValueChanged];
     self.navigationItem.titleView = provider;
+    if ([self.kind[@"type"] isEqual:@"world"]) { self.provider=1; provider.selectedSegmentIndex=1; [provider setEnabled:NO forSegmentAtIndex:0]; }
     [self search:@""];
 }
 - (void)providerChanged:(UISegmentedControl *)sender { self.provider = sender.selectedSegmentIndex; [self search:self.navigationItem.searchController.searchBar.text ?: @""]; }
@@ -192,7 +255,7 @@ static NSArray<NSDictionary *> *PocketJResourceKinds(void) {
     if (POCKETJ_CURSEFORGE_API_KEY.length == 0) {
         self.results = @[]; [self.tableView reloadData]; return;
     }
-    NSDictionary *classIDs = @{@"shader": @6552, @"resourcepack": @12, @"datapack": @6945};
+    NSDictionary *classIDs = @{@"shader": @6552, @"resourcepack": @12, @"datapack": @6945, @"world":@17};
     NSURLComponents *components = [NSURLComponents componentsWithString:@"https://api.curseforge.com/v1/mods/search"];
     components.queryItems = @[[NSURLQueryItem queryItemWithName:@"gameId" value:@"432"],
         [NSURLQueryItem queryItemWithName:@"classId" value:[classIDs[self.kind[@"type"]] stringValue]],
@@ -234,44 +297,46 @@ static NSArray<NSDictionary *> *PocketJResourceKinds(void) {
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    NSDictionary *project = self.results[indexPath.row]; NSString *projectID = project[@"project_id"];
-    if ([project[@"curseforge"] boolValue]) { [self downloadCurseForgeProject:projectID]; return; }
-    NSString *urlString = [NSString stringWithFormat:@"https://api.modrinth.com/v2/project/%@/version", projectID];
-    NSURLComponents *components = [NSURLComponents componentsWithString:urlString];
-    if (self.gameVersion.length) components.queryItems = @[[NSURLQueryItem queryItemWithName:@"game_versions" value:[NSString stringWithFormat:@"[\"%@\"]", self.gameVersion]]];
-    [[[NSURLSession sharedSession] dataTaskWithURL:components.URL completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        NSArray *versions = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
-        NSDictionary *version = [versions isKindOfClass:NSArray.class] ? versions.firstObject : nil;
-        NSDictionary *file = [version[@"files"] firstObject]; NSURL *url = [NSURL URLWithString:file[@"url"]];
-        if (!url) return;
-        [[[NSURLSession sharedSession] downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
-            if (error || !location) return;
-            NSString *name = file[@"filename"] ?: response.suggestedFilename ?: @"download.zip";
-            NSString *target = [self.destination stringByAppendingPathComponent:name];
-            [NSFileManager.defaultManager removeItemAtPath:target error:nil];
-            [NSFileManager.defaultManager moveItemAtPath:location.path toPath:target error:nil];
-            dispatch_async(dispatch_get_main_queue(), ^{ showDialog(localize(@"下载完成", nil), name); });
-        }] resume];
-    }] resume];
+    if (self.installing || indexPath.row>=self.results.count) return;
+    NSDictionary *item=self.results[indexPath.row];
+    NSString *provider=[item[@"curseforge"] boolValue] ? @"CurseForge":@"Modrinth";
+    [self.addonService versionsForProvider:provider project:item[@"project_id"] minecraft:self.gameVersion loader:@"" compatibleOnly:NO completion:^(NSArray *versions,NSError *error) {
+        if (error || !versions.count) { showDialog(localize(@"加载失败",nil),error.localizedDescription ?: localize(@"没有找到可下载的文件。",nil)); return; }
+        PocketJModVersionPickerViewController *picker=[PocketJModVersionPickerViewController new]; picker.projectTitle=item[@"title"]; picker.items=versions;
+        picker.selectionHandler=^(NSDictionary *version) {
+            NSDictionary *file=version[@"payload"];
+            if ([version[@"compatible"] boolValue]) [self installResource:file];
+            else {
+                UIAlertController *warning=[UIAlertController alertControllerWithTitle:localize(@"兼容性警告",nil) message:localize(@"该文件可能无法在当前实例中运行。",nil) preferredStyle:UIAlertControllerStyleAlert];
+                [warning addAction:[UIAlertAction actionWithTitle:localize(@"取消",nil) style:UIAlertActionStyleCancel handler:nil]];
+                [warning addAction:[UIAlertAction actionWithTitle:localize(@"仍然安装",nil) style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) { [self installResource:file]; }]];
+                [self presentViewController:warning animated:YES completion:nil];
+            }
+        };
+        [self presentViewController:[[UINavigationController alloc] initWithRootViewController:picker] animated:YES completion:nil];
+    }];
 }
-- (void)downloadCurseForgeProject:(NSString *)projectID {
-    NSURLComponents *components = [NSURLComponents componentsWithString:[NSString stringWithFormat:@"https://api.curseforge.com/v1/mods/%@/files", projectID]];
-    NSMutableArray *items = [NSMutableArray arrayWithObject:[NSURLQueryItem queryItemWithName:@"pageSize" value:@"50"]];
-    if (self.gameVersion.length) [items addObject:[NSURLQueryItem queryItemWithName:@"gameVersion" value:self.gameVersion]];
-    components.queryItems = items;
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:components.URL];
-    [request setValue:POCKETJ_CURSEFORGE_API_KEY forHTTPHeaderField:@"x-api-key"];
-    [[[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        NSDictionary *json = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
-        NSDictionary *file = [json[@"data"] firstObject]; NSString *download = file[@"downloadUrl"];
-        if (!download.length) return; NSURL *url = [NSURL URLWithString:download];
-        [[[NSURLSession sharedSession] downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
-            if (error || !location) return; NSString *name = file[@"fileName"] ?: response.suggestedFilename ?: @"download.zip";
-            NSString *target = [self.destination stringByAppendingPathComponent:name];
-            [NSFileManager.defaultManager removeItemAtPath:target error:nil];
-            [NSFileManager.defaultManager moveItemAtPath:location.path toPath:target error:nil];
-            dispatch_async(dispatch_get_main_queue(), ^{ showDialog(localize(@"下载完成", nil), name); });
-        }] resume];
-    }] resume];
+- (void)installResource:(NSDictionary *)file {
+    if (self.installing || [SurfaceViewController isRunning]) return;
+    self.installing=YES; self.tableView.userInteractionEnabled=NO;
+    [self.addonService resolveDownload:file completion:^(NSDictionary *descriptor,NSError *error) {
+        if (error) { self.installing=NO; self.tableView.userInteractionEnabled=YES; showDialog(localize(@"下载失败",nil),error.localizedDescription); return; }
+        [PocketJDownloadClient.shared download:descriptor instanceID:self.instanceID ?: self.destination progress:nil completion:^(NSURL *location,NSError *error) {
+            if (error) { self.installing=NO; self.tableView.userInteractionEnabled=YES; showDialog(localize(@"下载失败",nil),error.localizedDescription); return; }
+            dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
+                NSError *failure=nil; NSString *name=descriptor[@"filename"];
+                if ([SurfaceViewController isRunning]) failure=[NSError errorWithDomain:@"PocketJ.Resource" code:1 userInfo:@{NSLocalizedDescriptionKey:localize(@"请先退出游戏再修改资源。",nil)}];
+                else if ([self.kind[@"type"] isEqual:@"world"]) [PocketJArchiveService installWorld:location saves:self.destination name:name.stringByDeletingPathExtension error:&failure];
+                else if (![PocketJModStore isSafeFileName:name]) failure=[NSError errorWithDomain:@"PocketJ.Resource" code:1 userInfo:@{NSLocalizedDescriptionKey:localize(@"无效的文件名。",nil)}];
+                else if ([PocketJArchiveService validateArchive:location.path error:&failure]) {
+                    NSURL *target=[NSURL fileURLWithPath:[self.destination stringByAppendingPathComponent:name]];
+                    if ([NSFileManager.defaultManager fileExistsAtPath:target.path]) [NSFileManager.defaultManager replaceItemAtURL:target withItemAtURL:location backupItemName:nil options:0 resultingItemURL:nil error:&failure];
+                    else [NSFileManager.defaultManager moveItemAtURL:location toURL:target error:&failure];
+                }
+                [NSFileManager.defaultManager removeItemAtURL:location error:nil];
+                dispatch_async(dispatch_get_main_queue(), ^{ self.installing=NO; self.tableView.userInteractionEnabled=YES; showDialog(localize(failure ? @"下载失败":@"下载完成",nil),failure.localizedDescription ?: name); });
+            });
+        }];
+    }];
 }
 @end

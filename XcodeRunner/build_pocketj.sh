@@ -6,7 +6,9 @@ set -euo pipefail
 export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 SOURCE_ROOT="${SRCROOT}"
-WORK_ROOT="/tmp/PocketJLauncher-XcodeBuild"
+WORKSPACE_NAME="${SOURCE_ROOT:t}"
+WORKSPACE_NAME="${WORKSPACE_NAME//[^A-Za-z0-9._-]/_}"
+WORK_ROOT="/tmp/PocketJLauncher-${WORKSPACE_NAME}-XcodeBuild"
 SOURCE_PARENT="${SOURCE_ROOT%/*}"
 SHARED_DEPENDENCIES="${POCKETJ_SHARED_DEPENDENCIES:-${SOURCE_PARENT}/SharedDependencies/PocketJ}"
 BOOT_JDK_CACHE="${SHARED_DEPENDENCIES}/BootJDK8"
@@ -67,6 +69,12 @@ ln -s "${BOOT_JDK}" "${BOOT_JDK_BRIDGE}"
 BOOT_JDK="${BOOT_JDK_BRIDGE}"
 
 cd "${WORK_ROOT}"
+NAMESPACE_STAMP="${WORK_ROOT}/.namespace-com.erico.pocketj-v1"
+if [[ ! -f "${NAMESPACE_STAMP}" ]]; then
+  # Only regenerable, version-local staging outputs. Never clear shared JREs.
+  /opt/homebrew/bin/gmake -C JavaApp clean
+  rm -rf "${WORK_ROOT}/Natives/build"
+fi
 /opt/homebrew/bin/gmake payload \
   JOBS=8 \
   PLATFORM=2 \
@@ -75,9 +83,19 @@ cd "${WORK_ROOT}"
   COMMIT=local \
   BOOTJDK="${BOOT_JDK}" \
   VERBOSE=0
+touch "${NAMESPACE_STAMP}"
 
 if [[ ! -x "${PAYLOAD_APP}/PocketJLauncher" ]]; then
   echo "error: PocketJ Launcher payload was not generated"
+  exit 1
+fi
+
+# Check the executable that is actually embedded. A successful wrapper build
+# alone cannot prove Java 25's dlsym(main) contract survives Release linking.
+# Drain all output: grep -q can close the pipe early and make dyld_info exit
+# with SIGPIPE under pipefail, falsely reporting a missing symbol.
+if ! /usr/bin/xcrun dyld_info -exports "${PAYLOAD_APP}/PocketJLauncher" | /usr/bin/grep -E '[[:space:]]_main$' >/dev/null; then
+  echo "error: Native launcher does not export _main (required by Java 25 libjli)"
   exit 1
 fi
 

@@ -11,6 +11,9 @@
 .DS_Store
 com.apple.DeveloperTools/
 xcshareddata/
+!/PocketJLauncher.xcodeproj/xcshareddata/
+!/PocketJLauncher.xcodeproj/xcshareddata/xcschemes/
+!/PocketJLauncher.xcodeproj/xcshareddata/xcschemes/*.xcscheme
 xcuserdata/
 project.xcworkspace/
 /depends

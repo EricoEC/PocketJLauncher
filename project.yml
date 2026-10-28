@@ -5,7 +5,7 @@ options:
     iOS: "14.0"
 settings:
   base:
-    DEVELOPMENT_TEAM: T8WRXVGJF9
+    DEVELOPMENT_TEAM: Q42CQ5VP5A
     CODE_SIGN_STYLE: Automatic
     IPHONEOS_DEPLOYMENT_TARGET: "14.0"
     SUPPORTED_PLATFORMS: iphoneos
@@ -43,7 +43,8 @@ targets:
         EX_ENABLE_EXTENSION_POINT_GENERATION: YES
     postBuildScripts:
       - name: Build and embed PocketJ Launcher
-        path: XcodeRunner/build_pocketj.sh
+        script: |
+          /bin/zsh "${SRCROOT}/XcodeRunner/build_pocketj.sh"
         basedOnDependencyAnalysis: false
 
   PocketJJITCoordinator:
@@ -107,8 +108,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.Erico.PocketJLauncher.JITHelper
         PRODUCT_NAME: PocketJJITHelper
-        MARKETING_VERSION: "1.4"
-        CURRENT_PROJECT_VERSION: "1.4"
+        MARKETING_VERSION: "1.5"
+        CURRENT_PROJECT_VERSION: "1.5"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: JITIntegration/Helper/Info.plist
         EX_ENABLE_EXTENSION_POINT_GENERATION: YES

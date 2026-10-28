@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import <AVFoundation/AVFoundation.h>
 #import <GameController/GameController.h>
 #import <objc/runtime.h>
@@ -20,6 +21,9 @@
 #import "TrackedTextField.h"
 #import "UIKit+hook.h"
 #import "ios_uikit_bridge.h"
+#import "touchcontroller/PocketJTouchController.h"
+#import "PocketJGameStartup.h"
+#import "PocketJStartupOverlay.h"
 
 #include "glfw_keycodes.h"
 #include "utils.h"
@@ -30,7 +34,7 @@ int memorystatus_control(uint32_t command, int32_t pid, uint32_t flags, void *bu
 #define MEMORYSTATUS_CMD_SET_JETSAM_TASK_LIMIT        6
 
 static int currentHotbarSlot = -1;
-static GameSurfaceView* pojavWindow;
+static GameSurfaceView* pocketjWindow;
 static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification =
     @"FluidButtonSlidePreferenceDidChangeNotification";
 
@@ -38,6 +42,11 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
 }
 
 @property(nonatomic) NSDictionary* metadata;
+@property(nonatomic) PocketJTouchController *touchController;
+@property(nonatomic) NSTimer *touchControllerTimer;
+@property(nonatomic) NSTimer *sdlInputTimer;
+@property(nonatomic) PocketJStartupOverlay *startupOverlay;
+@property(nonatomic) uint64_t startupSession;
 
 @property(nonatomic) TrackedTextField *inputTextField;
 @property(nonatomic) NSMutableArray* swipeableButtons;
@@ -76,12 +85,25 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
 - (instancetype)initWithMetadata:(NSDictionary *)metadata {
     self = [super init];
     self.metadata = metadata;
+    NSString *mode=PLProfiles.current.selectedProfile[@"pocketjTouchController"];
+    if ([mode isEqual:@"native"] || [mode isEqual:@"udp"]) self.touchController=[[PocketJTouchController alloc] initWithMode:mode];
     return self;
 }
 
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+    self.startupSession = PocketJGameStartupBegin();
+    self.sdlInputTimer = [NSTimer scheduledTimerWithTimeInterval:1.0/30 repeats:YES
+        block:^(NSTimer *timer) { PocketJRefreshSDLGrabState(); }];
+    [NSRunLoop.mainRunLoop addTimer:self.sdlInputTimer forMode:NSRunLoopCommonModes];
+    if (self.touchController) {
+        __weak typeof(self) weakSelf=self;
+        self.touchController.keyboardHandler=^(BOOL visible) { [weakSelf setNativeKeyboardVisible:visible]; };
+        self.touchController.readyHandler=^{ [weakSelf updateGrabState]; };
+        self.touchControllerTimer=[NSTimer scheduledTimerWithTimeInterval:1.0/60 repeats:YES block:^(NSTimer *timer) { [weakSelf.touchController poll]; }];
+        [NSRunLoop.mainRunLoop addTimer:self.touchControllerTimer forMode:NSRunLoopCommonModes];
+    }
     isControlModifiable = NO;
     self.isMacCatalystApp = NSProcessInfo.processInfo.isMacCatalystApp;
     // Load MetalHUD library
@@ -133,7 +155,7 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
     self.surfaceView.layer.contentsScale = screenScale * resolutionScale;
     self.surfaceView.layer.magnificationFilter = self.surfaceView.layer.minificationFilter = kCAFilterNearest;
     self.surfaceView.multipleTouchEnabled = YES;
-    pojavWindow = self.surfaceView;
+    pocketjWindow = self.surfaceView;
 
     self.touchView = [[UIView alloc] initWithFrame:self.view.frame];
     self.touchView.autoresizingMask = UIViewAutoresizingFlexibleWidth |
@@ -281,6 +303,20 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
 
     [self.rootView addSubview:self.inputTextField];
 
+    self.startupOverlay = [[PocketJStartupOverlay alloc] initWithFrame:self.view.bounds];
+    self.startupOverlay.translatesAutoresizingMaskIntoConstraints = NO;
+    __weak typeof(self) weakSelf = self;
+    self.startupOverlay.openLog = ^{ [weakSelf.logOutputView actionShowStartupLog]; };
+    self.startupOverlay.exportLog = ^(UIView *source) { [weakSelf exportStartupLogFrom:source]; };
+    [self.rootView addSubview:self.startupOverlay];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.startupOverlay.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.startupOverlay.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.startupOverlay.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [self.startupOverlay.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+    ]];
+    [self.startupOverlay start];
+    // Keep the existing log panel above the startup layer when opened.
     [self performSelector:@selector(initCategory_LogView)];
 
     // [self setPreferredFramesPerSecond:1000];
@@ -481,6 +517,7 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
 }
 
 - (void)updateGrabState {
+    if (!isGrabbing) [self.touchController releasePointers];
     // Update cursor position
     if (isGrabbing == JNI_TRUE) {
         CGFloat screenScale = self.surfaceView.layer.contentsScale;
@@ -495,6 +532,10 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
 
     // Update buttons visibility
     [self updateControlHiddenState:NO];
+    if (self.touchController) {
+        self.ctrlView.hidden=self.touchController.ready && isGrabbing;
+        if (self.ctrlView.hidden) self.scrollPanGesture.enabled=NO;
+    }
 }
 
 - (void)launchMinecraft {
@@ -505,13 +546,25 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
         }
         NSString *accountStorageKey =
             [BaseAuthenticator storageKeyForAuthData:BaseAuthenticator.current.authData];
-        launchJVM(
+        int code = launchJVM(
             accountStorageKey,
             self.metadata,
             windowWidth, windowHeight,
             minVersion
         );
+        PocketJGameStartupFinish(self.startupSession, code);
     });
+}
+
+- (void)exportStartupLogFrom:(UIView *)source {
+    if (self.presentedViewController) return;
+    NSURL *url = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%s/latestlog.txt", PocketJGetEnv("POCKETJ_HOME")]];
+    if (![NSFileManager.defaultManager fileExistsAtPath:url.path]) return;
+    UIActivityViewController *share = [[UIActivityViewController alloc]
+        initWithActivityItems:@[url] applicationActivities:nil];
+    share.popoverPresentationController.sourceView = source;
+    share.popoverPresentationController.sourceRect = source.bounds;
+    [self presentViewController:share animated:YES completion:nil];
 }
 
 - (void)updateFluidButtonSlideState {
@@ -542,6 +595,11 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
 }
 
 - (void)dealloc {
+    [self.startupOverlay stop];
+    [self.touchControllerTimer invalidate];
+    [self.sdlInputTimer invalidate];
+    PocketJRegisterSDLWindow(NULL);
+    [self.touchController releasePointers];
     [NSNotificationCenter.defaultCenter removeObserver:self];
 }
 
@@ -632,6 +690,7 @@ static NSNotificationName const FluidButtonSlidePreferenceDidChangeNotification 
 
 - (void)sendTouchPoint:(CGPoint)location withEvent:(int)event
 {
+    PocketJRefreshSDLGrabState();
     CGFloat screenScale = self.screenScale;
     if (!isGrabbing) {
         screenScale *= resolutionScale;
@@ -1284,6 +1343,7 @@ int touchesMovedCount;
 // Equals to Android ACTION_DOWN
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
+    if (isGrabbing && [self.touchController routeTouches:touches view:self.surfaceView ended:NO]) return;
     [super touchesBegan:touches withEvent:event];
     int i = 0;
     for (UITouch *touch in touches) {
@@ -1308,6 +1368,7 @@ int touchesMovedCount;
 // Equals to Android ACTION_MOVE
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
 {
+    if (isGrabbing && [self.touchController routeTouches:touches view:self.surfaceView ended:NO]) return;
     [super touchesMoved:touches withEvent:event];
 
     for (UITouch *touch in touches) {
@@ -1330,6 +1391,7 @@ int touchesMovedCount;
 // For ACTION_UP and ACTION_CANCEL
 - (void)touchesEndedGlobal:(NSSet *)touches withEvent:(UIEvent *)event
 {
+    if (isGrabbing && [self.touchController routeTouches:touches view:self.surfaceView ended:YES]) return;
     for (UITouch *touch in touches) {
         if (touch.type == UITouchTypeIndirectPointer) {
             continue; // handle this in a different place
@@ -1357,7 +1419,7 @@ int touchesMovedCount;
 }
 
 + (GameSurfaceView *)surface {
-    return pojavWindow;
+    return pocketjWindow;
 }
 
 @end

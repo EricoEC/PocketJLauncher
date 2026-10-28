@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import "LauncherPreferences.h"
 #import "PLProfiles.h"
 #import "utils.h"
@@ -62,13 +63,13 @@ static PLProfiles* current;
 
 - (id)initWithCurrentInstance {
     self = [super init];
-    self.profilePath = [@(getenv("POJAV_GAME_DIR")) stringByAppendingPathComponent:@"launcher_profiles.json"];
+    self.profilePath = [@(PocketJGetEnv("POCKETJ_GAME_DIR")) stringByAppendingPathComponent:@"launcher_profiles.json"];
     self.profileDict = parseJSONFromFile(self.profilePath);
     if (![self.profileDict isKindOfClass:NSDictionary.class] ||
         self.profileDict[@"NSErrorObject"]) {
         self.profileDict = PLProfiles.defaultProfiles;
         // Save bootstrap profiles only inside a real instance. When every
-        // instance has been deleted, POJAV_GAME_DIR intentionally points to
+        // instance has been deleted, POCKETJ_GAME_DIR intentionally points to
         // no directory and must not recreate a placeholder.
         BOOL isDirectory = NO;
         NSString *parent = self.profilePath.stringByDeletingLastPathComponent;

@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import "config.h"
 #import "utils.h"
 #import "LauncherPreferences.h"
@@ -8,7 +9,7 @@
 static PLPreferences* pref;
 
 void loadPreferences(BOOL reset) {
-    assert(getenv("POJAV_HOME"));
+    assert(PocketJGetEnv("POCKETJ_HOME"));
     if (reset) {
         [pref reset];
     } else {
@@ -18,7 +19,7 @@ void loadPreferences(BOOL reset) {
 
 void toggleIsolatedPref(BOOL forceEnable) {
     if (!pref.instancePath) {
-        pref.instancePath = [NSString stringWithFormat:@"%s/launcher_preferences.plist", getenv("POJAV_GAME_DIR")];
+        pref.instancePath = [NSString stringWithFormat:@"%s/launcher_preferences.plist", PocketJGetEnv("POCKETJ_GAME_DIR")];
     }
     [pref toggleIsolationForced:forceEnable];
 }
@@ -113,7 +114,7 @@ NSString* getSelectedJavaHome(NSString* defaultJRETag, int minVersion) {
                 NSBundle.mainBundle.bundlePath, version];
         }
         return [NSString stringWithFormat:@"%s/java_runtimes/%@",
-            getenv("POJAV_HOME"), directory];
+            PocketJGetEnv("POCKETJ_HOME"), directory];
     };
 
     NSString *selectedVer = selected[defaultJRETag];

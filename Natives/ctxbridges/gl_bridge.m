@@ -2,6 +2,8 @@
 #import <Metal/Metal.h>
 #import <objc/runtime.h>
 #import "SurfaceViewController.h"
+#import "PocketJGameStartup.h"
+#include "PocketJEnvironment.h"
 
 #include <dlfcn.h>
 #include "bridge_tbl.h"
@@ -198,7 +200,8 @@ static bool gl_init() {
 gl_render_window_t* gl_init_context(gl_render_window_t *share) {
     gl_render_window_t* bundle = calloc(1, sizeof(gl_render_window_t));
 
-    NSString *renderer = NSProcessInfo.processInfo.environment[@"POJAV_RENDERER"];
+    const char *rendererValue = PocketJGetEnv("POCKETJ_RENDERER");
+    NSString *renderer = rendererValue ? @(rendererValue) : nil;
     BOOL angleDesktopGL = [renderer isEqualToString:@ RENDERER_NAME_MTL_ANGLE];
 
     const EGLint attribs[] = {
@@ -276,7 +279,10 @@ void gl_make_current(gl_render_window_t* bundle) {
 }
 
 void gl_swap_buffers() {
-    if (!handle.eglSwapBuffers(g_EglDisplay, currentBundle->gl.surface) && handle.eglGetError() == EGL_BAD_SURFACE) {
+    if (handle.eglSwapBuffers(g_EglDisplay, currentBundle->gl.surface)) {
+        PJStartupSnapshot state = PocketJGameStartupSnapshot();
+        if (state.active && !state.hasFrame) PocketJGameStartupPresented(state.session);
+    } else if (handle.eglGetError() == EGL_BAD_SURFACE) {
         NSLog(@"eglSwapBuffers error 0x%x", handle.eglGetError());
         //stopSwapBuffers = true;
         //closeGLFWWindow();

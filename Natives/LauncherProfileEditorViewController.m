@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import "LauncherNavigationController.h"
 #import "JavaLauncher.h"
 #import "installer/FabricUtils.h"
@@ -71,7 +72,7 @@
         ([versionLower containsString:@"quilt"] ? @"quilt" :
         ([versionLower containsString:@"forge"] ? @"forge" : @"vanilla")));
     NSString *versionJSONPath = [NSString stringWithFormat:
-        @"%s/versions/%@/%@.json", getenv("POJAV_GAME_DIR"),
+        @"%s/versions/%@/%@.json", PocketJGetEnv("POCKETJ_GAME_DIR"),
         self.originalVersion, self.originalVersion];
     NSDictionary *versionJSON = parseJSONFromFile(versionJSONPath);
     NSString *baseVersion = self.profile[@"pocketjMinecraftVersion"];
@@ -115,6 +116,7 @@
             return weakSelf.instanceName ?: @"default";
         }
         NSString *value = weakSelf.profile[key];
+        if ([key isEqual:@"pocketjTouchController"] && !value.length) return @"off";
         if ([key isEqualToString:@"javaVersion"] && !value.length) {
             return [NSString stringWithFormat:@"%d", [weakSelf recommendedJavaVersion]];
         }
@@ -166,8 +168,8 @@
     NSString *minecraftVersion = self.profile[@"pocketjMinecraftVersion"] ?: self.profile[@"lastVersionId"];
     NSString *effectiveRenderer = [self pocketjEffectiveDefaultRendererNameForMinecraftVersion:minecraftVersion];
     rendererList[0] = [NSString stringWithFormat:localize(@"%@（默认）", nil), effectiveRenderer];
-    NSArray *touchControlList = [self listFilesAtPath:[NSString stringWithFormat:@"%s/controlmap", getenv("POJAV_HOME")]];
-    NSArray *gamepadControlList = [self listFilesAtPath:[NSString stringWithFormat:@"%s/controlmap/gamepads", getenv("POJAV_HOME")]];
+    NSArray *touchControlList = [self listFilesAtPath:[NSString stringWithFormat:@"%s/controlmap", PocketJGetEnv("POCKETJ_HOME")]];
+    NSArray *gamepadControlList = [self listFilesAtPath:[NSString stringWithFormat:@"%s/controlmap/gamepads", PocketJGetEnv("POCKETJ_HOME")]];
     NSMutableArray *touchControlNames = touchControlList.mutableCopy;
     NSMutableArray *gamepadControlNames = gamepadControlList.mutableCopy;
     if (touchControlNames.count > 0) touchControlNames[0] = localize(@"默认", nil);
@@ -244,6 +246,8 @@
         })
     ]];
     NSMutableArray *advancedItems = [NSMutableArray arrayWithArray:@[
+            @{@"key":@"pocketjTouchController",@"icon":@"hand.point.up.left",@"title":@"TouchController 输入",@"type":self.typePickField,
+              @"pickKeys":@[@"off",@"native",@"udp"],@"pickList":@[localize(@"关闭（使用现有键位）",nil),localize(@"原生通道（需要对应模组）",nil),localize(@"UDP 兼容通道",nil)]},
             // Video and renderer settings
             @{@"key": @"renderer",
               @"icon": @"cpu",
@@ -494,7 +498,7 @@
                                           newInstanceName, &errorMessage);
         } else {
             NSString *root = [NSString stringWithFormat:
-                @"%s/instances", getenv("POJAV_HOME")];
+                @"%s/instances", PocketJGetEnv("POCKETJ_HOME")];
             NSString *oldPath =
                 [root stringByAppendingPathComponent:self.originalInstanceName];
             NSString *newPath =
@@ -508,7 +512,7 @@
                 errorMessage = moveError.localizedDescription;
                 if (renamed) {
                     setPrefObject(@"general.game_directory", newInstanceName);
-                    NSString *gamePath = @(getenv("POJAV_GAME_DIR"));
+                    NSString *gamePath = @(PocketJGetEnv("POCKETJ_GAME_DIR"));
                     [NSFileManager.defaultManager
                         removeItemAtPath:gamePath error:nil];
                     [NSFileManager.defaultManager

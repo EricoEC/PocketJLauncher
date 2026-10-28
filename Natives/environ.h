@@ -2,8 +2,8 @@
 // Created by maks on 24.09.2022.
 //
 
-#ifndef POJAVLAUNCHER_ENVIRON_H
-#define POJAVLAUNCHER_ENVIRON_H
+#ifndef POCKETJ_ENVIRON_H
+#define POCKETJ_ENVIRON_H
 
 #include <stdatomic.h>
 #include "jni.h"
@@ -36,7 +36,7 @@ typedef void GLFW_invoke_WindowSize_func(void* window, int width, int height);
 jclass class_CTCClipboard;
 jmethodID method_SystemClipboardDataReceived;
 
-//struct pojav_environ_s {
+//struct pocketj_environ_s {
     //render_window_t* mainWindowBundle;
     //BOOL force_vsync;
     atomic_size_t eventCounter;
@@ -80,4 +80,4 @@ float resolutionScale;
 BOOL virtualMouseEnabled, isControlModifiable;
 uint64_t hwRedirectOrig[6], hwRedirectTarget[6];
 
-#endif //POJAVLAUNCHER_ENVIRON_H
+#endif //POCKETJ_ENVIRON_H

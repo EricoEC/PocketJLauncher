@@ -8,6 +8,7 @@
 @property(nonatomic) NSString *baseURL;
 @property(nonatomic) NSError *lastError;
 @property(nonatomic) BOOL reachedLastPage;
+@property(nonatomic) NSString *archiveRootPrefix;
 
 - (instancetype)initWithURL:(NSString *)url;
 - (NSMutableArray *)searchModWithFilters:(NSDictionary *)filters previousPageResult:(NSMutableArray *)prevResult;

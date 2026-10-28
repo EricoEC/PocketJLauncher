@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #include <dirent.h>
 #include <dlfcn.h>
 #include <errno.h>
@@ -15,7 +16,7 @@
 #import "JavaLauncher.h"
 
 // Minecraft 26.x may select LWJGL's GLFW_NO_API path, which bypasses
-// pojavInitOpenGL()/vk_init(). Install the Metal source hook before Java starts
+// pocketjInitOpenGL()/vk_init(). Install the Metal source hook before Java starts
 // so MoltenVK shader compilation is covered regardless of that path.
 extern void PocketJInstallMetalShaderPatchForVulkan(void);
 #import "LauncherPreferences.h"
@@ -23,6 +24,8 @@ extern void PocketJInstallMetalShaderPatchForVulkan(void);
 #import "PLLogOutputView.h"
 #import "PLProfiles.h"
 #import "ZinkConfig.h"
+#import "authenticator/YggdrasilAuthenticator.h"
+#import "PocketJGameStartup.h"
 
 #define fm NSFileManager.defaultManager
 
@@ -58,7 +61,7 @@ static void PocketJDisableUnsupportedDesktopInputMods(NSString *gameDirectory) {
 }
 
 static NSString *PocketJConfigureModernForgeGameRoot(NSString *versionID) {
-    const char *currentRoot = getenv("POJAV_GAME_DIR");
+    const char *currentRoot = PocketJGetEnv("POCKETJ_GAME_DIR");
     const char *savedRoot = getenv("POCKETJ_REAL_GAME_DIR");
     NSString *realRoot = savedRoot ? @(savedRoot) : (currentRoot ? @(currentRoot) : nil);
     if (!savedRoot && realRoot.length) {
@@ -68,11 +71,11 @@ static NSString *PocketJConfigureModernForgeGameRoot(NSString *versionID) {
     NSString *lowercase = versionID.lowercaseString;
     BOOL modernForge = [lowercase containsString:@"forge"];
     if (!modernForge || !realRoot.length) {
-        if (realRoot.length) setenv("POJAV_GAME_DIR", realRoot.UTF8String, 1);
+        if (realRoot.length) PocketJSetEnv("POCKETJ_GAME_DIR", realRoot.UTF8String, 1);
         return realRoot;
     }
 
-    const char *homeValue = getenv("POJAV_HOME");
+    const char *homeValue = PocketJGetEnv("POCKETJ_HOME");
     if (!homeValue) return realRoot;
     NSString *alias = [@(homeValue) stringByAppendingPathComponent:@".pocketj-loader-runtime"];
     NSString *target = [fm destinationOfSymbolicLinkAtPath:alias error:nil];
@@ -86,11 +89,11 @@ static NSString *PocketJConfigureModernForgeGameRoot(NSString *versionID) {
         }
     }
     if ([[fm destinationOfSymbolicLinkAtPath:alias error:nil] isEqualToString:realRoot]) {
-        setenv("POJAV_GAME_DIR", alias.UTF8String, 1);
+        PocketJSetEnv("POCKETJ_GAME_DIR", alias.UTF8String, 1);
         NSLog(@"[Forge Compatibility] Using URI-safe game root %@", alias);
         return alias;
     }
-    setenv("POJAV_GAME_DIR", realRoot.UTF8String, 1);
+    PocketJSetEnv("POCKETJ_GAME_DIR", realRoot.UTF8String, 1);
     return realRoot;
 }
 
@@ -100,7 +103,7 @@ static NSString *PocketJConfigureModernForgeInstanceRoot(NSString *versionID,
         return gameDirectory;
     }
 
-    const char *homeValue = getenv("POJAV_HOME");
+    const char *homeValue = PocketJGetEnv("POCKETJ_HOME");
     if (!homeValue) return gameDirectory;
     NSString *alias = [@(homeValue) stringByAppendingPathComponent:@".pocketj-instance-runtime"];
     NSString *target = [fm destinationOfSymbolicLinkAtPath:alias error:nil];
@@ -156,6 +159,8 @@ void init_loadCustomEnv() {
     NSString *envvars = getPrefObject(@"java.env_variables");
     if (envvars == nil) return;
     NSLog(@"[JavaLauncher] Reading custom environment variables");
+    NSMutableArray<NSString *> *names = [NSMutableArray array];
+    NSMutableArray<NSString *> *values = [NSMutableArray array];
     for (NSString *line in [envvars componentsSeparatedByCharactersInSet:NSCharacterSet.whitespaceCharacterSet]) {
         if (![line containsString:@"="]) {
             NSLog(@"[JavaLauncher] Warning: skipped empty value custom env variable: %@", line);
@@ -164,9 +169,20 @@ void init_loadCustomEnv() {
         NSRange range = [line rangeOfString:@"="];
         NSString *key = [line substringToIndex:range.location];
         NSString *value = [line substringFromIndex:range.location+range.length];
-        setenv(key.UTF8String, value.UTF8String, 1);
+        [names addObject:key];
+        [values addObject:value];
         NSLog(@"[JavaLauncher] Added custom env variable: %@", line);
     }
+    const char **keys = calloc(MAX(names.count, 1), sizeof(char *));
+    const char **entries = calloc(MAX(values.count, 1), sizeof(char *));
+    if (!keys || !entries) { free(keys); free(entries); return; }
+    for (NSUInteger i = 0; i < names.count; i++) {
+        keys[i] = names[i].UTF8String;
+        entries[i] = values[i].UTF8String;
+    }
+    PocketJApplyEnvironment(keys, entries, names.count);
+    free(keys);
+    free(entries);
 }
 
 void init_loadCustomJvmFlags(int* argc, const char** argv) {
@@ -217,9 +233,9 @@ int PocketJRequiredJavaVersionForMinecraft(NSString *versionID) {
 
     NSFileManager *manager = NSFileManager.defaultManager;
     NSMutableArray<NSString *> *roots = [NSMutableArray array];
-    const char *gameDir = getenv("POJAV_GAME_DIR");
+    const char *gameDir = PocketJGetEnv("POCKETJ_GAME_DIR");
     if (gameDir) [roots addObject:@(gameDir)];
-    const char *home = getenv("POJAV_HOME");
+    const char *home = PocketJGetEnv("POCKETJ_HOME");
     if (home) [roots addObject:[NSString stringWithFormat:@"%s/instances/%@", home,
         getPrefObject(@"general.game_directory") ?: @"default"]];
 
@@ -296,7 +312,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
                     return 1;
                 }
             }
-            [NSFileManager.defaultManager copyItemAtPath:inBundleScriptPath toPath:[NSString stringWithFormat:@"%s/UniversalJIT26.js", getenv("POJAV_HOME")] error:nil];
+            [NSFileManager.defaultManager copyItemAtPath:inBundleScriptPath toPath:[NSString stringWithFormat:@"%s/UniversalJIT26.js", PocketJGetEnv("POCKETJ_HOME")] error:nil];
             showDialog(localize(@"Error", nil), localize(@"localization.error.legacy_script_removed", nil));
             [PLLogOutputView handleExitCode:1];
             return 1;
@@ -346,7 +362,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
             defaultJRETag = @"1_17_newer";
         }
 
-        // Setup POJAV_RENDERER
+        // Setup POCKETJ_RENDERER
         NSString *renderer = [PLProfiles resolveKeyForCurrentProfile:@"renderer"];
         if ([renderer isEqualToString:@"auto"] && automaticJavaVersion >= 25) {
             // Minecraft 26.x is known to render incorrectly on the iOS ANGLE
@@ -358,14 +374,14 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
                 minecraftVersion, automaticJavaVersion);
         }
         NSLog(@"[JavaLauncher] RENDERER is set to %@\n", renderer);
-        setenv("POJAV_RENDERER", renderer.UTF8String, 1);
+        PocketJSetEnv("POCKETJ_RENDERER", renderer.UTF8String, 1);
         BOOL needsAngle26TextureBufferWorkaround = automaticJavaVersion >= 25 &&
             [renderer isEqualToString:@ RENDERER_NAME_MTL_ANGLE];
         setenv("POCKETJ_ANGLE_26_TEXTURE_BUFFER_WORKAROUND",
             needsAngle26TextureBufferWorkaround ? "1" : "0", 1);
         // Setup gameDir
         gameDir = [NSString stringWithFormat:@"%s/instances/%@/%@",
-            getenv("POJAV_HOME"), getPrefObject(@"general.game_directory"),
+            PocketJGetEnv("POCKETJ_HOME"), getPrefObject(@"general.game_directory"),
             [PLProfiles resolveKeyForCurrentProfile:@"gameDir"]]
             .stringByStandardizingPath;
         gameDir = PocketJConfigureModernForgeInstanceRoot(launchTarget[@"id"], gameDir);
@@ -374,7 +390,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
         }
     } else {
         defaultJRETag = @"execute_jar";
-        gameDir = @(getenv("POJAV_GAME_DIR"));
+        gameDir = @(PocketJGetEnv("POCKETJ_GAME_DIR"));
         launchJar = YES;
     }
     NSLog(@"[JavaLauncher] Looking for Java %d or later", minVersion);
@@ -386,7 +402,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
         showDialog(localize(@"Error", nil), [NSString stringWithFormat:localize(@"java.error.missing_runtime", nil),
             isExecuteJar ? [launchTarget lastPathComponent] : PLProfiles.current.selectedProfile[@"lastVersionId"], minVersion]);
         return 1;
-    } else if ([javaHome hasPrefix:@(getenv("POJAV_HOME"))]) {
+    } else if ([javaHome hasPrefix:@(PocketJGetEnv("POCKETJ_HOME"))]) {
         // Copy libawt_xawt.dylib
         NSString *dest = [NSString stringWithFormat:@"%@/lib/libawt_xawt.dylib", javaHome];
         NSString *source = [NSString stringWithFormat:@"%@/Frameworks/libawt_xawt.dylib", NSBundle.mainBundle.bundlePath];
@@ -459,7 +475,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     margv[++margc] = [NSString stringWithFormat:@"%@/bin/java", javaHome].UTF8String;
     margv[++margc] = "-XstartOnFirstThread";
     if (!launchJar) {
-        margv[++margc] = "-Djava.system.class.loader=net.kdt.pojavlaunch.PojavClassLoader";
+        margv[++margc] = "-Djava.system.class.loader=com.erico.pocketj.PocketJClassLoader";
     }
     margv[++margc] = isLegacyCompatibilityRuntime ? "-Xms64M" : "-Xms128M";
     margv[++margc] = [NSString stringWithFormat:@"-Xmx%dM", allocmem].UTF8String;
@@ -478,7 +494,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     }
     margv[++margc] = [NSString stringWithFormat:@"-Djava.library.path=%@/Frameworks", NSBundle.mainBundle.bundlePath].UTF8String;
     margv[++margc] = [NSString stringWithFormat:@"-Duser.dir=%@", gameDir].UTF8String;
-    margv[++margc] = [NSString stringWithFormat:@"-Duser.home=%s", getenv("POJAV_HOME")].UTF8String;
+    margv[++margc] = [NSString stringWithFormat:@"-Duser.home=%s", PocketJGetEnv("POCKETJ_HOME")].UTF8String;
     margv[++margc] = [NSString stringWithFormat:@"-Duser.timezone=%@", NSTimeZone.localTimeZone.name].UTF8String;
     margv[++margc] = [NSString stringWithFormat:@"-DUIScreen.maximumFramesPerSecond=%d", (int)UIScreen.mainScreen.maximumFramesPerSecond].UTF8String;
     margv[++margc] = "-Dorg.lwjgl.glfw.checkThread0=false";
@@ -491,9 +507,13 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     margv[++margc] = "-Dorg.lwjgl.sdl.libname=SDL3";
     //margv[++margc] = "-Dorg.lwjgl.util.NoChecks=true";
     margv[++margc] = "-Dlog4j2.formatMsgNoLookups=true";
+    NSString *touchMode=PLProfiles.current.selectedProfile[@"pocketjTouchController"];
+    unsetenv("TOUCH_CONTROLLER_PROXY"); unsetenv("TOUCH_CONTROLLER_PROXY_SOCKET");
+    if (!launchJar && [touchMode isEqual:@"native"]) setenv("TOUCH_CONTROLLER_PROXY_SOCKET","/tmp/touchcontroller.sock",1);
+    else if (!launchJar && [touchMode isEqual:@"udp"]) setenv("TOUCH_CONTROLLER_PROXY","12450",1);
 
     // Preset OpenGL libname
-    const char *glLibName = getenv("POJAV_RENDERER");
+    const char *glLibName = PocketJGetEnv("POCKETJ_RENDERER");
     if (glLibName) {
         if (!strcmp(glLibName, "auto")) {
             // workaround only applies to 1.20.2+
@@ -503,6 +523,17 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     }
 
     NSString *librariesPath = [NSString stringWithFormat:@"%@/libs", NSBundle.mainBundle.bundlePath];
+    if (!launchJar && [BaseAuthenticator.current.authData[@"accountType"] isEqual:@"yggdrasil"]) {
+        NSString *server=[YggdrasilAuthenticator normalizedServer:BaseAuthenticator.current.authData[@"authServer"]];
+        NSString *agent=YggdrasilAuthenticator.agentPath;
+        if (!server.length || ![fm fileExistsAtPath:agent]) {
+            UIKit_returnToSplitView();
+            showDialog(localize(@"启动失败",nil),localize(@"第三方认证组件缺失，请联网重新登录该账户。",nil));
+            return 1;
+        }
+        margv[++margc]=[NSString stringWithFormat:@"-javaagent:%@=%@",agent,server].UTF8String;
+        margv[++margc]="-Dauthlibinjector.side=client";
+    }
     margv[++margc] = [NSString stringWithFormat:@"-javaagent:%@/patchjna_agent.jar=", librariesPath].UTF8String;
     if(getPrefBool(@"general.cosmetica")) {
         margv[++margc] = [NSString stringWithFormat:@"-javaagent:%@/arc_dns_injector.jar=23.95.137.176", librariesPath].UTF8String;
@@ -521,6 +552,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     margv[++margc] = "-Dfml.earlyprogresswindow=false";
 
     // Load java
+    if (!launchJar) PocketJGameStartupAdvance(PJStartupRuntime);
     NSString *libjlipath8 = [NSString stringWithFormat:@"%@/lib/jli/libjli.dylib", javaHome]; // java 8
     NSString *libjlipath11 = [NSString stringWithFormat:@"%@/lib/libjli.dylib", javaHome]; // java 11+
     BOOL isJava8 = [fm fileExistsAtPath:libjlipath8];
@@ -631,7 +663,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     }
     margv[++margc] = "-cp";
     margv[++margc] = classpath.UTF8String;
-    margv[++margc] = "net.kdt.pojavlaunch.PojavLauncher";
+    margv[++margc] = "com.erico.pocketj.PocketJLauncher";
 
     if (launchJar) {
         margv[++margc] = "-jar";
@@ -655,6 +687,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
 
     PocketJInstallMetalShaderPatchForVulkan();
     NSLog(@"[Init] Calling JLI_Launch");
+    if (!launchJar) PocketJGameStartupAdvance(PJStartupJVM);
 
     // Cr4shed known issue: exit after crash dump,
     // reset signal handler so that JVM can catch them

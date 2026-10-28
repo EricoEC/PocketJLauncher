@@ -1,15 +1,20 @@
 #import "installer/FabricUtils.h"
 #import "ModpackUtils.h"
+#import "PocketJArchiveService.h"
 
 @implementation ModpackUtils
 
 + (void)archive:(UZKArchive *)archive extractDirectory:(NSString *)dir toPath:(NSString *)path error:(NSError *__autoreleasing*)error {
+    NSString *prefix=[dir stringByAppendingString:@"/"];
     [archive performOnFilesInArchive:^(UZKFileInfo *fileInfo, BOOL *stop) {
-        if (![fileInfo.filename hasPrefix:dir] ||
-            fileInfo.filename.length <= dir.length) {
+        if (![fileInfo.filename hasPrefix:prefix] ||
+            fileInfo.filename.length <= prefix.length) {
             return;
         }
-        NSString *fileName = [fileInfo.filename substringFromIndex:dir.length+1];
+        NSString *fileName = [fileInfo.filename substringFromIndex:prefix.length];
+        if ([fileName hasPrefix:@"/"] || [fileName containsString:@"\\"] || [fileName.pathComponents containsObject:@".."] || [fileName containsString:@":"]) {
+            if (error) *error=[NSError errorWithDomain:@"PocketJ.Archive" code:1 userInfo:@{NSLocalizedDescriptionKey:@"Unsafe modpack override path."}]; *stop=YES; return;
+        }
         NSString *destItemPath = [path stringByAppendingPathComponent:fileName];
         NSString *destDirPath = fileInfo.isDirectory ? destItemPath : destItemPath.stringByDeletingLastPathComponent;
         BOOL createdDir = [NSFileManager.defaultManager createDirectoryAtPath:destDirPath

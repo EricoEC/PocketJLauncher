@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 /*
  * V3 input bridge implementation.
  *
@@ -86,11 +87,14 @@ static const bool *(*pjSDLGetKeyboardState)(int *count);
 static uint16_t (*pjSDLGetModState)(void);
 static void (*pjSDLSetModState)(uint16_t mods);
 static void (*pjSDLFree)(void *pointer);
+static bool (*pjSDLGetWindowRelativeMouseMode)(void *window);
+static atomic_uintptr_t pjSDLRegisteredWindow;
+static atomic_uint pjSDLRegisteredWindowID;
 static float pjSDLLastX, pjSDLLastY;
 static char pjSDLTextRing[256][8];
 static atomic_uint pjSDLTextIndex;
 
-static uint32_t pjSDLWindowID(void) {
+static void pjSDLResolveFunctions(void) {
     static dispatch_once_t sdlLoadOnce;
     dispatch_once(&sdlLoadOnce, ^{
         NSString *path = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"Frameworks/libSDL3.dylib"];
@@ -106,7 +110,43 @@ static uint32_t pjSDLWindowID(void) {
         pjSDLGetModState = dlsym(pjSDLHandle, "SDL_GetModState");
         pjSDLSetModState = dlsym(pjSDLHandle, "SDL_SetModState");
         pjSDLFree = dlsym(pjSDLHandle, "SDL_free");
+        pjSDLGetWindowRelativeMouseMode = dlsym(pjSDLHandle, "SDL_GetWindowRelativeMouseMode");
     });
+}
+
+void PocketJRegisterSDLWindow(void *window) {
+    if (window) pjSDLResolveFunctions();
+    atomic_store(&pjSDLRegisteredWindow, (uintptr_t)window);
+    atomic_store(&pjSDLRegisteredWindowID,
+        window && pjSDLGetWindowID ? pjSDLGetWindowID(window) : 0);
+    NSLog(@"[PocketJ SDL3] Registered window %p, id=%u", window,
+        atomic_load(&pjSDLRegisteredWindowID));
+}
+
+// Compatibility callback required by the bundled, unmodified SDL3 binary.
+void Amethyst_SetSDLWindow(void *window) {
+    PocketJRegisterSDLWindow(window);
+}
+
+void PocketJRefreshSDLGrabState(void) {
+    // SDL window queries and UIKit state changes belong on the main thread.
+    if (!NSThread.isMainThread || GLFW_invoke_CursorPos) return;
+    void *window = (void *)atomic_load(&pjSDLRegisteredWindow);
+    if (!window || !pjSDLGetWindowRelativeMouseMode) return;
+    BOOL grabbing = pjSDLGetWindowRelativeMouseMode(window);
+    if (isGrabbing == grabbing) return;
+    isGrabbing = grabbing;
+    NSLog(@"[PocketJ SDL3] Relative mouse mode: %@", grabbing ? @"game" : @"menu");
+    UIViewController *root = UIWindow.mainWindow.rootViewController;
+    if ([root isKindOfClass:SurfaceViewController.class]) {
+        [(SurfaceViewController *)root updateGrabState];
+    }
+}
+
+static uint32_t pjSDLWindowID(void) {
+    uint32_t registered = atomic_load(&pjSDLRegisteredWindowID);
+    if (registered) return registered;
+    pjSDLResolveFunctions();
     if (!pjSDLGetWindows || !pjSDLGetWindowID || !pjSDLPushEvent || !pjSDLFree) return 0;
     int count = 0;
     void **windows = pjSDLGetWindows(&count);
@@ -385,6 +425,8 @@ void registerOpenHandler(JNIEnv *env) {
     (*env)->RegisterNatives(env, cls, peerOpenMethods, 2);
 }
 
+#include "PocketJGameStartup.h"
+
 // JNI_OnLoad
 void JNI_OnLoadGLFW() {
     vmGlfwClass = (*runtimeJNIEnvPtr)->NewGlobalRef(runtimeJNIEnvPtr, (*runtimeJNIEnvPtr)->FindClass(runtimeJNIEnvPtr, "org/lwjgl/glfw/GLFW"));
@@ -395,12 +437,13 @@ void JNI_OnLoadGLFW() {
 }
 
 jint JNI_OnLoad(JavaVM* vm, void* reserved) {
+    PocketJGameStartupAdvance(PJStartupJNI);
     runtimeJavaVMPtr = vm;
 
     JNIEnv *env;
     (*runtimeJavaVMPtr)->GetEnv(runtimeJavaVMPtr, (void **)&env, JNI_VERSION_1_4);
     registerOpenHandler(env);
-    if (!getenv("POJAV_SKIP_JNI_GLFW")) {
+    if (!PocketJGetEnv("POCKETJ_SKIP_JNI_GLFW")) {
         runtimeJNIEnvPtr = env;
         JNI_OnLoadGLFW();
     }
@@ -439,13 +482,15 @@ void handleFramebufferSizeJava(void* window, int w, int h) {
     (*runtimeJNIEnvPtr)->CallStaticVoidMethod(runtimeJNIEnvPtr, vmGlfwClass, method_internalWindowSizeChanged, (long)window, w, h);
 }
 
-void pojavPumpEvents(void* window) {
+#include "PocketJRenderBridge.h"
+
+void pocketjPumpEvents(void* window) {
     static BOOL setInputReady = NO;
     if(!setInputReady) {
         setInputReady = YES;
         CallbackBridge_nativeSetInputReady(YES);
     }
-    //__android_log_print(ANDROID_LOG_INFO, "input_bridge_v3", "pojavPumpevents %d", eventCounter);
+    //__android_log_print(ANDROID_LOG_INFO, "input_bridge_v3", "pocketjPumpEvents %d", eventCounter);
     size_t counter = atomic_load_explicit(&eventCounter, memory_order_acquire);
     if((cLastX != cursorX || cLastY != cursorY) && GLFW_invoke_CursorPos) {
         cLastX = cursorX;
@@ -483,7 +528,7 @@ void pojavPumpEvents(void* window) {
     }
     atomic_store_explicit(&eventCounter, counter, memory_order_release);
 }
-void pojavRewindEvents() {
+void pocketjRewindEvents() {
     atomic_store_explicit(&eventCounter, 0, memory_order_release);
 }
 
@@ -661,14 +706,35 @@ void CallbackBridge_nativeSendCursorPos(char event, CGFloat x, CGFloat y) {
         PJSDLMouseMotionEvent *motion = (PJSDLMouseMotionEvent *)&sdlEvent;
         motion->type = 0x400;
         motion->windowID = windowID;
-        motion->x = (float)x;
-        motion->y = (float)y;
-        motion->xrel = (float)x - pjSDLLastX;
-        motion->yrel = (float)y - pjSDLLastY;
-        pjSDLLastX = motion->x;
-        pjSDLLastY = motion->y;
-        cursorX = x;
-        cursorY = y;
+        if (event == ACTION_MOVE_MOTION) {
+            // Touch look, controller and physical mouse already supply deltas.
+            // Differencing consecutive deltas cancels motion and snaps back.
+            motion->xrel = (float)x;
+            motion->yrel = (float)y;
+            cursorX += x;
+            cursorY += y;
+        } else {
+            // A new finger position only anchors an absolute gesture. It must
+            // not rotate the camera when the finger is lifted/repositioned.
+            if (event == ACTION_MOVE) {
+                motion->xrel = (float)x - pjSDLLastX;
+                motion->yrel = (float)y - pjSDLLastY;
+                if (isGrabbing) {
+                    cursorX += motion->xrel;
+                    cursorY += motion->yrel;
+                }
+            }
+            pjSDLLastX = (float)x;
+            pjSDLLastY = (float)y;
+            if (!isGrabbing) {
+                cursorX = x;
+                cursorY = y;
+            } else if (event != ACTION_MOVE) {
+                return;
+            }
+        }
+        motion->x = (float)cursorX;
+        motion->y = (float)cursorY;
         pjSDLPushEvent(&sdlEvent);
         return;
     }

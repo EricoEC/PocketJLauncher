@@ -12,7 +12,7 @@ import java.nio.*;
 
 import javax.annotation.*;
 
-import net.kdt.pojavlaunch.Tools;
+import com.erico.pocketj.Tools;
 
 import org.lwjgl.*;
 import org.lwjgl.system.*;
@@ -601,17 +601,17 @@ public class GLFW
 
         /** Function address. */
         public static final long
-        Init = apiGetFunctionAddress(GLFW, "pojavInit"),
-        CreateContext = apiGetFunctionAddress(GLFW, "pojavCreateContext"),
-        GetCurrentContext = apiGetFunctionAddress(GLFW, "pojavGetCurrentContext"),
-        //DetachOnCurrentThread = apiGetFunctionAddress(GLFW, "pojavDetachOnCurrentThread"),
-        MakeContextCurrent = apiGetFunctionAddress(GLFW, "pojavMakeCurrent"),
-        Terminate = apiGetFunctionAddress(GLFW, "pojavTerminate"),
-        SetWindowHint = apiGetFunctionAddress(GLFW, "pojavSetWindowHint"),
-        SwapBuffers = apiGetFunctionAddress(GLFW, "pojavSwapBuffers"),
-        SwapInterval = apiGetFunctionAddress(GLFW, "pojavSwapInterval"),
-        PumpEvents = apiGetFunctionAddress(GLFW, "pojavPumpEvents"),
-        RewindEvents = apiGetFunctionAddress(GLFW, "pojavRewindEvents");
+        Init = apiGetFunctionAddress(GLFW, "pocketjInit"),
+        CreateContext = apiGetFunctionAddress(GLFW, "pocketjCreateContext"),
+        GetCurrentContext = apiGetFunctionAddress(GLFW, "pocketjGetCurrentContext"),
+        //DetachOnCurrentThread = apiGetFunctionAddress(GLFW, "pocketjDetachOnCurrentThread"),
+        MakeContextCurrent = apiGetFunctionAddress(GLFW, "pocketjMakeCurrent"),
+        Terminate = apiGetFunctionAddress(GLFW, "pocketjTerminate"),
+        SetWindowHint = apiGetFunctionAddress(GLFW, "pocketjSetWindowHint"),
+        SwapBuffers = apiGetFunctionAddress(GLFW, "pocketjSwapBuffers"),
+        SwapInterval = apiGetFunctionAddress(GLFW, "pocketjSwapInterval"),
+        PumpEvents = apiGetFunctionAddress(GLFW, "pocketjPumpEvents"),
+        RewindEvents = apiGetFunctionAddress(GLFW, "pocketjRewindEvents");
     }
 
     public static SharedLibrary getLibrary() {

@@ -4,6 +4,7 @@
 @property(nonatomic) UINavigationController *navController;
 - (void)actionStartStopLogOutput;
 - (void)actionToggleLogOutput;
+- (void)actionShowStartupLog;
 + (void)appendToLog:(NSString *)line;
 + (BOOL)handleExitCode:(int)code;
 @end

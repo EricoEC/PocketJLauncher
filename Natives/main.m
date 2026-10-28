@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import <mach-o/dyld.h>
 #import <spawn.h>
 #import <sys/sysctl.h>
@@ -117,7 +118,7 @@ void init_logDeviceAndVer(char *argument) {
     } else {
         type = "Unjailbroken";
     }
-    setenv("POJAV_DETECTEDINST", type, 1);
+    PocketJSetEnv("POCKETJ_DETECTEDINST", type, 1);
     
     NSLog(@"[Pre-Init] Device: %@", [HostManager GetModelName]);
     NSLog(@"[Pre-Init] %@ (%s)", UIDevice.currentDevice.completeOSVersion, type);
@@ -137,7 +138,7 @@ void init_redirectStdio() {
 
     NSLog(@"[Pre-init] Starting logging STDIO to latestlog.txt\n");
 
-    NSString *home = @(getenv("POJAV_HOME"));
+    NSString *home = @(PocketJGetEnv("POCKETJ_HOME"));
     NSString *currName = [home stringByAppendingPathComponent:@"latestlog.txt"];
     NSString *oldName = [home stringByAppendingPathComponent:@"latestlog.old.txt"];
     [fm removeItemAtPath:oldName error:nil];
@@ -194,12 +195,12 @@ void init_redirectStdio() {
 }
 
 void init_setupAccounts() {
-    NSString *controlPath = [@(getenv("POJAV_HOME")) stringByAppendingPathComponent:@"accounts"];
+    NSString *controlPath = [@(PocketJGetEnv("POCKETJ_HOME")) stringByAppendingPathComponent:@"accounts"];
     [fm createDirectoryAtPath:controlPath withIntermediateDirectories:NO attributes:nil error:nil];
 }
 
 void init_setupCustomControls() {
-    NSString *controlPath = [@(getenv("POJAV_HOME")) stringByAppendingPathComponent:@"controlmap"];
+    NSString *controlPath = [@(PocketJGetEnv("POCKETJ_HOME")) stringByAppendingPathComponent:@"controlmap"];
     [fm createDirectoryAtPath:controlPath withIntermediateDirectories:NO attributes:nil error:nil];
     generateAndSaveDefaultControl();
     NSString *gamepadControlPath = [controlPath stringByAppendingPathComponent:@"gamepads"];
@@ -209,7 +210,7 @@ void init_setupCustomControls() {
 
 void init_setupMultiDir() {
     NSString *multidir = getPrefObject(@"general.game_directory");
-    const char *home = getenv("POJAV_HOME");
+    const char *home = PocketJGetEnv("POCKETJ_HOME");
     NSString *lasmPath = [NSString stringWithFormat:@"%s/Library/Application Support/minecraft", home];
     NSString *instancesPath = [NSString stringWithFormat:@"%s/instances", home];
     NSArray *dirsToCreate = @[
@@ -240,12 +241,12 @@ void init_setupMultiDir() {
         NSLog(@"[Pre-init] No game instance selected.\n");
         [fm changeCurrentDirectoryPath:instancesPath];
     }
-    setenv("POJAV_GAME_DIR", lasmPath.UTF8String, 1);
+    PocketJSetEnv("POCKETJ_GAME_DIR", lasmPath.UTF8String, 1);
 }
 
 void init_setupResolvConf() {
     // Write known DNS servers to the config
-    NSString *path = [NSString stringWithFormat:@"%s/resolv.conf", getenv("POJAV_HOME")];
+    NSString *path = [NSString stringWithFormat:@"%s/resolv.conf", PocketJGetEnv("POCKETJ_HOME")];
     if (![fm fileExistsAtPath:path]) {
         [@"nameserver 8.8.8.8\n"
          @"nameserver 8.8.4.4"
@@ -274,7 +275,7 @@ void init_setupHomeDirectory() {
         [fm createDirectoryAtPath:homeDir withIntermediateDirectories:YES attributes:nil error:&homeError];
     }
     
-    setenv("POJAV_HOME", realpath(homeDir.UTF8String, NULL), 1);
+    PocketJSetEnv("POCKETJ_HOME", realpath(homeDir.UTF8String, NULL), 1);
 }
 
 int main(int argc, char *argv[]) {
@@ -298,6 +299,7 @@ int main(int argc, char *argv[]) {
         return ret;
     }
 
+    PocketJInitializeEnvironment();
     setenv("BUNDLE_PATH", dirname(argv[0]), 1);
     isJailbroken = init_checkForJailbreak();
     init_setupHomeDirectory();

@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "authenticator/BaseAuthenticator.h"
 #import "AFNetworking.h"
@@ -12,6 +13,7 @@
 #import "installer/FabricUtils.h"
 #import "installer/modpack/ModpackAPI.h"
 #import "installer/modpack/ModrinthAPI.h"
+#import "installer/modpack/CurseForgeAPI.h"
 #import "MinecraftResourceDownloadTask.h"
 #import "MinecraftResourceUtils.h"
 #import "PickTextField.h"
@@ -149,7 +151,7 @@ static NSString *const LauncherVerifiedCompletesKey =
 - (NSString *)selectedDownloadIdentifier {
     NSString *gameDirectory =
         getPrefObject(@"general.game_directory") ?: @"";
-    NSString *instancePath = @(getenv("POJAV_GAME_DIR")) ?: @"";
+    NSString *instancePath = @(PocketJGetEnv("POCKETJ_GAME_DIR")) ?: @"";
     NSString *identityPath =
         [instancePath stringByAppendingPathComponent:@".pocketj-instance-id"];
     NSString *instanceIdentity = [NSString
@@ -448,7 +450,7 @@ static NSString *const LauncherVerifiedCompletesKey =
 }
 
 - (BOOL)isVersionInstalled:(NSString *)versionId {
-    NSString *localPath = [NSString stringWithFormat:@"%s/versions/%@", getenv("POJAV_GAME_DIR"), versionId];
+    NSString *localPath = [NSString stringWithFormat:@"%s/versions/%@", PocketJGetEnv("POCKETJ_GAME_DIR"), versionId];
     BOOL isDirectory;
     [NSFileManager.defaultManager fileExistsAtPath:localPath isDirectory:&isDirectory];
     return isDirectory;
@@ -461,7 +463,7 @@ static NSString *const LauncherVerifiedCompletesKey =
     [localVersionList removeAllObjects];
 
     NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSString *versionPath = [NSString stringWithFormat:@"%s/versions/", getenv("POJAV_GAME_DIR")];
+    NSString *versionPath = [NSString stringWithFormat:@"%s/versions/", PocketJGetEnv("POCKETJ_GAME_DIR")];
     NSArray *list = [fileManager contentsOfDirectoryAtPath:versionPath error:Nil];
     for (NSString *versionId in list) {
         if (![self isVersionInstalled:versionId]) continue;
@@ -593,7 +595,7 @@ static NSString *const LauncherVerifiedCompletesKey =
     profile[@"pocketjResourcesVerified"] = @NO;
     [PLProfiles.current save];
     NSArray *before = [NSFileManager.defaultManager contentsOfDirectoryAtPath:
-        [NSString stringWithFormat:@"%s/versions", getenv("POJAV_GAME_DIR")] error:nil] ?: @[];
+        [NSString stringWithFormat:@"%s/versions", PocketJGetEnv("POCKETJ_GAME_DIR")] error:nil] ?: @[];
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     [defaults setObject:getPrefObject(@"general.game_directory") ?: @"" forKey:@"PocketJPendingLoaderInstance"];
     [defaults setObject:PLProfiles.current.selectedProfileName ?: @"" forKey:@"PocketJPendingLoaderProfile"];
@@ -628,7 +630,7 @@ static NSString *const LauncherVerifiedCompletesKey =
     }
     // Migrated instances may already contain the requested loader while the
     // old profile still points at Vanilla. Reuse that installation first.
-    NSString *versionsRoot = [NSString stringWithFormat:@"%s/versions", getenv("POJAV_GAME_DIR")];
+    NSString *versionsRoot = [NSString stringWithFormat:@"%s/versions", PocketJGetEnv("POCKETJ_GAME_DIR")];
     for (NSString *candidate in [NSFileManager.defaultManager contentsOfDirectoryAtPath:versionsRoot error:nil] ?: @[]) {
         NSString *lower = candidate.lowercaseString;
         if (![lower containsString:loader.lowercaseString] ||
@@ -665,7 +667,7 @@ static NSString *const LauncherVerifiedCompletesKey =
             NSString *versionID = [metadata isKindOfClass:NSDictionary.class] ? metadata[@"id"] : nil;
             NSError *saveError = nil;
             if (versionID.length) {
-                NSString *path = [NSString stringWithFormat:@"%s/versions/%@/%@.json", getenv("POJAV_GAME_DIR"), versionID, versionID];
+                NSString *path = [NSString stringWithFormat:@"%s/versions/%@/%@.json", PocketJGetEnv("POCKETJ_GAME_DIR"), versionID, versionID];
                 [NSFileManager.defaultManager createDirectoryAtPath:path.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:&saveError];
                 if (!saveError) saveError = saveJSONToFile(metadata, path);
             }
@@ -711,7 +713,7 @@ static NSString *const LauncherVerifiedCompletesKey =
     NSString *urlString = [loader isEqualToString:@"forge"]
         ? [NSString stringWithFormat:@"https://maven.minecraftforge.net/net/minecraftforge/forge/%1$@/forge-%1$@-installer.jar", artifactVersion]
         : [NSString stringWithFormat:@"https://maven.neoforged.net/releases/net/neoforged/neoforge/%1$@/neoforge-%1$@-installer.jar", artifactVersion];
-    NSString *cacheRoot = [@(getenv("POJAV_GAME_DIR"))
+    NSString *cacheRoot = [@(PocketJGetEnv("POCKETJ_GAME_DIR"))
         stringByAppendingPathComponent:@".pocketj-cache/loaders"];
     [NSFileManager.defaultManager createDirectoryAtPath:cacheRoot
         withIntermediateDirectories:YES attributes:nil error:nil];
@@ -887,11 +889,13 @@ static NSString *const LauncherVerifiedCompletesKey =
 - (void)downloadPendingModpack:(NSDictionary *)pending {
     if (self.task) return;
     NSString *source = pending[@"source"];
-    ModpackAPI *api = [source isEqualToString:@"modrinth"]
-        ? [ModrinthAPI new] : nil;
+    BOOL local=[source hasPrefix:@"local-"];
+    ModpackAPI *api = ([source isEqualToString:@"modrinth"] || [source isEqual:@"local-modrinth"])
+        ? [ModrinthAPI new] : (([source isEqual:@"curseforge"] || [source isEqual:@"local-curseforge"]) ? [CurseForgeAPI new]:nil);
+    api.archiveRootPrefix=pending[@"rootPrefix"];
     NSDictionary *detail = [pending[@"detail"] isKindOfClass:NSDictionary.class]
         ? pending[@"detail"] : nil;
-    if (!api || !detail) {
+    if (!api || (!local && !detail)) {
         showDialog(localize(@"整合包配置无效", nil),
             localize(@"请删除该待下载项后重新从在线整合包添加。", nil));
         return;
@@ -920,7 +924,11 @@ static NSString *const LauncherVerifiedCompletesKey =
                 [weakSelf postTaskActive:NO];
             });
         };
-        [downloadTask downloadModpackFromAPI:api detail:detail atIndex:0];
+        if (local) {
+            NSString *package=pending[@"package"];
+            if (![package isEqual:@".pocketj-cache/imported.zip"]) { [downloadTask finishDownloadWithErrorString:@"Invalid local modpack package path."]; return; }
+            [downloadTask installLocalModpackFromAPI:api package:[@(PocketJGetEnv("POCKETJ_GAME_DIR")) stringByAppendingPathComponent:package]];
+        } else [downloadTask downloadModpackFromAPI:api detail:detail atIndex:0];
         dispatch_async(dispatch_get_main_queue(), ^{
             if (weakSelf.task != downloadTask || downloadTask.progress.cancelled) return;
             weakSelf.progressViewMain.observedProgress = downloadTask.progress;
@@ -1095,7 +1103,7 @@ static NSString *const LauncherVerifiedCompletesKey =
 
     // A modpack is a standalone instance. Never register it in the currently
     // selected instance's launcher_profiles.json.
-    NSString *instancesRoot = [NSString stringWithFormat:@"%s/instances", getenv("POJAV_HOME")];
+    NSString *instancesRoot = [NSString stringWithFormat:@"%s/instances", PocketJGetEnv("POCKETJ_HOME")];
     NSString *safeBaseName = [[baseName stringByReplacingOccurrencesOfString:@"/" withString:@"-"]
         stringByReplacingOccurrencesOfString:@":" withString:@"-"];
     NSString *directoryName = safeBaseName;
@@ -1135,7 +1143,7 @@ static NSString *const LauncherVerifiedCompletesKey =
         @"gameDir": @".",
         @"pocketjMinecraftVersion": minecraftVersion ?: @"",
         @"pocketjPendingModpack": @{
-            @"source": @"modrinth",
+            @"source": [detail[@"apiSource"] integerValue]==2 ? @"curseforge":@"modrinth",
             @"detail": selectedDetail
         }
     } mutableCopy];

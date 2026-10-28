@@ -26,7 +26,7 @@ import org.lwjgl.vulkan.*;
 /** Native bindings to the GLFW library's Vulkan functions. */
 public class GLFWVulkan {
 
-     /** PojavLauncher: stub or wrap all functions to equivalent Vulkan functions */
+     /** PocketJ bridge: stub or wrap all functions to equivalent Vulkan functions */
 
     static {
         if (Platform.get() == Platform.MACOSX) {

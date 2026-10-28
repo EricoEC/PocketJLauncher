@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import "LauncherPreferences.h"
 #import "PLPreferences.h"
 #import "UIKit+hook.h"
@@ -139,10 +140,10 @@
 
 - (id)initWithAutomaticMigrator {
     self = [super init];
-    self.globalPath = [@(getenv("POJAV_HOME")) stringByAppendingPathComponent:@"launcher_preferences_v2.plist"];
+    self.globalPath = [@(PocketJGetEnv("POCKETJ_HOME")) stringByAppendingPathComponent:@"launcher_preferences_v2.plist"];
     NSMutableDictionary *pref = [NSMutableDictionary dictionaryWithContentsOfFile:self.globalPath];
 
-    NSString *oldPath = [@(getenv("POJAV_HOME")) stringByAppendingPathComponent:@"launcher_preferences.plist"];
+    NSString *oldPath = [@(PocketJGetEnv("POCKETJ_HOME")) stringByAppendingPathComponent:@"launcher_preferences.plist"];
     NSMutableDictionary *oldPref = [NSMutableDictionary dictionaryWithContentsOfFile:oldPath];
 
     if (pref || !oldPref[@"env_vars"]) {

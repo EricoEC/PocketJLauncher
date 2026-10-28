@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #include <CommonCrypto/CommonDigest.h>
 
 #import "authenticator/BaseAuthenticator.h"
@@ -23,7 +24,7 @@
     // TODO: implement background download
     NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
     configuration.timeoutIntervalForRequest = 86400;
-    //backgroundSessionConfigurationWithIdentifier:@"net.kdt.pojavlauncher.downloadtask"];
+    //backgroundSessionConfigurationWithIdentifier:@"com.Erico.PocketJLauncher.downloadtask"];
     self.manager = [[AFURLSessionManager alloc] initWithSessionConfiguration:configuration];
     self.fileList = [NSMutableArray new];
     self.progressList = [NSMutableArray new];
@@ -137,7 +138,7 @@
         versionStr = getPrefObject(@"internal.latest_version.snapshot");
     }
 
-    NSString *path = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("POJAV_GAME_DIR"), versionStr];
+    NSString *path = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", PocketJGetEnv("POCKETJ_GAME_DIR"), versionStr];
     // Find it again to resolve latest-*
     version = (id)[MinecraftResourceUtils findVersion:versionStr inList:remoteVersionList];
 
@@ -148,7 +149,7 @@
             return;
         }
         if (self.metadata[@"inheritsFrom"]) {
-            NSMutableDictionary *inheritsFromDict = parseJSONFromFile([NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("POJAV_GAME_DIR"), self.metadata[@"inheritsFrom"]]);
+            NSMutableDictionary *inheritsFromDict = parseJSONFromFile([NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", PocketJGetEnv("POCKETJ_GAME_DIR"), self.metadata[@"inheritsFrom"]]);
             if (inheritsFromDict) {
                 [MinecraftResourceUtils processVersion:self.metadata inheritsFrom:inheritsFromDict];
                 self.metadata = inheritsFromDict;
@@ -166,7 +167,7 @@
             return;
         } else if (json[@"inheritsFrom"]) {
             version = (id)[MinecraftResourceUtils findVersion:json[@"inheritsFrom"] inList:remoteVersionList];
-            path = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("POJAV_GAME_DIR"), json[@"inheritsFrom"]];
+            path = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", PocketJGetEnv("POCKETJ_GAME_DIR"), json[@"inheritsFrom"]];
             if (!version) {
                 // JIT activation intentionally invalidates the global version
                 // list. A Forge installer can finish before that list has been
@@ -192,7 +193,7 @@
                         return;
                     }
                     NSString *parentPath = [NSString stringWithFormat:
-                        @"%1$s/versions/%2$@/%2$@.json", getenv("POJAV_GAME_DIR"), parentVersion];
+                        @"%1$s/versions/%2$@/%2$@.json", PocketJGetEnv("POCKETJ_GAME_DIR"), parentVersion];
                     NSString *resolvedURL = resolved[@"url"];
                     NSURLSessionDownloadTask *parentTask = [self createDownloadTask:resolvedURL
                         size:[resolved[@"size"] unsignedLongLongValue]
@@ -226,7 +227,7 @@
         return;
     }
     NSString *name = [NSString stringWithFormat:@"assets/indexes/%@.json", assetIndex[@"id"]];
-    NSString *path = [@(getenv("POJAV_GAME_DIR")) stringByAppendingPathComponent:name];
+    NSString *path = [@(PocketJGetEnv("POCKETJ_GAME_DIR")) stringByAppendingPathComponent:name];
     NSString *url = assetIndex[@"url"];
     NSString *sha = url.stringByDeletingLastPathComponent.lastPathComponent;
     NSUInteger size = [assetIndex[@"size"] unsignedLongLongValue];
@@ -268,7 +269,7 @@
             }
         }
 
-        NSString *path = [NSString stringWithFormat:@"%s/libraries/%@", getenv("POJAV_GAME_DIR"), artifact[@"path"]];
+        NSString *path = [NSString stringWithFormat:@"%s/libraries/%@", PocketJGetEnv("POCKETJ_GAME_DIR"), artifact[@"path"]];
         NSString *sha = artifact[@"sha1"];
         NSUInteger size = [artifact[@"size"] unsignedLongLongValue];
         NSString *url = artifact[@"url"];
@@ -301,9 +302,9 @@
 
         NSString *path;
         if ([assets[@"map_to_resources"] boolValue]) {
-            path = [NSString stringWithFormat:@"%s/resources/%@", getenv("POJAV_GAME_DIR"), name];
+            path = [NSString stringWithFormat:@"%s/resources/%@", PocketJGetEnv("POCKETJ_GAME_DIR"), name];
         } else {
-            path = [NSString stringWithFormat:@"%s/assets/objects/%@", getenv("POJAV_GAME_DIR"), pathname];
+            path = [NSString stringWithFormat:@"%s/assets/objects/%@", PocketJGetEnv("POCKETJ_GAME_DIR"), pathname];
         }
 
         /* Special case for 1.19+
@@ -336,7 +337,7 @@
             versionId = getPrefObject(@"internal.latest_version.snapshot");
         }
         NSString *path = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json",
-            getenv("POJAV_GAME_DIR"), versionId];
+            PocketJGetEnv("POCKETJ_GAME_DIR"), versionId];
         NSMutableDictionary *local = parseJSONFromFile(path);
         if (!local || local[@"NSErrorObject"]) {
             [self finishDownloadWithErrorString:localize(@"本地版本文件缺失；完整性检查已关闭，未进行联网修复。", nil)];
@@ -345,7 +346,7 @@
         NSString *parentId = local[@"inheritsFrom"];
         if (parentId.length) {
             NSString *parentPath = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json",
-                getenv("POJAV_GAME_DIR"), parentId];
+                PocketJGetEnv("POCKETJ_GAME_DIR"), parentId];
             NSMutableDictionary *parent = parseJSONFromFile(parentPath);
             if (!parent || parent[@"NSErrorObject"]) {
                 [self finishDownloadWithErrorString:localize(@"本地基础版本文件缺失；完整性检查已关闭，未进行联网修复。", nil)];
@@ -395,23 +396,26 @@
 
 - (void)downloadModpackFromAPI:(ModpackAPI *)api detail:(NSDictionary *)modDetail atIndex:(NSUInteger)selectedVersion {
     [self prepareForDownload];
+    self.forceIntegrityCheck=YES;
 
     NSString *url = modDetail[@"versionUrls"][selectedVersion];
     NSUInteger size = [modDetail[@"versionSizes"][selectedVersion] unsignedLongLongValue];
     NSString *sha = modDetail[@"versionHashes"][selectedVersion];
     NSString *name = [[modDetail[@"title"] lowercaseString] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet];
     name = [name stringByReplacingOccurrencesOfString:@" " withString:@"_"];
-    NSString *cacheRoot = [@(getenv("POJAV_GAME_DIR"))
+    NSString *cacheRoot = [@(PocketJGetEnv("POCKETJ_GAME_DIR"))
         stringByAppendingPathComponent:@".pocketj-cache/modpacks"];
-    NSString *packagePath = [cacheRoot stringByAppendingPathComponent:
-        [name stringByAppendingPathExtension:@"zip"]];
+    NSData *identity=[url dataUsingEncoding:NSUTF8StringEncoding]; unsigned char digest[CC_SHA256_DIGEST_LENGTH]; CC_SHA256(identity.bytes,(CC_LONG)identity.length,digest);
+    NSMutableString *packageID=[NSMutableString string]; for (NSUInteger i=0;i<sizeof(digest);i++) [packageID appendFormat:@"%02x",digest[i]];
+    NSString *packagePath = [cacheRoot stringByAppendingPathComponent:[packageID stringByAppendingPathExtension:@"zip"]];
 
     NSURLSessionDownloadTask *task = [self createDownloadTask:url size:size sha:sha altName:nil toPath:packagePath success:^{
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
         NSString *relative = PLProfiles.current.selectedProfile[@"gameDir"] ?: @"";
         if ([relative hasPrefix:@"./"]) relative = [relative substringFromIndex:2];
         NSString *path = relative.length
-            ? [@(getenv("POJAV_GAME_DIR")) stringByAppendingPathComponent:relative]
-            : [NSString stringWithFormat:@"%s/custom_gamedir/%@", getenv("POJAV_GAME_DIR"), name];
+            ? [@(PocketJGetEnv("POCKETJ_GAME_DIR")) stringByAppendingPathComponent:relative]
+            : [NSString stringWithFormat:@"%s/custom_gamedir/%@", PocketJGetEnv("POCKETJ_GAME_DIR"), name];
         [api downloader:self submitDownloadTasksFromPackage:packagePath toPath:path];
 
         // The download plan starts with one sentinel unit so that the package
@@ -429,11 +433,23 @@
                 self.textProgress.completedUnitCount = 1;
             }
         }
+        });
     }];
     [task resume];
 }
 
 #pragma mark - Utilities
+
+- (void)installLocalModpackFromAPI:(ModpackAPI *)api package:(NSString *)package {
+    [self prepareForDownload]; self.forceIntegrityCheck=YES;
+    [api downloader:self submitDownloadTasksFromPackage:package toPath:@(PocketJGetEnv("POCKETJ_GAME_DIR"))];
+    @synchronized (self) {
+        if (self.progress.cancelled) return;
+        self.progress.totalUnitCount=MAX(0,self.progress.totalUnitCount-1);
+        self.textProgress.totalUnitCount=self.progress.totalUnitCount;
+        if (!self.progress.totalUnitCount) { self.progress.totalUnitCount=1; self.progress.completedUnitCount=1; self.textProgress.totalUnitCount=1; self.textProgress.completedUnitCount=1; }
+    }
+}
 
 - (void)prepareForDownload {
     // Create a fake progress which is used to update completedUnitCount properly

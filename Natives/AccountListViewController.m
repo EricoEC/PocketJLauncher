@@ -1,7 +1,9 @@
+#include "PocketJEnvironment.h"
 #import <AuthenticationServices/AuthenticationServices.h>
 #import <objc/runtime.h>
 
 #import "authenticator/BaseAuthenticator.h"
+#import "authenticator/YggdrasilAuthenticator.h"
 #import "AccountListViewController.h"
 #import "AFNetworking.h"
 #import "LauncherPreferences.h"
@@ -106,7 +108,7 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
         }
     }
     NSString *directory = [NSString stringWithFormat:
-        @"%s/accounts/avatars", getenv("POJAV_HOME")];
+        @"%s/accounts/avatars", PocketJGetEnv("POCKETJ_HOME")];
     [NSFileManager.defaultManager createDirectoryAtPath:directory
                             withIntermediateDirectories:YES
                                              attributes:nil error:nil];
@@ -277,16 +279,20 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
 
     // Refresh the official Minecraft skin on every launcher session. Failure
     // never touches the on-disk avatar; the saved skin URL remains a fallback.
-    NSURL *profileURL = [NSURL URLWithString:[NSString stringWithFormat:
-        @"https://sessionserver.mojang.com/session/minecraft/profile/%@",
-        profileId]];
+    BOOL thirdParty=[account[@"accountType"] isEqual:@"yggdrasil"];
+    NSString *endpoint=thirdParty ? [[YggdrasilAuthenticator normalizedServer:account[@"authServer"]] stringByAppendingFormat:@"sessionserver/session/minecraft/profile/%@",profileId]
+        : [NSString stringWithFormat:@"https://sessionserver.mojang.com/session/minecraft/profile/%@",profileId];
+    NSURL *profileURL = [NSURL URLWithString:endpoint];
     [[[NSURLSession sharedSession] dataTaskWithURL:profileURL
         completionHandler:^(NSData *data, NSURLResponse *response,
                             NSError *error) {
             NSDictionary *profile = data ? [NSJSONSerialization
                 JSONObjectWithData:data options:0 error:nil] : nil;
+            if (![profile isKindOfClass:NSDictionary.class]) profile=nil;
             NSString *encoded = nil;
-            for (NSDictionary *property in profile[@"properties"]) {
+            NSArray *properties=[profile[@"properties"] isKindOfClass:NSArray.class] ? profile[@"properties"]:@[];
+            for (NSDictionary *property in properties) {
+                if (![property isKindOfClass:NSDictionary.class]) continue;
                 if ([property[@"name"] isEqualToString:@"textures"]) {
                     encoded = property[@"value"];
                     break;
@@ -434,7 +440,7 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
             NSMutableDictionary *savedAccount = account.mutableCopy;
             [savedAccount removeObjectForKey:@"_sourceFile"];
             NSString *path = [NSString stringWithFormat:
-                @"%s/accounts/%@.json", getenv("POJAV_HOME"), accountKey];
+                @"%s/accounts/%@.json", PocketJGetEnv("POCKETJ_HOME"), accountKey];
             NSError *saveError = saveJSONToFile(savedAccount, path);
             if (saveError) {
                 NSLog(@"[AccountAvatar] Failed to cache skin URL for %@: %@",
@@ -459,7 +465,7 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
     }
 
     // List accounts
-    NSString *listPath = [NSString stringWithFormat:@"%s/accounts", getenv("POJAV_HOME")];
+    NSString *listPath = [NSString stringWithFormat:@"%s/accounts", PocketJGetEnv("POCKETJ_HOME")];
     NSFileManager *fm = [NSFileManager defaultManager];
     NSArray *files = [fm contentsOfDirectoryAtPath:listPath error:nil];
     for(NSString *file in files) {
@@ -476,8 +482,7 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
                 [BaseAuthenticator storageKeyForAuthData:account];
             account[@"storageKey"] = storageKey;
             account[@"accountType"] =
-                [storageKey hasPrefix:@"microsoft__"]
-                    ? @"microsoft" : @"local";
+                [storageKey hasPrefix:@"yggdrasil__"] ? @"yggdrasil" : ([storageKey hasPrefix:@"microsoft__"] ? @"microsoft" : @"local");
             account[@"_sourceFile"] = file;
             [self addOrReplaceAccount:account];
         }
@@ -500,6 +505,7 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
         NSIndexSet *stale = [self.accountList indexesOfObjectsPassingTest:
             ^BOOL(NSDictionary *candidate, NSUInteger index, BOOL *stop) {
                 NSString *candidateKey = [self accountKey:candidate];
+                if ([candidateKey hasPrefix:@"yggdrasil__"]) return NO;
                 if ([candidateKey isEqualToString:storageKey]) return NO;
                 BOOL candidateIsMicrosoft =
                     [candidateKey hasPrefix:@"microsoft__"] ||
@@ -547,7 +553,7 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (section == 0) return MAX(self.accountList.count, 1);
-    return 2;
+    return 3;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
@@ -582,6 +588,13 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
     }
 
     if (indexPath.section == 1) {
+        if (indexPath.row==2) {
+            cell.imageView.image=[UIImage systemImageNamed:@"person.crop.circle.badge.checkmark"];
+            cell.textLabel.text=localize(@"登录第三方账户",nil);
+            cell.detailTextLabel.text=localize(@"LittleSkin / 自定义 Yggdrasil",nil);
+            cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;
+            [ModernUITheme styleCell:cell destructive:NO]; return cell;
+        }
         BOOL offline = indexPath.row == 0;
         cell.imageView.image = [UIImage systemImageNamed:offline ? @"person.badge.plus" : @"globe"];
         cell.textLabel.text = offline ? localize(@"添加离线账户", nil) : localize(@"登录 Microsoft", nil);
@@ -601,6 +614,8 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
         cell.detailTextLabel.text = localize(@"login.option.demo", nil);
     } else if ([[self accountKey:selected] hasPrefix:@"local__"]) {
         cell.detailTextLabel.text = localize(@"离线账户", nil);
+    } else if ([selected[@"accountType"] isEqual:@"yggdrasil"]) {
+        cell.detailTextLabel.text=[NSString stringWithFormat:@"Yggdrasil · %@",[NSURL URLWithString:selected[@"authServer"]].host ?: @""];
     } else {
         NSString *gamertag = selected[@"xboxGamertag"];
         cell.detailTextLabel.text = gamertag.length
@@ -615,7 +630,7 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
     NSString *accountKey = [self accountKey:selected];
     objc_setAssociatedObject(cell, @"AccountStorageKey", accountKey,
         OBJC_ASSOCIATION_COPY_NONATOMIC);
-    if ([accountKey hasPrefix:@"microsoft__"]) {
+    if ([accountKey hasPrefix:@"microsoft__"] || [accountKey hasPrefix:@"yggdrasil__"]) {
         cell.imageView.image = placeholder;
         [AccountListViewController loadBestAvatarForAccount:selected
             completion:^(UIImage *avatar) {
@@ -649,6 +664,8 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
     if (indexPath.section == 1) {
         if (indexPath.row == 0) {
             [self actionLoginLocal:cell];
+        } else if (indexPath.row==2) {
+            [self actionLoginYggdrasil:cell];
         } else {
             [self actionLoginMicrosoft:cell];
         }
@@ -684,10 +701,11 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
         }
         NSString *xuid = account[@"xuid"];
         if (xuid) {
-            [MicrosoftAuthenticator clearTokenDataOfProfile:xuid];
+            if ([account[@"accountType"] isEqual:@"yggdrasil"]) [YggdrasilAuthenticator clearTokenDataOfProfile:xuid];
+            else [MicrosoftAuthenticator clearTokenDataOfProfile:xuid];
         }
         NSString *accountsPath =
-            [NSString stringWithFormat:@"%s/accounts", getenv("POJAV_HOME")];
+            [NSString stringWithFormat:@"%s/accounts", PocketJGetEnv("POCKETJ_HOME")];
         for (NSString *file in
                 [fm contentsOfDirectoryAtPath:accountsPath error:nil]) {
             if (![file hasSuffix:@".json"]) {
@@ -788,6 +806,47 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
     [self presentViewController:controller animated:YES completion:nil];
 }
 
+- (void)actionLoginYggdrasil:(UIView *)sender {
+    UIAlertController *form=[UIAlertController alertControllerWithTitle:localize(@"登录第三方账户",nil)
+        message:localize(@"账户密码只发送给填写的 HTTPS 认证服务器，不保存密码。LittleSkin 可使用下方默认地址。",nil) preferredStyle:UIAlertControllerStyleAlert];
+    [form addTextFieldWithConfigurationHandler:^(UITextField *field) { field.text=@"https://littleskin.cn/api/yggdrasil/"; field.placeholder=localize(@"认证服务器地址",nil); field.keyboardType=UIKeyboardTypeURL; field.autocapitalizationType=UITextAutocapitalizationTypeNone; }];
+    [form addTextFieldWithConfigurationHandler:^(UITextField *field) { field.placeholder=localize(@"用户名或邮箱",nil); field.autocapitalizationType=UITextAutocapitalizationTypeNone; field.textContentType=UITextContentTypeUsername; }];
+    [form addTextFieldWithConfigurationHandler:^(UITextField *field) { field.placeholder=localize(@"密码",nil); field.secureTextEntry=YES; field.textContentType=UITextContentTypePassword; }];
+    [form addAction:[UIAlertAction actionWithTitle:localize(@"取消",nil) style:UIAlertActionStyleCancel handler:nil]];
+    [form addAction:[UIAlertAction actionWithTitle:localize(@"登录",nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        self.tableView.userInteractionEnabled=NO;
+        [YggdrasilAuthenticator authenticateServer:form.textFields[0].text username:form.textFields[1].text password:form.textFields[2].text completion:^(NSDictionary *response,NSString *server,NSError *error) {
+            form.textFields[2].text=@""; self.tableView.userInteractionEnabled=YES;
+            if (error) { showDialog(localize(@"登录失败",nil),error.localizedDescription); return; }
+            NSArray *profiles=[response[@"availableProfiles"] isKindOfClass:NSArray.class] ? response[@"availableProfiles"] : @[];
+            if (!profiles.count && [response[@"selectedProfile"] isKindOfClass:NSDictionary.class]) profiles=@[response[@"selectedProfile"]];
+            if (!profiles.count || ![response[@"accessToken"] isKindOfClass:NSString.class]) { showDialog(localize(@"登录失败",nil),localize(@"该账户没有可用的 Minecraft 角色。",nil)); return; }
+            UIAlertController *picker=[UIAlertController alertControllerWithTitle:localize(@"选择角色",nil) message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+            for (NSDictionary *profile in profiles) {
+                if (![profile[@"name"] isKindOfClass:NSString.class]) continue;
+                [picker addAction:[UIAlertAction actionWithTitle:profile[@"name"] style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                    BaseAuthenticator *previous=BaseAuthenticator.current;
+                    NSMutableDictionary *data=[@{@"accountType":@"yggdrasil",@"authServer":server,@"accessToken":response[@"accessToken"],@"clientToken":response[@"clientToken"] ?: @""} mutableCopy];
+                    NSDictionary *bound=[response[@"selectedProfile"] isKindOfClass:NSDictionary.class] ? response[@"selectedProfile"]:@{};
+                    if ([bound[@"id"] isKindOfClass:NSString.class]) data[@"boundProfileID"]=bound[@"id"];
+                    YggdrasilAuthenticator *auth=[[YggdrasilAuthenticator alloc] initWithData:data];
+                    self.tableView.userInteractionEnabled=NO;
+                    [auth selectProfile:profile callback:^(id status,BOOL success) {
+                        self.tableView.userInteractionEnabled=YES;
+                        if (!success) { BaseAuthenticator.current=previous; showDialog(localize(@"登录失败",nil),[status isKindOfClass:NSError.class] ? [status localizedDescription]:localize(@"无法保存账户凭据。",nil)); return; }
+                        setPrefObject(@"internal.selected_account",[BaseAuthenticator storageKeyForAuthData:auth.authData]);
+                        [self addOrReplaceAccount:auth.authData.copy]; [self.tableView reloadData]; if (self.whenItemSelected) self.whenItemSelected();
+                    }];
+                }]];
+            }
+            [picker addAction:[UIAlertAction actionWithTitle:localize(@"取消",nil) style:UIAlertActionStyleCancel handler:nil]];
+            picker.popoverPresentationController.sourceView=sender; picker.popoverPresentationController.sourceRect=sender.bounds;
+            [self presentViewController:picker animated:YES completion:nil];
+        }];
+    }]];
+    [self presentViewController:form animated:YES completion:nil];
+}
+
 - (void)actionLoginMicrosoft:(UITableViewCell *)sender {
     NSURL *url = [NSURL URLWithString:@"https://login.live.com/oauth20_authorize.srf?client_id=00000000402b5328&response_type=code&scope=service%3A%3Auser.auth.xboxlive.com%3A%3AMBI_SSL&redirect_url=https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf"];
 
@@ -863,7 +922,7 @@ static void PLDrawSkinTile(CGContextRef context, UIImage *tile,
             NSData *errorData = ((NSError *)status).userInfo[AFNetworkingOperationFailingURLResponseDataErrorKey];
             NSString *errorStr = [[NSString alloc] initWithData:errorData encoding:NSUTF8StringEncoding];
             NSLog(@"[MSA] Error: %@", errorStr);
-            showDialog(localize(@"Error", nil), errorStr);
+            showDialog(localize(@"Error", nil), errorStr ?: [status localizedDescription]);
         }
     } else if (success) {
         if (self.whenItemSelected) self.whenItemSelected();

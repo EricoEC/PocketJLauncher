@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import "LauncherMenuViewController.h"
 #import "LauncherNavigationController.h"
 #import "LauncherPreferences.h"
@@ -18,6 +19,8 @@
 #import "installer/FabricInstallViewController.h"
 #import "installer/ForgeInstallViewController.h"
 #import "installer/ModpackInstallViewController.h"
+#import "PocketJArchiveService.h"
+#import "SurfaceViewController.h"
 #import "ios_uikit_bridge.h"
 #import "utils.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -115,7 +118,7 @@ NSNotificationName const LauncherOpenModManagerNotification =
 - (NSString *)availableInstanceNameFromPreferredName:(NSString *)preferredName {
     NSString *base = [preferredName
         stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    if (base.length == 0 || [base isEqualToString:@"."] ||
+    if (base.length == 0 || [base hasPrefix:@"."] ||
         [base isEqualToString:@".."]) {
         base = localize(@"导入的实例", nil);
     }
@@ -183,6 +186,9 @@ NSNotificationName const LauncherOpenModManagerNotification =
         }
     }
     if (bestVersion.length > 0) return bestVersion;
+
+    NSDictionary *multiMC=parseJSONFromFile([path stringByAppendingPathComponent:@"mmc-pack.json"]);
+    for (NSDictionary *component in multiMC[@"components"]) if ([component[@"uid"] isEqual:@"net.minecraft"] && [component[@"version"] isKindOfClass:NSString.class]) return component[@"version"];
 
     // Modpack formats often omit a versions directory and declare Minecraft
     // in their manifest instead.
@@ -255,6 +261,12 @@ NSNotificationName const LauncherOpenModManagerNotification =
         [profiles[profileKey] mutableCopy] ?: [NSMutableDictionary dictionary];
     profile[@"name"] = [profile[@"name"] length]
         ? profile[@"name"] : instanceName;
+    NSDictionary *multiMC=parseJSONFromFile([path stringByAppendingPathComponent:@"mmc-pack.json"]);
+    NSDictionary *loaderIDs=@{@"net.fabricmc.fabric-loader":@"fabric",@"org.quiltmc.quilt-loader":@"quilt",@"net.minecraftforge":@"forge",@"net.neoforged":@"neoforge"};
+    for (NSDictionary *component in multiMC[@"components"]) {
+        NSString *kind=loaderIDs[component[@"uid"]];
+        if (kind && [component[@"version"] isKindOfClass:NSString.class]) { profile[@"pocketjLoader"]=kind; profile[@"pocketjLoaderVersion"]=component[@"version"]; profile[@"pocketjLoaderInstallPending"]=@YES; }
+    }
     if (detectedVersion.length > 0) {
         profile[@"lastVersionId"] = detectedVersion;
     } else {
@@ -384,12 +396,14 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
             __block NSError *error = nil;
             UZKArchive *archive =
                 [[UZKArchive alloc] initWithURL:url error:&error];
+            if (archive && ![PocketJArchiveService validateArchive:url.path error:&error]) archive=nil;
             NSArray<UZKFileInfo *> *files =
                 [archive listFileInfo:&error];
             NSString *commonRoot = nil;
             BOOL hasSingleRoot = YES;
             for (UZKFileInfo *info in files) {
                 NSString *first = info.filename.pathComponents.firstObject;
+                if ([first isEqual:@"__MACOSX"] || [first isEqual:@".DS_Store"]) continue;
                 if (first.length == 0 ||
                     [first isEqualToString:@"/"]) continue;
                 if (!commonRoot) commonRoot = first;
@@ -399,6 +413,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
                 }
             }
             if (!hasSingleRoot) commonRoot = nil;
+            for (UZKFileInfo *info in files) if (!info.isDirectory && [info.filename isEqual:commonRoot]) { commonRoot=nil; break; }
 
             NSString *preferredName = commonRoot.length
                 ? commonRoot
@@ -422,47 +437,13 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
             }
 
             if (!error) {
-                [archive performOnFilesInArchive:
-                    ^(UZKFileInfo *info, BOOL *stop) {
-                    NSString *relative = info.filename;
-                    NSString *prefix =
-                        [commonRoot stringByAppendingString:@"/"];
-                    if (commonRoot.length > 0) {
-                        if ([relative isEqualToString:commonRoot] ||
-                            [relative isEqualToString:prefix]) return;
-                        if ([relative hasPrefix:prefix]) {
-                            relative =
-                                [relative substringFromIndex:prefix.length];
-                        }
-                    }
-                    NSString *standardized =
-                        relative.stringByStandardizingPath;
-                    if (standardized.length == 0 ||
-                        standardized.isAbsolutePath ||
-                        [standardized isEqualToString:@".."] ||
-                        [standardized hasPrefix:@"../"]) return;
-                    NSString *target = [destination
-                        stringByAppendingPathComponent:standardized];
-                    NSString *targetDirectory = info.isDirectory
-                        ? target : target.stringByDeletingLastPathComponent;
-                    if (![NSFileManager.defaultManager
-                            createDirectoryAtPath:targetDirectory
-                      withIntermediateDirectories:YES attributes:nil
-                                           error:&error]) {
-                        *stop = YES;
-                        return;
-                    }
-                    if (info.isDirectory) return;
-                    NSData *data =
-                        [archive extractData:info error:&error];
-                    if (!data || ![data writeToFile:target
-                        options:NSDataWritingAtomic error:&error]) {
-                        *stop = YES;
-                    }
-                } error:&error];
-            }
-            if (securityScoped) {
-                [url stopAccessingSecurityScopedResource];
+                NSString *stage=[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
+                [NSFileManager.defaultManager createDirectoryAtPath:stage withIntermediateDirectories:YES attributes:nil error:&error];
+                if (!error && [archive extractFilesTo:stage overwrite:NO error:&error]) {
+                    NSString *root=commonRoot.length ? [stage stringByAppendingPathComponent:commonRoot]:stage;
+                    [self mergeImportedDirectory:root intoDirectory:destination error:&error];
+                }
+                [NSFileManager.defaultManager removeItemAtPath:stage error:nil];
             }
             if (error && destination.length > 0) {
                 [NSFileManager.defaultManager
@@ -472,12 +453,27 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
                                                     error:&error]) {
                     [self repairImportedProfileAtPath:destination
                                          instanceName:instanceName];
+                    NSString *manifestName=[NSFileManager.defaultManager fileExistsAtPath:[destination stringByAppendingPathComponent:@"modrinth.index.json"]] ? @"modrinth.index.json":([NSFileManager.defaultManager fileExistsAtPath:[destination stringByAppendingPathComponent:@"manifest.json"]] ? @"manifest.json":nil);
+                    if (manifestName) {
+                        NSString *cache=[destination stringByAppendingPathComponent:@".pocketj-cache"];
+                        [NSFileManager.defaultManager createDirectoryAtPath:cache withIntermediateDirectories:YES attributes:nil error:&error];
+                        if (!error) [NSFileManager.defaultManager copyItemAtURL:url toURL:[NSURL fileURLWithPath:[cache stringByAppendingPathComponent:@"imported.zip"]] error:&error];
+                        if (!error) {
+                            NSString *profilePath=[destination stringByAppendingPathComponent:@"launcher_profiles.json"];
+                            NSMutableDictionary *database=parseJSONFromFile(profilePath);
+                            NSMutableDictionary *profile=database[@"profiles"][database[@"selectedProfile"]];
+                            profile[@"gameDir"]=@"."; profile[@"pocketjPendingModpack"]=@{@"source":[manifestName isEqual:@"modrinth.index.json"] ? @"local-modrinth":@"local-curseforge",@"package":@".pocketj-cache/imported.zip",@"rootPrefix":commonRoot ?: @""};
+                            saveJSONToFile(database,profilePath);
+                        }
+                    }
                 } else {
                     [NSFileManager.defaultManager
                         removeItemAtPath:destination error:nil];
                 }
             }
 
+            if (securityScoped) [url stopAccessingSecurityScopedResource];
+            if (error && destination.length) [NSFileManager.defaultManager removeItemAtPath:destination error:nil];
             dispatch_async(dispatch_get_main_queue(), ^{
                 [loading dismissViewControllerAnimated:YES completion:^{
                     if (error) {
@@ -580,7 +576,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
 }
 
 - (NSString *)instancesRoot {
-    return [NSString stringWithFormat:@"%s/instances", getenv("POJAV_HOME")];
+    return [NSString stringWithFormat:@"%s/instances", PocketJGetEnv("POCKETJ_HOME")];
 }
 
 - (void)reloadInstanceNames {
@@ -623,7 +619,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
         NSLog(@"[InstanceImport] Unable to normalize %@: %@",
               name, normalizationError.localizedDescription);
     }
-    NSString *gamePath = @(getenv("POJAV_GAME_DIR"));
+    NSString *gamePath = @(PocketJGetEnv("POCKETJ_GAME_DIR"));
     [NSFileManager.defaultManager removeItemAtPath:gamePath error:nil];
     [NSFileManager.defaultManager createSymbolicLinkAtPath:gamePath
                                       withDestinationPath:instancePath
@@ -790,7 +786,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
                 // Cancelling the very first instance must not leave the
                 // launcher pointing at the temporary directory we removed.
                 setPrefObject(@"general.game_directory", @"");
-                NSString *gamePath = @(getenv("POJAV_GAME_DIR"));
+                NSString *gamePath = @(PocketJGetEnv("POCKETJ_GAME_DIR"));
                 [NSFileManager.defaultManager removeItemAtPath:gamePath error:nil];
             }
             [weakSelf.tableView reloadData];
@@ -932,7 +928,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
         style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
             [self presentModManagerForInstanceNamed:name];
         }]];
-    [actions addAction:[UIAlertAction actionWithTitle:localize(@"光影、材质包与数据包", nil)
+    [actions addAction:[UIAlertAction actionWithTitle:localize(@"资源与世界存档", nil)
         style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
             NSString *path = [self.instancesRoot stringByAppendingPathComponent:name];
             PocketJResourceLibraryViewController *resources =
@@ -943,6 +939,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
         style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
             [self actionEditProfile:profile ?: @{@"name": name}];
         }]];
+    [actions addAction:[UIAlertAction actionWithTitle:localize(@"导出整合包",nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) { [self exportInstanceNamed:name]; }]];
     [actions addAction:[UIAlertAction actionWithTitle:localize(@"取消", nil)
         style:UIAlertActionStyleCancel handler:nil]];
     UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
@@ -952,6 +949,31 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
 }
 
 #pragma mark Context Menu configuration
+
+- (void)exportInstanceNamed:(NSString *)name {
+    if ([SurfaceViewController isRunning]) { showDialog(localize(@"无法导出",nil),localize(@"请先退出游戏，避免导出正在写入的存档。",nil)); return; }
+    UIAlertController *menu=[UIAlertController alertControllerWithTitle:localize(@"导出整合包",nil) message:localize(@"仅导出游戏文件与必要清单，不包含账户、配对文件或签名数据。",nil) preferredStyle:UIAlertControllerStyleActionSheet];
+    NSArray *formats=@[@"mrpack",@"curseforge",@"multimc",@"zip",@"links"];
+    NSArray *titles=@[@"Modrinth (.mrpack)",@"CurseForge (.zip)",@"Prism / MultiMC (.zip)",@"PocketJ (.zip)",localize(@"下载链接清单",nil)];
+    for (NSUInteger index=0;index<formats.count;index++) {
+        [menu addAction:[UIAlertAction actionWithTitle:titles[index] style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            NSString *path=[self.instancesRoot stringByAppendingPathComponent:name];
+            dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
+                NSError *error=nil; NSURL *url=[PocketJArchiveService exportInstance:path name:name format:formats[index] error:&error];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (!url || error) { showDialog(localize(@"导出失败",nil),error.localizedDescription); return; }
+                    UIActivityViewController *share=[[UIActivityViewController alloc] initWithActivityItems:@[url] applicationActivities:nil];
+                    share.popoverPresentationController.sourceView=self.view; share.popoverPresentationController.sourceRect=CGRectMake(self.view.bounds.size.width/2,80,1,1);
+                    share.completionWithItemsHandler=^(UIActivityType type,BOOL completed,NSArray *items,NSError *error) { [NSFileManager.defaultManager removeItemAtPath:url.path.stringByDeletingLastPathComponent error:nil]; };
+                    [self presentViewController:share animated:YES completion:nil];
+                });
+            });
+        }]];
+    }
+    [menu addAction:[UIAlertAction actionWithTitle:localize(@"取消",nil) style:UIAlertActionStyleCancel handler:nil]];
+    menu.popoverPresentationController.sourceView=self.view; menu.popoverPresentationController.sourceRect=CGRectMake(self.view.bounds.size.width/2,80,1,1);
+    [self presentViewController:menu animated:YES completion:nil];
+}
 
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
 {
@@ -998,7 +1020,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
         if (deletingCurrent && fallback.length == 0) {
             // No placeholder instance: an empty list is a valid state.
             setPrefObject(@"general.game_directory", @"");
-            NSString *gamePath = @(getenv("POJAV_GAME_DIR"));
+            NSString *gamePath = @(PocketJGetEnv("POCKETJ_GAME_DIR"));
             [NSFileManager.defaultManager removeItemAtPath:gamePath error:nil];
         }
         [self reloadInstanceNames];

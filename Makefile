@@ -9,7 +9,7 @@ OUTPUTDIR   := $(SOURCEDIR)/artifacts
 WORKINGDIR  := $(SOURCEDIR)/Natives/build
 DETECTPLAT  := $(shell uname -s)
 DETECTARCH  := $(shell uname -m)
-VERSION     := 1.4
+VERSION     := 1.5
 BRANCH      := $(shell git branch --show-current)
 COMMIT      := $(shell git log --oneline | sed '2,10000000d' | cut -b 1-7)
 PLATFORM    ?= 2
@@ -104,11 +104,13 @@ else
 $(error PLATFORM is not valid.)
 endif
 
-POJAV_BUNDLE_DIR      ?= $(OUTPUTDIR)/PocketJLauncher.app
-POJAV_JRE8_DIR        ?= $(SOURCEDIR)/depends/java-8-openjdk
-POJAV_JRE17_DIR       ?= $(SOURCEDIR)/depends/java-17-openjdk
-POJAV_JRE21_DIR       ?= $(SOURCEDIR)/depends/java-21-openjdk
-POJAV_JRE25_DIR       ?= $(SOURCEDIR)/depends/java-25-openjdk
+# Legacy build-variable boundary. Explicit canonical values always win;
+# otherwise accept an existing old command-line/environment override.
+POCKETJ_BUNDLE_DIR ?= $(if $(filter undefined,$(origin POJAV_BUNDLE_DIR)),$(OUTPUTDIR)/PocketJLauncher.app,$(POJAV_BUNDLE_DIR))
+POCKETJ_JRE8_DIR   ?= $(if $(filter undefined,$(origin POJAV_JRE8_DIR)),$(SOURCEDIR)/depends/java-8-openjdk,$(POJAV_JRE8_DIR))
+POCKETJ_JRE17_DIR  ?= $(if $(filter undefined,$(origin POJAV_JRE17_DIR)),$(SOURCEDIR)/depends/java-17-openjdk,$(POJAV_JRE17_DIR))
+POCKETJ_JRE21_DIR  ?= $(if $(filter undefined,$(origin POJAV_JRE21_DIR)),$(SOURCEDIR)/depends/java-21-openjdk,$(POJAV_JRE21_DIR))
+POCKETJ_JRE25_DIR  ?= $(if $(filter undefined,$(origin POJAV_JRE25_DIR)),$(SOURCEDIR)/depends/java-25-openjdk,$(POJAV_JRE25_DIR))
 
 # Function to use later for checking dependencies
 METHOD_DEPCHECK   = $(shell $(1) >/dev/null 2>&1 && echo 1)
@@ -299,10 +301,10 @@ jre: native
 	cd $(SOURCEDIR); \
 	rm -rf $(SOURCEDIR)/depends/java-*-openjdk/{ASSEMBLY_EXCEPTION,bin,include,jre,legal,LICENSE,man,THIRD_PARTY_README,lib/{ct.sym,jspawnhelper,libjsig.dylib,src.zip,tools.jar}}; \
 	$(call METHOD_DIRCHECK,$(OUTPUTDIR)/java_runtimes); \
-	cp -R $(POJAV_JRE8_DIR) $(OUTPUTDIR)/java_runtimes; \
-	cp -R $(POJAV_JRE17_DIR) $(OUTPUTDIR)/java_runtimes; \
-	cp -R $(POJAV_JRE21_DIR) $(OUTPUTDIR)/java_runtimes; \
-	cp -R $(POJAV_JRE25_DIR) $(OUTPUTDIR)/java_runtimes; \
+	cp -R $(POCKETJ_JRE8_DIR) $(OUTPUTDIR)/java_runtimes; \
+	cp -R $(POCKETJ_JRE17_DIR) $(OUTPUTDIR)/java_runtimes; \
+	cp -R $(POCKETJ_JRE21_DIR) $(OUTPUTDIR)/java_runtimes; \
+	cp -R $(POCKETJ_JRE25_DIR) $(OUTPUTDIR)/java_runtimes; \
 	cp $(WORKINGDIR)/libawt_xawt.dylib $(OUTPUTDIR)/java_runtimes/java-8-openjdk/lib; \
 	cp $(WORKINGDIR)/libawt_xawt.dylib $(OUTPUTDIR)/java_runtimes/java-17-openjdk/lib;
 	cp $(WORKINGDIR)/libawt_xawt.dylib $(OUTPUTDIR)/java_runtimes/java-21-openjdk/lib;
@@ -402,9 +404,9 @@ deploy:
 		else \
 			$(call METHOD_PACKAGE); \
 			if [ '$(SLIMMED_ONLY)' = '0' ]; then \
-				open $(OUTPUTDIR)/net.kdt.pojavlauncher-$(VERSION)-$(PLATFORM_NAME).ipa; \
+				open $(OUTPUTDIR)/com.Erico.PocketJLauncher-$(VERSION)-$(PLATFORM_NAME).ipa; \
 			else \
-				open $(OUTPUTDIR)/net.kdt.pojavlauncher.slimmed-$(VERSION)-$(PLATFORM_NAME).ipa; \
+				open $(OUTPUTDIR)/com.Erico.PocketJLauncher.slimmed-$(VERSION)-$(PLATFORM_NAME).ipa; \
 			fi; \
 		fi; \
 	else \

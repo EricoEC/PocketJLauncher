@@ -7,7 +7,7 @@ extern void PocketJInstallMetalShaderPatchForVulkan(void);
 #include "utils.h"
 
 // Vulkan rendering bypasses the bridge: Minecraft owns the swapchain and queue
-// submits directly via libMoltenVK. These stubs exist so pojavInitOpenGL() can
+// submits directly via libMoltenVK. These stubs exist so pocketjInitOpenGL() can
 // install a non-NULL bridge table and avoid crashes if any GL-shaped GLFW call
 // reaches the dispatcher before/after the Vulkan path takes over.
 

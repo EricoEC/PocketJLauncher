@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import "ModernLaunchViewController.h"
 
 #import "AccountListViewController.h"
@@ -6,6 +7,7 @@
 #import "LauncherPreferences.h"
 #import "ModernUITheme.h"
 #import "PocketJUpdateChecker.h"
+#import "PocketJUpdatePrompt.h"
 #import "PocketJBackgroundManager.h"
 #import "PLProfiles.h"
 #import "utils.h"
@@ -377,9 +379,7 @@
 }
 
 - (void)openAvailableUpdate {
-    NSString *urlString = PocketJUpdateChecker.shared.availableRelease[@"html_url"];
-    NSURL *url = [NSURL URLWithString:urlString ?: @""];
-    if (url) [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
+    [PocketJUpdatePrompt showRelease:PocketJUpdateChecker.shared.availableRelease from:self manual:YES];
 }
 
 - (UIButton *)selectionRowWithIcon:(NSString *)icon
@@ -451,7 +451,7 @@
     NSString *instanceName = getPrefObject(@"general.game_directory");
     NSString *instancePath = instanceName.length > 0
         ? [NSString stringWithFormat:@"%s/instances/%@",
-            getenv("POJAV_HOME"), instanceName] : nil;
+            PocketJGetEnv("POCKETJ_HOME"), instanceName] : nil;
     BOOL isDirectory = NO;
     self.hasSelectedInstance = instancePath.length > 0 &&
         [NSFileManager.defaultManager fileExistsAtPath:instancePath
@@ -500,7 +500,7 @@
 
 - (void)openProfilePicker:(UIButton *)sender {
     NSString *instancesRoot =
-        [NSString stringWithFormat:@"%s/instances", getenv("POJAV_HOME")];
+        [NSString stringWithFormat:@"%s/instances", PocketJGetEnv("POCKETJ_HOME")];
     NSMutableArray<NSString *> *instanceNames = [NSMutableArray array];
     for (NSString *file in
             [NSFileManager.defaultManager contentsOfDirectoryAtPath:instancesRoot
@@ -572,7 +572,7 @@
             setPrefObject(@"general.game_directory", instanceName);
             NSString *instancePath =
                 [instancesRoot stringByAppendingPathComponent:instanceName];
-            NSString *gamePath = @(getenv("POJAV_GAME_DIR"));
+            NSString *gamePath = @(PocketJGetEnv("POCKETJ_GAME_DIR"));
             [NSFileManager.defaultManager removeItemAtPath:gamePath error:nil];
             [NSFileManager.defaultManager createSymbolicLinkAtPath:gamePath
                 withDestinationPath:instancePath error:nil];

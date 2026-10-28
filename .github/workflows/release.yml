@@ -137,18 +137,18 @@ jobs:
       - name: Upload regular ipa
         uses: actions/upload-artifact@main
         with:
-          name: net.kdt.pojavlauncher-${{ matrix.platform_name }}.ipa
-          path: artifacts/net.kdt.pojavlauncher-*-${{ matrix.platform_name }}.ipa
+          name: com.Erico.PocketJLauncher-${{ matrix.platform_name }}.ipa
+          path: artifacts/com.Erico.PocketJLauncher-*-${{ matrix.platform_name }}.ipa
 
       - name: Upload regular tipa
         uses: actions/upload-artifact@main
         with:
-          name: net.kdt.pojavlauncher-${{ matrix.platform_name }}.tipa
-          path: artifacts/net.kdt.pojavlauncher-*-${{ matrix.platform_name }}-trollstore.tipa
+          name: com.Erico.PocketJLauncher-${{ matrix.platform_name }}.tipa
+          path: artifacts/com.Erico.PocketJLauncher-*-${{ matrix.platform_name }}-trollstore.tipa
 
-      - name: Upload PojavLauncher.dSYM
+      - name: Upload PocketJLauncher.dSYM
         uses: actions/upload-artifact@main
         if: matrix.platform_name == 'ios'
         with:
-          name: PojavLauncher.dSYM
-          path: artifacts/PojavLauncher.dSYM
+          name: PocketJLauncher.dSYM
+          path: artifacts/PocketJLauncher.dSYM

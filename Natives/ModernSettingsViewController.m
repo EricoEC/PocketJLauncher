@@ -1,3 +1,4 @@
+#include "PocketJEnvironment.h"
 #import "ModernSettingsViewController.h"
 
 #import <QuartzCore/QuartzCore.h>
@@ -8,6 +9,7 @@
 #import "LauncherPrefManageJREViewController.h"
 #import "ModernUITheme.h"
 #import "PocketJUpdateChecker.h"
+#import "PocketJUpdatePrompt.h"
 #import "PocketJBackgroundSettingsViewController.h"
 #import "stikdebug/StikDebugViewController.h"
 #import "UIKit+hook.h"
@@ -321,7 +323,7 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
         @{
             @"title": localize(@"关于", nil),
             @"items": @[
-                [self fixedItemWithTitle:localize(@"版本", nil) value:@"v1.4" type:ModernSettingTypeInformation icon:@"number" key:@""],
+                [self fixedItemWithTitle:localize(@"版本", nil) value:@"v1.5" type:ModernSettingTypeInformation icon:@"number" key:@""],
                 [self fixedItemWithTitle:@"GitHub" value:PocketJGitHubURLString type:ModernSettingTypeLink icon:@"chevron.left.forwardslash.chevron.right" key:@"github"],
                 [self fixedItemWithTitle:localize(@"兼容系统", nil) value:@"iOS 14–27" type:ModernSettingTypeInformation icon:@"iphone" key:@""],
                 creator,
@@ -838,7 +840,7 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
             loadPreferences(YES);
         } else if ([action isEqualToString:@"eraseDemo"]) {
             NSString *path =
-                [NSString stringWithFormat:@"%s/.demo", getenv("POJAV_HOME")];
+                [NSString stringWithFormat:@"%s/.demo", PocketJGetEnv("POCKETJ_HOME")];
             [NSFileManager.defaultManager removeItemAtPath:path error:nil];
             [NSFileManager.defaultManager
                 createDirectoryAtPath:path
@@ -873,10 +875,9 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
             cell.accessoryView = previousAccessoryView;
             if (error) {
                 showDialog(localize(@"检查更新失败", nil),
-                    localize(@"请检查网络连接后重试。", nil));
+                    localize([error.domain isEqual:NSURLErrorDomain] ? @"互联网连接失败，请检查网络连接后重试。" : @"无法获取更新信息，请稍后重试。", nil));
             } else if (release) {
-                NSString *tag = release[@"tag_name"] ?: @"";
-                showDialog(localize(@"发现新版本", nil), tag);
+                [PocketJUpdatePrompt showRelease:release from:self manual:YES];
             } else {
                 showDialog(localize(@"检查更新", nil), localize(@"已是最新版本", nil));
             }
@@ -885,7 +886,7 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
     }
 
     NSString *path =
-        [NSString stringWithFormat:@"%s/latestlog.txt", getenv("POJAV_HOME")];
+        [NSString stringWithFormat:@"%s/latestlog.txt", PocketJGetEnv("POCKETJ_HOME")];
     if ([action isEqualToString:@"viewLog"]) {
         NSString *text =
             [NSString stringWithContentsOfFile:path
@@ -1037,6 +1038,10 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
     UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     NSDictionary *item = [self itemAtIndexPath:indexPath];
+    if ([item[@"key"] isEqualToString:@"availableUpdate"]) {
+        [PocketJUpdatePrompt showRelease:PocketJUpdateChecker.shared.availableRelease from:self manual:YES];
+        return;
+    }
     NSString *type = item[@"type"];
     if ([type isEqualToString:ModernSettingTypePicker]) {
         [self showPickerForItem:item cell:cell];

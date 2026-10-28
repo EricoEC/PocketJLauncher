@@ -11,6 +11,9 @@ extern NSNotificationName const PocketJUpdateAvailabilityDidChangeNotification;
 - (void)checkForUpdatesWithCompletion:(void (^ _Nullable)(NSDictionary * _Nullable release,
                                                            NSError * _Nullable error))completion;
 - (void)dismissAvailableRelease;
+- (BOOL)shouldPromptForRelease:(NSDictionary *)release manual:(BOOL)manual;
+- (void)remindLaterForRelease:(NSDictionary *)release;
+- (void)skipRelease:(NSDictionary *)release;
 @end
 
 NS_ASSUME_NONNULL_END

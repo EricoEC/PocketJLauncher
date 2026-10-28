@@ -5,6 +5,8 @@
 #import "UIKit+hook.h"
 #import "WFWorkflowProgressView.h"
 #import "modpack/ModrinthAPI.h"
+#import "modpack/CurseForgeAPI.h"
+#import "PocketJAddonVersionPicker.h"
 #import "config.h"
 #import "ios_uikit_bridge.h"
 #import "utils.h"
@@ -19,7 +21,7 @@
 @property(nonatomic) UIMenu *currentMenu;
 @property(nonatomic) NSMutableArray *list;
 @property(nonatomic) NSMutableDictionary *filters;
-@property ModrinthAPI *modrinth;
+@property ModpackAPI *modrinth;
 @end
 
 @implementation ModpackInstallViewController
@@ -35,12 +37,19 @@
     self.title = localize(@"安装整合包", nil);
     self.navigationItem.searchController = self.searchController;
     self.modrinth = [ModrinthAPI new];
+    UISegmentedControl *source=[[UISegmentedControl alloc] initWithItems:@[@"Modrinth",@"CurseForge"]];
+    source.selectedSegmentIndex=0; [source addTarget:self action:@selector(sourceChanged:) forControlEvents:UIControlEventValueChanged];
+    self.navigationItem.titleView=source;
     self.filters = @{
         @"isModpack": @(YES),
         @"name": @" "
         // mcVersion
     }.mutableCopy;
     [self updateSearchResults];
+}
+- (void)sourceChanged:(UISegmentedControl *)sender {
+    self.modrinth=sender.selectedSegmentIndex==1 ? [CurseForgeAPI new]:[ModrinthAPI new];
+    self.list=[NSMutableArray array]; [self.filters removeObjectForKey:@"name"]; [self loadSearchResultsWithPrevList:NO];
 }
 
 - (void)loadSearchResultsWithPrevList:(BOOL)prevList {
@@ -142,33 +151,15 @@
 }
 
 - (void)showDetails:(NSDictionary *)details atIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
-
-    NSMutableArray<UIAction *> *menuItems = [[NSMutableArray alloc] init];
-    [details[@"versionNames"] enumerateObjectsUsingBlock:
-    ^(NSString *name, NSUInteger i, BOOL *stop) {
-        NSString *nameWithVersion = name;
-        NSString *mcVersion = details[@"mcVersionNames"][i];
-        if (![name hasSuffix:mcVersion]) {
-            nameWithVersion = [NSString stringWithFormat:@"%@ - %@", name, mcVersion];
-        }
-        [menuItems addObject:[UIAction
-            actionWithTitle:nameWithVersion
-            image:nil identifier:nil
-            handler:^(UIAction *action) {
-            [self actionClose];
-            NSString *tmpIconPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"icon.png"];
-                [UIImagePNGRepresentation([cell.imageView.image _imageWithSize:CGSizeMake(40, 40)]) writeToFile:tmpIconPath atomically:YES];
-            [self.modrinth installModpackFromDetail:self.list[indexPath.row] atIndex:i];
-        }]];
-    }];
-
-    self.currentMenu = [UIMenu menuWithTitle:@"" children:menuItems];
-    UIContextMenuInteraction *interaction = [[UIContextMenuInteraction alloc] initWithDelegate:self];
-    cell.detailTextLabel.interactions = @[interaction];
-    [interaction _presentMenuAtLocation:CGPointZero];
+    PocketJModVersionPickerViewController *picker=[PocketJModVersionPickerViewController new];
+    picker.projectTitle=details[@"title"]; NSMutableArray *items=[NSMutableArray array];
+    NSArray *names=details[@"versionNames"];
+    for (NSUInteger index=0;index<names.count;index++) [items addObject:@{@"title":names[index],@"subtitle":details[@"mcVersionNames"][index] ?: @"",@"compatible":@YES,@"payload":@(index)}];
+    picker.items=items;
+    ModpackAPI *api=self.modrinth;
+    picker.selectionHandler=^(NSDictionary *item) { [self actionClose]; [api installModpackFromDetail:details atIndex:[item[@"payload"] unsignedIntegerValue]]; };
+    [self presentViewController:[[UINavigationController alloc] initWithRootViewController:picker] animated:YES completion:nil];
 }
-
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     NSDictionary *item = self.list[indexPath.row];
     if ([item[@"versionDetailsLoaded"] boolValue]) {
