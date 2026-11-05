@@ -13,6 +13,9 @@
   ![Languages](https://img.shields.io/badge/UI-简体中文%20%7C%20English-28a8ea?style=for-the-badge)
 
   [简体中文](#-简体中文) · [English](#-english) · [下载 Releases](../../releases) · [反馈问题](../../issues/new/choose)
+  
+ Video 演示视频 : https://www.bilibili.com/video/BV1qv4o6fESc
+  
 </div>
 
 > **PocketJ Launcher v1.6**
