@@ -18,6 +18,7 @@
 @property(nonatomic) UILabel *selectedAccountLabel;
 @property(nonatomic) UILabel *statusLabel;
 @property(nonatomic) UIButton *playButton;
+@property(nonatomic) UIButton *runJarButton;
 @property(nonatomic) UIButton *pauseButton;
 @property(nonatomic) UIButton *detailsButton;
 @property(nonatomic) UIStackView *taskActions;
@@ -213,6 +214,30 @@
     [ModernUITheme styleContinuousButton:self.playButton cornerRadius:20];
     [self.playButton.heightAnchor constraintEqualToConstant:54].active = YES;
     [heroStack addArrangedSubview:self.playButton];
+
+    // The classic launcher already implements document picking and Java JAR
+    // execution. Expose that same kernel action from the modern home screen.
+    self.runJarButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [self.runJarButton addTarget:self action:@selector(runJar)
+        forControlEvents:UIControlEventPrimaryActionTriggered];
+    if (@available(iOS 15.0, *)) {
+        self.runJarButton.configuration =
+            [ModernUITheme actionButtonConfigurationWithTitle:localize(@"运行 .jar 文件", nil)
+                image:[UIImage systemImageNamed:@"doc"]
+                tint:UIColor.systemGreenColor
+                prominent:NO];
+    } else {
+        [self.runJarButton setTitle:localize(@"运行 .jar 文件", nil)
+            forState:UIControlStateNormal];
+        [self.runJarButton setImage:[UIImage systemImageNamed:@"doc"]
+            forState:UIControlStateNormal];
+        self.runJarButton.tintColor = UIColor.systemGreenColor;
+        self.runJarButton.backgroundColor = ModernUITheme.contentSurfaceBackgroundColor;
+        self.runJarButton.layer.cornerRadius = 14;
+    }
+    [ModernUITheme styleContinuousButton:self.runJarButton cornerRadius:16];
+    [self.runJarButton.heightAnchor constraintGreaterThanOrEqualToConstant:48].active = YES;
+    [heroStack addArrangedSubview:self.runJarButton];
 
     self.taskActions = [UIStackView new];
     self.taskActions.axis = UILayoutConstraintAxisHorizontal;
@@ -785,6 +810,12 @@
     LauncherNavigationController *navigation =
         (LauncherNavigationController *)self.navigationController;
     [navigation performInstallOrShowDetails:self.detailsButton];
+}
+
+- (void)runJar {
+    LauncherNavigationController *navigation =
+        (LauncherNavigationController *)self.navigationController;
+    [navigation enterModInstaller];
 }
 
 - (void)togglePlay {

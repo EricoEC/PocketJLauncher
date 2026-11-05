@@ -82,7 +82,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.5</string>
+	<string>1.6</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -97,7 +97,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>1.5</string>
+	<string>1.6</string>
 	<key>GCSupportedGameControllers</key>
 	<array>
 		<dict>
@@ -116,6 +116,7 @@
 		<string>filza</string>
 		<string>santander</string>
 		<string>shareddocuments</string>
+		<string>localdevvpn</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
@@ -126,9 +127,10 @@
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_altserver._tcp</string>
+		<string>_remotepairing-pairable-host._tcp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>PocketJ Launcher uses the local network to find and communicate with AltServer and LAN servers.</string>
+	<string>PocketJ Launcher uses the local network for on-device pairing, AltServer, and LAN servers.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>PocketJ Launcher uses the microphone to enable support for voice chat mods.</string>
 	<key>UIApplicationSceneManifest</key>
@@ -162,6 +164,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
+		<string>audio</string>
 	</array>
 	<key>UIDeviceFamily</key>
 	<array>

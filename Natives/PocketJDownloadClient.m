@@ -115,7 +115,7 @@ static NSError *PJDownloadError(NSInteger code, NSString *text) {
     }
     NSURLSessionConfiguration *config = NSURLSessionConfiguration.ephemeralSessionConfiguration;
     config.timeoutIntervalForRequest = 30; config.timeoutIntervalForResource = 600;
-    config.HTTPAdditionalHeaders = @{@"User-Agent":@"PocketJLauncher/1.5 (Erico; add-on downloads)"};
+    config.HTTPAdditionalHeaders = @{@"User-Agent":@"PocketJLauncher/1.6 (Erico; add-on downloads)"};
     self.session = [NSURLSession sessionWithConfiguration:config delegate:self delegateQueue:nil];
     NSData *resumeData = [NSData dataWithContentsOfFile:[self.directory stringByAppendingPathComponent:@"resume.data"]];
     self.task = resumeData.length && self.attempt == 0 ? [self.session downloadTaskWithResumeData:resumeData] : [self.session downloadTaskWithURL:URL];

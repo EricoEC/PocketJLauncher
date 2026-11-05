@@ -193,6 +193,9 @@ add_executable(PocketJLauncher
   PocketJBackgroundSettingsViewController.m
   PocketJResourceLibraryViewController.m
   stikdebug/StikDebugEngine.m
+  stikdebug/PocketJPairingHost.m
+  stikdebug/PocketJPairingViewController.m
+  stikdebug/PocketJPairingFileViewController.m
   stikdebug/StikDebugViewController.m
   PickTextField.m
   PLLogOutputView.m
@@ -238,6 +241,7 @@ target_link_libraries(PocketJLauncher
   "-framework MessageUI"
   "-framework QuartzCore"
   "-framework UIKit"
+  "-framework UserNotifications"
   "-framework UniformTypeIdentifiers"
   "${CMAKE_CURRENT_LIST_DIR}/stikdebug/libidevice_ffi.a"
   "-framework Security"

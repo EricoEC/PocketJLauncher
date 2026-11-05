@@ -3,6 +3,9 @@
 #import <arpa/inet.h>
 #import <sys/socket.h>
 #import <unistd.h>
+#import <fcntl.h>
+#import <poll.h>
+#import <errno.h>
 
 #import "idevice.h"
 
@@ -102,6 +105,33 @@ static NSString *const StikDebugErrorDomain = @"PocketJ.StikDebug";
     return YES;
 }
 
+- (BOOL)saveGeneratedPairingData:(NSData *)data error:(NSError **)error {
+    // Check the new record using exactly the parser used by the existing JIT
+    // library. Computer-file import deliberately retains its existing behavior.
+    if (![self validatePairingData:data error:error]) return NO;
+    struct RpPairingFileHandle *pairing = NULL;
+    NSError *parseError = [self consumeError:rp_pairing_file_from_bytes(data.bytes, data.length, &pairing)
+        fallback:@"本机配对文件与现有 JIT 组件不兼容。"];
+    if (pairing) rp_pairing_file_free(pairing);
+    if (parseError) {
+        if (error) *error = [NSError errorWithDomain:StikDebugErrorDomain code:-32
+            userInfo:@{NSLocalizedDescriptionKey: @"本机配对文件与现有 JIT 组件不兼容，原配对文件未更改。"}];
+        return NO;
+    }
+    // Documents is also watched by the existing iLoader sync. Update both so a
+    // stale computer export cannot overwrite the just-generated record on resume.
+    NSData *previousDocuments = [NSData dataWithContentsOfFile:self.documentsPairingFilePath];
+    if (![data writeToFile:self.documentsPairingFilePath options:NSDataWritingAtomic error:error]) return NO;
+    if (![self writePairingData:data error:error]) {
+        if (previousDocuments) [previousDocuments writeToFile:self.documentsPairingFilePath options:NSDataWritingAtomic error:nil];
+        else [NSFileManager.defaultManager removeItemAtPath:self.documentsPairingFilePath error:nil];
+        return NO;
+    }
+    [NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions: @0600}
+        ofItemAtPath:self.documentsPairingFilePath error:nil];
+    return YES;
+}
+
 - (NSURL *)exportablePairingFileURL:(NSError **)error {
     if (![self synchronizePairingFileFromDocuments:error] && !self.hasPairingFile) return nil;
     NSData *data = [NSData dataWithContentsOfFile:self.pairingFilePath options:0 error:error];
@@ -116,14 +146,24 @@ static NSString *const StikDebugErrorDomain = @"PocketJ.StikDebug";
         int descriptor = socket(AF_INET, SOCK_STREAM, 0);
         BOOL connected = NO;
         if (descriptor >= 0) {
-            struct timeval timeout = {.tv_sec = 0, .tv_usec = 600000};
-            setsockopt(descriptor, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+            // SO_SNDTIMEO does not reliably bound a blocking connect on iOS.
+            // A nonblocking probe has a hard deadline and always closes its fd.
+            int flags = fcntl(descriptor, F_GETFL, 0);
             struct sockaddr_in address = {0};
             address.sin_family = AF_INET;
             address.sin_port = htons(49152);
-            if (inet_pton(AF_INET, "10.7.0.1", &address.sin_addr) == 1) {
-                connected = connect(descriptor, (const struct sockaddr *)&address,
-                                    sizeof(address)) == 0;
+            if (flags >= 0 && fcntl(descriptor, F_SETFL, flags | O_NONBLOCK) == 0 &&
+                inet_pton(AF_INET, "10.7.0.1", &address.sin_addr) == 1) {
+                int result = connect(descriptor, (const struct sockaddr *)&address, sizeof(address));
+                connected = result == 0;
+                if (result < 0 && errno == EINPROGRESS) {
+                    struct pollfd probe = {.fd = descriptor, .events = POLLOUT};
+                    if (poll(&probe, 1, 600) > 0) {
+                        int socketError = 0;
+                        socklen_t size = sizeof(socketError);
+                        connected = getsockopt(descriptor, SOL_SOCKET, SO_ERROR, &socketError, &size) == 0 && socketError == 0;
+                    }
+                }
             }
             close(descriptor);
         }

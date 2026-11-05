@@ -22,7 +22,7 @@
     NSURLComponents *parts=[NSURLComponents componentsWithString:[self.baseURL stringByAppendingPathComponent:endpoint]];
     NSMutableArray *query=[NSMutableArray array]; for (NSString *key in params) [query addObject:[NSURLQueryItem queryItemWithName:key value:[params[key] description]]]; parts.queryItems=query;
     NSMutableURLRequest *request=[NSMutableURLRequest requestWithURL:parts.URL]; request.HTTPMethod=method; request.timeoutInterval=20;
-    [request setValue:POCKETJ_CURSEFORGE_API_KEY forHTTPHeaderField:@"x-api-key"]; [request setValue:@"PocketJLauncher/1.5 (modpacks)" forHTTPHeaderField:@"User-Agent"];
+    [request setValue:POCKETJ_CURSEFORGE_API_KEY forHTTPHeaderField:@"x-api-key"]; [request setValue:@"PocketJLauncher/1.6 (modpacks)" forHTTPHeaderField:@"User-Agent"];
     if (body) { request.HTTPBody=[NSJSONSerialization dataWithJSONObject:body options:0 error:nil]; [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"]; }
     __block id result; __block NSError *failure; dispatch_semaphore_t done=dispatch_semaphore_create(0);
     NSURLSessionDataTask *task=[[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data,NSURLResponse *response,NSError *error) {

@@ -10,6 +10,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readonly) BOOL hasPairingFile;
 
 - (BOOL)importPairingFileAtURL:(NSURL *)URL error:(NSError **)error;
+- (BOOL)saveGeneratedPairingData:(NSData *)data error:(NSError **)error;
 - (BOOL)synchronizePairingFileFromDocuments:(NSError **)error;
 - (BOOL)deletePairingFile:(NSError **)error;
 - (nullable NSURL *)exportablePairingFileURL:(NSError **)error;

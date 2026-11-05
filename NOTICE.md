@@ -6,10 +6,10 @@ PocketJ Launcher is a modified version of the GPL-3.0 licensed Amethyst-iOS proj
 
 - Modified project name: PocketJ Launcher / 掌上Java启动器
 - Maintainer of this modified version: Erico
-- Modification date: 2026-08-15
+- Modification date: 2026-11-05
 - License: GNU General Public License version 3
 
-This modified version includes an Apple-native launcher interface, Simplified Chinese and English localization, instance and account workflow changes, diagnostics, control improvements, compatibility fixes, and a modified in-process StikDebug JIT workflow.
+This modified version includes an Apple-native launcher interface, Simplified Chinese and English localization, instance and account workflow changes, diagnostics, control improvements, compatibility fixes, and a modified StikDebug-derived JIT workflow with an independent helper process.
 
 The complete GPL-3.0 license text is provided in `LICENSE`. Source releases and binary distributions of PocketJ Launcher must continue to provide the corresponding source and preserve applicable copyright, license, and warranty notices.
 
@@ -29,3 +29,9 @@ requirements.
 Copyright in upstream code remains with its respective authors. PocketJ Launcher is not an official Mojang Studios or Microsoft product. Minecraft is a trademark of Microsoft Corporation.
 
 Third-party components and their licenses are listed in `README.md` and in the license files distributed with those components.
+
+## v1.6 additions
+
+On-device pairing uses the MIT-licensed `jkcoxson/idevice` library with PocketJ-owned native and Rust glue. The module reuses the workspace pairing-tool source through the shared dependency directory; no AirBeep or StikPair implementation was copied. The binary includes `PocketJPairing-THIRD-PARTY-NOTICES.txt` for its dependency notices.
+
+The bundled Chinese mod-name/alias subset and its CC BY-SA 4.0 attribution are documented in `Natives/resources/POCKETJ_MOD_ALIASES_NOTICE.md`, also included in the app. This data subset is distinct from the launcher code license.

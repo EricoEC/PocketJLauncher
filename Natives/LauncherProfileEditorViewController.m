@@ -78,6 +78,13 @@
     NSString *baseVersion = self.profile[@"pocketjMinecraftVersion"];
     if (!baseVersion.length) baseVersion = versionJSON[@"inheritsFrom"];
     if (!baseVersion.length) baseVersion = self.originalVersion;
+    // The bootstrap profile uses Mojang aliases, but an editable instance must
+    // pin the concrete version that was selected when it was created.
+    if ([baseVersion isEqualToString:@"latest-release"]) {
+        baseVersion = getPrefObject(@"internal.latest_version.release") ?: @"";
+    } else if ([baseVersion isEqualToString:@"latest-snapshot"]) {
+        baseVersion = getPrefObject(@"internal.latest_version.snapshot") ?: @"";
+    }
     self.profile[@"pocketjMinecraftVersion"] = baseVersion ?: @"";
     self.originalMinecraftVersion = baseVersion ?: @"";
     NSString *declaredLoader = self.profile[@"pocketjLoader"];
@@ -196,6 +203,15 @@
         textField.prefersMediumSheet = YES;
         [weakSelf changeVersionType:nil];
     };
+    id typePinnedVersion = ^void(UITableViewCell *cell, NSString *section, NSString *key, NSDictionary *item){
+        cell.accessoryType = UITableViewCellAccessoryNone;
+        cell.accessoryView = nil;
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        NSString *version = weakSelf.originalMinecraftVersion;
+        if (!version.length) version = localize(@"未检测到固定版本", nil);
+        cell.detailTextLabel.text = version;
+        cell.detailTextLabel.textColor = UIColor.secondaryLabelColor;
+    };
 
     NSMutableArray *generalItems = [NSMutableArray arrayWithArray:@[
             // General settings
@@ -210,7 +226,7 @@
         [generalItems addObject:@{@"key": @"pocketjMinecraftVersion",
               @"icon": @"archivebox",
               @"title": @"preference.profile.title.version",
-              @"type": typeVersionPicker,
+              @"type": self.creatingNewInstance ? typeVersionPicker : typePinnedVersion,
               // Imported instances are allowed to start without a detected
               // version, but NSDictionary literals may never contain nil.
               @"placeholder":
@@ -459,6 +475,17 @@
     NSString *selectedVersion = [self.profile[@"pocketjMinecraftVersion"]
         stringByTrimmingCharactersInSet:
             NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (!self.creatingNewInstance) {
+        // Existing instances never follow a moving latest-* alias and never
+        // accept accidental edits to their base Minecraft version.
+        selectedVersion = self.originalMinecraftVersion;
+        if (!selectedVersion.length) {
+            showDialog(localize(@"无法保存实例", nil),
+                localize(@"未能识别此实例的固定 Minecraft 版本，请先修复版本配置。", nil));
+            return;
+        }
+        self.profile[@"pocketjMinecraftVersion"] = selectedVersion;
+    }
     // latest-* is only a picker alias. Persist the concrete Mojang version so
     // runtime selection, loader compatibility and subsequent downloads all
     // operate on the same immutable version identifier.

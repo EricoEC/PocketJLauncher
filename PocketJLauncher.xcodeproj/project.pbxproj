@@ -305,6 +305,7 @@
 				F3AF5225E94CE491086F7537 /* Sources */,
 				2CD47819918B6C1262E4D4D1 /* Frameworks */,
 				07DB2BADA909CBD3B7CD76CA /* Embed Frameworks */,
+				E6D5104B93BD44A09A0D4E01 /* Strip shared-cache metadata before signing */,
 			);
 			buildRules = (
 			);
@@ -419,6 +420,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "/bin/zsh \"${SRCROOT}/XcodeRunner/build_pocketj.sh\"\n";
+		};
+		E6D5104B93BD44A09A0D4E01 /* Strip shared-cache metadata before signing */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Strip shared-cache metadata before signing";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/usr/bin/xattr -cr \"${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -659,7 +679,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CURRENT_PROJECT_VERSION = 1.5;
+				CURRENT_PROJECT_VERSION = 1.6;
 				EX_ENABLE_EXTENSION_POINT_GENERATION = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = JITIntegration/Helper/Info.plist;
@@ -668,7 +688,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher.JITHelper;
 				PRODUCT_NAME = PocketJJITHelper;
 				SDKROOT = iphoneos;
@@ -805,7 +825,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CURRENT_PROJECT_VERSION = 1.5;
+				CURRENT_PROJECT_VERSION = 1.6;
 				EX_ENABLE_EXTENSION_POINT_GENERATION = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = JITIntegration/Helper/Info.plist;
@@ -814,7 +834,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Erico.PocketJLauncher.JITHelper;
 				PRODUCT_NAME = PocketJJITHelper;
 				SDKROOT = iphoneos;

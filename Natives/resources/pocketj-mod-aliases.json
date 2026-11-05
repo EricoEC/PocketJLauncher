@@ -1,32 +1,640 @@
 [
-  {"aliases":["钠","钠优化"],"query":"Sodium"},
-  {"aliases":["锂","锂优化"],"query":"Lithium"},
-  {"aliases":["鸢尾","虹膜"],"query":"Iris Shaders"},
-  {"aliases":["模组菜单"],"query":"Mod Menu"},
-  {"aliases":["机械动力"],"query":"Create"},
-  {"aliases":["苹果皮"],"query":"AppleSkin"},
-  {"aliases":["旅行地图"],"query":"JourneyMap"},
-  {"aliases":["小地图"],"query":"Xaero Minimap"},
-  {"aliases":["世界地图"],"query":"Xaero World Map"},
-  {"aliases":["投影"],"query":"Litematica"},
-  {"aliases":["高清修复"],"query":"OptiFine"},
-  {"aliases":["遥远的地平线","遥远地平线"],"query":"Distant Horizons"},
-  {"aliases":["玉"],"query":"Jade"},
-  {"aliases":["连锁采集","连锁挖矿"],"query":"FTB Ultimine"},
-  {"aliases":["背包整理"],"query":"Inventory Profiles Next"},
-  {"aliases":["物品管理器","物品合成表"],"query":"Just Enough Items"},
-  {"aliases":["粗略物品"],"query":"Roughly Enough Items"},
-  {"aliases":["实体渲染优化"],"query":"Entity Culling"},
-  {"aliases":["现代化修复"],"query":"ModernFix"},
-  {"aliases":["铁氧体磁芯"],"query":"FerriteCore"},
-  {"aliases":["动态光源"],"query":"LambDynamicLights"},
-  {"aliases":["更好的第三人称"],"query":"Better Third Person"},
-  {"aliases":["农夫乐事"],"query":"Farmer's Delight"},
-  {"aliases":["暮色森林"],"query":"The Twilight Forest"},
-  {"aliases":["天境"],"query":"The Aether"},
-  {"aliases":["精妙背包"],"query":"Sophisticated Backpacks"},
-  {"aliases":["旅行者背包"],"query":"Traveler's Backpack"},
-  {"aliases":["鼠标手势"],"query":"Mouse Tweaks"},
-  {"aliases":["耐久显示"],"query":"Durability Viewer"},
-  {"aliases":["简单语音聊天"],"query":"Simple Voice Chat"}
+  {
+    "query": "(Sodium) Chloride",
+    "aliases": [
+      "氯化物",
+      "Chloride 渲染優化"
+    ]
+  },
+  {
+    "query": "[EMF] Entity Model Features",
+    "aliases": [
+      "實體模型功能"
+    ]
+  },
+  {
+    "query": "[ETF] Entity Texture Features",
+    "aliases": [
+      "實體材質功能",
+      "實體材質"
+    ]
+  },
+  {
+    "query": "Alex's Mobs",
+    "aliases": [
+      "亞歷克斯的生物",
+      "亞歷克斯生物",
+      "動物模組"
+    ]
+  },
+  {
+    "query": "Amendments",
+    "aliases": [
+      "修訂"
+    ]
+  },
+  {
+    "query": "AppleSkin",
+    "aliases": [
+      "苹果皮"
+    ]
+  },
+  {
+    "query": "Artifacts",
+    "aliases": [
+      "神器"
+    ]
+  },
+  {
+    "query": "Axiom",
+    "aliases": [
+      "Axiom 創意建築編輯器",
+      "公理",
+      "建築編輯器",
+      "Axiom編輯器"
+    ]
+  },
+  {
+    "query": "Better Combat",
+    "aliases": [
+      "更好的戰鬥"
+    ]
+  },
+  {
+    "query": "Better Third Person",
+    "aliases": [
+      "更好的第三人称"
+    ]
+  },
+  {
+    "query": "BetterEnd",
+    "aliases": [
+      "更好的終界",
+      "終界擴充"
+    ]
+  },
+  {
+    "query": "BetterF3",
+    "aliases": [
+      "F3 除錯畫面",
+      "更好的 F3"
+    ]
+  },
+  {
+    "query": "BetterNether",
+    "aliases": [
+      "更好的地獄"
+    ]
+  },
+  {
+    "query": "Biomes O' Plenty",
+    "aliases": [
+      "超多生態域"
+    ]
+  },
+  {
+    "query": "BisectHosting Server Integration Menu",
+    "aliases": [
+      "BisectHosting 伺服器整合選單",
+      "伺服器租用"
+    ]
+  },
+  {
+    "query": "Chat Heads",
+    "aliases": [
+      "聊天頭像"
+    ]
+  },
+  {
+    "query": "Comforts",
+    "aliases": [
+      "舒適家具",
+      "舒適",
+      "Comforts 吊床睡袋"
+    ]
+  },
+  {
+    "query": "Controlify (Controller support)",
+    "aliases": [
+      "控制器支援",
+      "控制器",
+      "手把",
+      "搖桿支援"
+    ]
+  },
+  {
+    "query": "CraftPresence",
+    "aliases": [
+      "Discord 動態狀態",
+      "Discord狀態"
+    ]
+  },
+  {
+    "query": "Create",
+    "aliases": [
+      "機械動力",
+      "機械動力模組",
+      "机械动力"
+    ]
+  },
+  {
+    "query": "Curios API",
+    "aliases": [
+      "飾品欄 API",
+      "飾品欄"
+    ]
+  },
+  {
+    "query": "Debugify",
+    "aliases": [
+      "原版漏洞修正",
+      "除錯修正"
+    ]
+  },
+  {
+    "query": "Deeper and Darker",
+    "aliases": [
+      "更深更暗",
+      "深暗",
+      "幽匿"
+    ]
+  },
+  {
+    "query": "Distant Horizons",
+    "aliases": [
+      "遠景視野",
+      "遠景",
+      "遥远的地平线",
+      "遥远地平线"
+    ]
+  },
+  {
+    "query": "Drippy Loading Screen",
+    "aliases": [
+      "Drippy 載入畫面",
+      "載入畫面"
+    ]
+  },
+  {
+    "query": "Dungeons and Taverns",
+    "aliases": [
+      "地城與酒館",
+      "地城酒館"
+    ]
+  },
+  {
+    "query": "Durability Viewer",
+    "aliases": [
+      "耐久显示"
+    ]
+  },
+  {
+    "query": "Dynamic Trees",
+    "aliases": [
+      "動態樹木",
+      "樹苗",
+      "種子"
+    ]
+  },
+  {
+    "query": "Easy Anvils",
+    "aliases": [
+      "輕鬆鐵砧"
+    ]
+  },
+  {
+    "query": "Embeddium",
+    "aliases": [
+      "Embeddium 渲染最佳化",
+      "嵌入渲染"
+    ]
+  },
+  {
+    "query": "EMI",
+    "aliases": [
+      "EMI 配方檢視器",
+      "配方檢視",
+      "配方查詢"
+    ]
+  },
+  {
+    "query": "Enchantment Descriptions",
+    "aliases": [
+      "附魔說明"
+    ]
+  },
+  {
+    "query": "Enhanced Block Entities",
+    "aliases": [
+      "強化方塊實體",
+      "方塊實體最佳化"
+    ]
+  },
+  {
+    "query": "Entity Culling",
+    "aliases": [
+      "实体渲染优化"
+    ]
+  },
+  {
+    "query": "Example Legacy Mod",
+    "aliases": [
+      "範例舊版模組"
+    ]
+  },
+  {
+    "query": "Exposure",
+    "aliases": [
+      "曝光",
+      "相機",
+      "攝影"
+    ]
+  },
+  {
+    "query": "Falling Leaves",
+    "aliases": [
+      "飄落的樹葉",
+      "落葉",
+      "樹葉飄落"
+    ]
+  },
+  {
+    "query": "Farmer's Delight",
+    "aliases": [
+      "農夫樂事",
+      "农夫乐事"
+    ]
+  },
+  {
+    "query": "FerriteCore",
+    "aliases": [
+      "铁氧体磁芯"
+    ]
+  },
+  {
+    "query": "FTB Ultimine",
+    "aliases": [
+      "连锁采集",
+      "连锁挖矿"
+    ]
+  },
+  {
+    "query": "Guard Villagers",
+    "aliases": [
+      "守衛村民",
+      "守衛"
+    ]
+  },
+  {
+    "query": "Handcrafted",
+    "aliases": [
+      "手工家具",
+      "家具模組"
+    ]
+  },
+  {
+    "query": "Inventory Profiles Next",
+    "aliases": [
+      "物品欄整理 Next",
+      "背包整理"
+    ]
+  },
+  {
+    "query": "InvMove",
+    "aliases": [
+      "物品欄移動"
+    ]
+  },
+  {
+    "query": "Iris Shaders",
+    "aliases": [
+      "Iris 光影模組",
+      "光影模組",
+      "鸢尾",
+      "虹膜"
+    ]
+  },
+  {
+    "query": "Jade",
+    "aliases": [
+      "玉"
+    ]
+  },
+  {
+    "query": "JourneyMap",
+    "aliases": [
+      "旅行地图"
+    ]
+  },
+  {
+    "query": "Just Enough Items",
+    "aliases": [
+      "物品管理器",
+      "物品清單",
+      "物品合成表"
+    ]
+  },
+  {
+    "query": "Kiwi 🥝",
+    "aliases": [
+      "Kiwi 函式庫",
+      "Snownee 前置"
+    ]
+  },
+  {
+    "query": "LambDynamicLights",
+    "aliases": [
+      "动态光源"
+    ]
+  },
+  {
+    "query": "Litematica",
+    "aliases": [
+      "投影"
+    ]
+  },
+  {
+    "query": "Lithium",
+    "aliases": [
+      "锂",
+      "锂优化"
+    ]
+  },
+  {
+    "query": "Make Bubbles Pop",
+    "aliases": [
+      "讓氣泡破裂",
+      "氣泡"
+    ]
+  },
+  {
+    "query": "Mod Menu",
+    "aliases": [
+      "模組選單",
+      "模组菜单"
+    ]
+  },
+  {
+    "query": "ModernFix",
+    "aliases": [
+      "现代化修复"
+    ]
+  },
+  {
+    "query": "Moonlight Lib",
+    "aliases": [
+      "月光函式庫"
+    ]
+  },
+  {
+    "query": "Mouse Tweaks",
+    "aliases": [
+      "鼠标手势"
+    ]
+  },
+  {
+    "query": "Not Enough Animations",
+    "aliases": [
+      "更多動畫"
+    ]
+  },
+  {
+    "query": "Open Parties and Claims",
+    "aliases": [
+      "開放隊伍與領地"
+    ]
+  },
+  {
+    "query": "OptiFine",
+    "aliases": [
+      "高清修复"
+    ]
+  },
+  {
+    "query": "Particle Core",
+    "aliases": [
+      "粒子核心"
+    ]
+  },
+  {
+    "query": "Particle Rain",
+    "aliases": [
+      "粒子雨",
+      "下雨",
+      "天氣粒子"
+    ]
+  },
+  {
+    "query": "Particular ✨",
+    "aliases": [
+      "粒子"
+    ]
+  },
+  {
+    "query": "Patchouli",
+    "aliases": [
+      "帕秋莉",
+      "Patchouli 指南書",
+      "帕秋莉指南"
+    ]
+  },
+  {
+    "query": "Physics Mod",
+    "aliases": [
+      "物理模組",
+      "布娃娃"
+    ]
+  },
+  {
+    "query": "Ping Wheel",
+    "aliases": [
+      "標記輪盤"
+    ]
+  },
+  {
+    "query": "Polytone",
+    "aliases": [
+      "彩調"
+    ]
+  },
+  {
+    "query": "Presence Footsteps",
+    "aliases": [
+      "腳步聲臨場感",
+      "腳步聲模組",
+      "擬真腳步聲"
+    ]
+  },
+  {
+    "query": "Puzzle",
+    "aliases": [
+      "拼圖"
+    ]
+  },
+  {
+    "query": "Reese's Sodium Options",
+    "aliases": [
+      "Reese 的 Sodium 選項"
+    ]
+  },
+  {
+    "query": "Repurposed Structures - Fabric",
+    "aliases": [
+      "結構重製"
+    ]
+  },
+  {
+    "query": "Resourceful Config",
+    "aliases": [
+      "資源設定"
+    ]
+  },
+  {
+    "query": "Roughly Enough Items",
+    "aliases": [
+      "粗略物品"
+    ]
+  },
+  {
+    "query": "Roughly Enough Items (REI)",
+    "aliases": [
+      "配方查詢",
+      "配方檢視"
+    ]
+  },
+  {
+    "query": "Shulker Box Tooltip",
+    "aliases": [
+      "界伏盒提示框",
+      "界伏盒預覽",
+      "界伏盒提示",
+      "容器預覽"
+    ]
+  },
+  {
+    "query": "Simple Voice Chat",
+    "aliases": [
+      "简单语音聊天"
+    ]
+  },
+  {
+    "query": "Sodium",
+    "aliases": [
+      "钠",
+      "钠优化"
+    ]
+  },
+  {
+    "query": "Sodium Extra",
+    "aliases": [
+      "鈉額外",
+      "Sodium 額外功能"
+    ]
+  },
+  {
+    "query": "Sophisticated Backpacks",
+    "aliases": [
+      "精緻背包",
+      "高級背包",
+      "精妙背包"
+    ]
+  },
+  {
+    "query": "Sophisticated Core",
+    "aliases": [
+      "精緻核心",
+      "精緻背包核心"
+    ]
+  },
+  {
+    "query": "Sound Physics Remastered",
+    "aliases": [
+      "音效物理重製版"
+    ]
+  },
+  {
+    "query": "Supplementaries",
+    "aliases": [
+      "補充",
+      "補充內容"
+    ]
+  },
+  {
+    "query": "Tectonic",
+    "aliases": [
+      "地形"
+    ]
+  },
+  {
+    "query": "The Aether",
+    "aliases": [
+      "天境"
+    ]
+  },
+  {
+    "query": "The Twilight Forest",
+    "aliases": [
+      "暮色森林"
+    ]
+  },
+  {
+    "query": "Tom's Simple Storage Mod",
+    "aliases": [
+      "Tom's 簡易儲存",
+      "湯姆儲存",
+      "簡易儲存"
+    ]
+  },
+  {
+    "query": "Traveler's Backpack",
+    "aliases": [
+      "旅行者背包"
+    ]
+  },
+  {
+    "query": "Waystones",
+    "aliases": [
+      "傳送石",
+      "傳送碑"
+    ]
+  },
+  {
+    "query": "Xaero Minimap",
+    "aliases": [
+      "小地图"
+    ]
+  },
+  {
+    "query": "Xaero World Map",
+    "aliases": [
+      "世界地图"
+    ]
+  },
+  {
+    "query": "Xaero's Minimap",
+    "aliases": [
+      "Xaero 小地圖"
+    ]
+  },
+  {
+    "query": "Xaero's World Map",
+    "aliases": [
+      "Xaero 世界地圖"
+    ]
+  },
+  {
+    "query": "YUNG's Better Dungeons",
+    "aliases": [
+      "地城",
+      "YUNG 地城"
+    ]
+  },
+  {
+    "query": "YUNG's Better Mineshafts",
+    "aliases": [
+      "YUNG 的更好礦坑",
+      "YUNG 更好的礦坑",
+      "更好的礦坑"
+    ]
+  }
 ]

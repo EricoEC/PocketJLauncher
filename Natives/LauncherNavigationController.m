@@ -567,6 +567,12 @@ static NSString *const LauncherVerifiedCompletesKey =
     [self enterModInstallerWithPath:url.path hitEnterAfterWindowShown:NO];
 }
 
+- (void)documentPicker:(UIDocumentPickerViewController *)controller
+didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
+    NSURL *url = urls.firstObject;
+    if (url) [self enterModInstallerWithPath:url.path hitEnterAfterWindowShown:NO];
+}
+
 - (void)setInteractionEnabled:(BOOL)enabled forDownloading:(BOOL)downloading {
     self.versionTextField.alpha = enabled ? 1 : 0.2;
     self.versionTextField.enabled = enabled;

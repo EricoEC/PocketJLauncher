@@ -189,6 +189,11 @@ static WFWorkflowProgressView* currentProgressView;
     if (cell == nil) {
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:@"DefaultCell"];
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        cell.textLabel.numberOfLines = 0;
+        cell.textLabel.lineBreakMode = NSLineBreakByWordWrapping;
+        cell.textLabel.adjustsFontSizeToFitWidth = NO;
+        cell.detailTextLabel.numberOfLines = 0;
+        cell.detailTextLabel.lineBreakMode = NSLineBreakByWordWrapping;
     }
     cell.textLabel.text = localize(self.javaRuntimes[@DEFAULT_JRE][indexPath.row], nil);
     cell.detailTextLabel.text = [NSString stringWithFormat:@"Java %@",
@@ -201,6 +206,10 @@ static WFWorkflowProgressView* currentProgressView;
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"RTCell"];
     if (cell == nil) {
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"RTCell"];
+        cell.textLabel.numberOfLines = 0;
+        cell.textLabel.lineBreakMode = NSLineBreakByWordWrapping;
+        cell.detailTextLabel.numberOfLines = 0;
+        cell.detailTextLabel.lineBreakMode = NSLineBreakByWordWrapping;
     }
     NSNumber *version = self.sortedJavaVersions[indexPath.section];
     NSString *name = self.javaRuntimes[version][indexPath.row];

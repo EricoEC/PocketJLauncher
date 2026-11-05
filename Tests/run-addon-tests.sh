@@ -11,6 +11,7 @@ xcrun --sdk macosx clang -fobjc-arc -fblocks -Wno-deprecated-declarations \
   Natives/PocketJModSearchIndex.m Natives/PocketJCrashDiagnostics.m Natives/PocketJInstanceContext.m \
   Natives/authenticator/PocketJAccountIdentity.m \
   -o "$TEST_BUILD/addon-tests"
+cp Natives/resources/pocketj-mod-aliases.json "$TEST_BUILD/pocketj-mod-aliases.json"
 "$TEST_BUILD/addon-tests"
 xcrun --sdk macosx clang -I Natives Natives/touchcontroller/PocketJTouchTransport.c \
   Tests/TouchTransportTests.c -o "$TEST_BUILD/touch-tests"

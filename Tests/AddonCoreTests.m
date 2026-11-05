@@ -94,12 +94,9 @@ int main(void) { @autoreleasepool {
     deadline=[NSDate dateWithTimeIntervalSinceNow:10];
     while (!dependenciesDone && [deadline timeIntervalSinceNow]>0) [NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];
     Check(dependenciesDone,@"dependency completion");
-    NSArray *csv=[PocketJModSearchIndex parseCSV:@"aliases,query\n\"钠|钠优化\",Sodium\n\"带逗号,名称\",\"Quoted \"\"Name\"\"\"\n"];
-    Check(csv.count==3 && [csv[2][1] isEqual:@"Quoted \"Name\""],@"CSV quoting and Chinese names");
-    NSURL *csvURL=[NSURL fileURLWithPath:[root stringByAppendingPathComponent:@"aliases.csv"]];
-    [@"钠|钠优化,Sodium\n" writeToURL:csvURL atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    error=nil; Check([PocketJModSearchIndex.shared importCSV:csvURL error:&error],@"import extensible offline search index");
-    Check([[PocketJModSearchIndex.shared onlineQuery:@"钠优化" installed:@[]] isEqual:@"Sodium"],@"Chinese query resolves via imported index");
+    Check([[PocketJModSearchIndex.shared onlineQuery:@"钠优化" installed:@[]] isEqual:@"Sodium"],@"bundled Chinese alias query resolves offline");
+    Check([[PocketJModSearchIndex.shared onlineQuery:@"物品管理器" installed:@[]] isEqual:@"Just Enough Items"],@"bundled index resolves a common Chinese mod name");
+    Check([[PocketJModSearchIndex.shared onlineQuery:@"機械動力" installed:@[]] isEqual:@"Create"],@"traditional Chinese alias canonicalizes for lookup");
     Check([[PocketJModSearchIndex.shared onlineQuery:@"一个未知模组" installed:@[]] isEqual:@"一个未知模组"],@"unknown Chinese query is not replaced by a default");
     Check([[PocketJCrashDiagnostics analyze:@"java.lang.OutOfMemoryError"][@"kind"] isEqual:@"heap"],@"memory diagnosis");
     Check([[PocketJCrashDiagnostics analyze:@"normal shutdown"][@"kind"] isEqual:@"unknown"],@"unknown log stays inconclusive");

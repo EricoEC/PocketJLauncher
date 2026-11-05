@@ -36,6 +36,7 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 @property(nonatomic) NSInteger selectedControlMode;
 @property(nonatomic) UISegmentedControl *controlModeSelector;
 @property(nonatomic) UIFont *controlModeFont;
+@property(nonatomic) BOOL touchRulesExpanded;
 
 @end
 
@@ -77,6 +78,7 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 - (void)installControlModeSelector {
     UIView *container = [[UIView alloc] initWithFrame:
         CGRectMake(0, 0, MAX(CGRectGetWidth(self.tableView.bounds), 320), 64)];
+    container.clipsToBounds = YES;
     UISegmentedControl *selector = [[UISegmentedControl alloc]
         initWithItems:@[localize(@"触控键位", nil), localize(@"手柄键位", nil)]];
     selector.translatesAutoresizingMaskIntoConstraints = NO;
@@ -116,13 +118,26 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
     }
     CGFloat width = CGRectGetWidth(self.tableView.bounds);
     if (width <= 0) return;
-    CGFloat height = ceil([header systemLayoutSizeFittingSize:CGSizeMake(width, 0)
-        withHorizontalFittingPriority:UILayoutPriorityRequired
-        verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height);
+    CGFloat height = ceil(MAX(MAX(36, font.lineHeight + 12), self.controlModeSelector.intrinsicContentSize.height) + 28);
     if (fabs(CGRectGetWidth(header.frame) - width) > 0.5 ||
         fabs(CGRectGetHeight(header.frame) - height) > 0.5) {
         header.frame = CGRectMake(0, 0, width, height);
         self.tableView.tableHeaderView = header;
+    }
+    [self updateMappingFieldWidths];
+}
+
+- (void)updateMappingFieldWidths {
+    CGFloat tableWidth = CGRectGetWidth(self.tableView.bounds);
+    if (tableWidth <= 0) return;
+    CGFloat width = MIN(180.0, MAX(100.0, tableWidth * 0.40));
+    for (UITableViewCell *cell in self.tableView.visibleCells) {
+        if (![cell.accessoryView isKindOfClass:PickTextField.class]) continue;
+        CGRect frame = cell.accessoryView.frame;
+        if (fabs(frame.size.width - width) > 0.5) {
+            frame.size.width = width;
+            cell.accessoryView.frame = frame;
+        }
     }
 }
 
@@ -200,7 +215,7 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (section == 0) {
         if (self.selectedControlMode != 0) return 0;
-        return self.keyLayoutFiles.count + 3;
+        return self.keyLayoutFiles.count + 4;
     } else {
         if (self.selectedControlMode != 1) return 0;
         return [self prefContentForIndex:section].count;
@@ -226,7 +241,7 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
         if (indexPath.row == 0) {
             cell.imageView.image = [UIImage systemImageNamed:@"hand.draw.fill"];
             cell.textLabel.text = localize(@"丝滑滑入按键", nil);
-            cell.detailTextLabel.text = localize(@"滑入即触发，跨缝不中断，并支持四向对角移动。", nil);
+            cell.detailTextLabel.text = localize(@"滑入即触发，跨缝不中断", nil);
             UISwitch *toggle = [UISwitch new];
             toggle.on = getPrefBool(@"control.fluid_button_slide");
             [toggle addTarget:self action:@selector(toggleFluidButtonSlide:)
@@ -246,6 +261,11 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
                 [fileName isEqualToString:getPrefObject(@"control.default_ctrl")]
                     ? UITableViewCellAccessoryCheckmark
                     : UITableViewCellAccessoryDisclosureIndicator;
+        } else if (indexPath.row == self.keyLayoutFiles.count + 3) {
+            cell.imageView.image = [UIImage systemImageNamed:@"questionmark.circle"];
+            cell.textLabel.text = localize(@"了解滑入规则", nil);
+            cell.detailTextLabel.text = nil;
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         } else {
             BOOL exporting = indexPath.row == self.keyLayoutFiles.count + 1;
             cell.imageView.image = [UIImage systemImageNamed:
@@ -260,7 +280,8 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
         cell.textLabel.text = localize(([NSString stringWithFormat:@"controller_configurator.%@.title.%@", getPrefObject(@"control.controller_type"), item[@"name"]]), nil);
         PickTextField *view = (id)cell.accessoryView;
         if (view == nil) {
-            view = [[PickTextField alloc] initWithFrame:CGRectMake(0, 0, cell.bounds.size.width / 2.1, cell.bounds.size.height)];
+            CGFloat fieldWidth = MIN(180.0, MAX(100.0, CGRectGetWidth(self.tableView.bounds) * 0.40));
+            view = [[PickTextField alloc] initWithFrame:CGRectMake(0, 0, fieldWidth, MAX(34.0, cell.bounds.size.height))];
             [view addTarget:view action:@selector(resignFirstResponder) forControlEvents:UIControlEventEditingDidEndOnExit];
             view.autocorrectionType = UITextAutocorrectionTypeNo;
             view.autocapitalizationType = UITextAutocapitalizationTypeNone;
@@ -292,7 +313,7 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     if (section == 0) {
-        return self.selectedControlMode == 0 ? localize(@"触控键位", nil) : nil;
+        return nil;
     }
     if (section == 1) {
         return self.selectedControlMode == 1 ? localize(@"游戏内键位", nil) : nil;
@@ -305,6 +326,12 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
     return nil;
 }
 
+// Use UIKit's self-sizing footer. A custom zero-frame footer with disabled
+// autoresizing could draw its long label above the table's segmented header.
+- (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section {
+    return nil;
+}
+
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
     return [self tableView:tableView titleForHeaderInSection:section].length
         ? UITableViewAutomaticDimension : 0.01;
@@ -314,7 +341,7 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
     if (section == 0) {
         // A collapsed section must not provide text: UIKit can still render it
         // outside a near-zero-height footer, over the mode selector above it.
-        return self.selectedControlMode == 0
+        return self.selectedControlMode == 0 && self.touchRulesExpanded
             ? localize(@"开启后，手指从屏幕任意位置滑入按键即可触发；滑过按键间隙不会中断，滑入方向键夹角时可同时触发两个方向。", nil)
             : nil;
     }
@@ -331,7 +358,7 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForFooterInSection:(NSInteger)section {
     return [self tableView:tableView titleForFooterInSection:section].length
-        ? UITableViewAutomaticDimension : 0.01;
+        ? 72.0 : 0.01;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -349,8 +376,11 @@ typedef void(^CreateView)(UITableViewCell *, NSString *, NSDictionary *);
             [self openKeyLayoutEditor];
         } else if (indexPath.row == self.keyLayoutFiles.count + 1) {
             [self exportKeyLayout];
-        } else {
+        } else if (indexPath.row == self.keyLayoutFiles.count + 2) {
             [self importKeyLayout];
+        } else {
+            self.touchRulesExpanded = !self.touchRulesExpanded;
+            [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationNone];
         }
     } else if(indexPath.section == 3) {
         setPrefObject(@"control.controller_type", self.prefControllerTypes[indexPath.row][@"name"]);

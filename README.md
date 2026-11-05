@@ -7,7 +7,7 @@
   **掌上 Java，不只是“能启动”。**  
   A modern Minecraft: Java Edition launcher built for iPhone and iPad.
 
-  [![Version](https://img.shields.io/badge/version-v1.5-20c66b?style=for-the-badge)](../../releases)
+  [![Version](https://img.shields.io/badge/version-v1.6-20c66b?style=for-the-badge)](../../releases)
   ![Platform](https://img.shields.io/badge/iOS%20%7C%20iPadOS-14--27-111111?style=for-the-badge&logo=apple&logoColor=white)
   [![License](https://img.shields.io/badge/license-GPL--3.0-7c5cff?style=for-the-badge)](LICENSE)
   ![Languages](https://img.shields.io/badge/UI-简体中文%20%7C%20English-28a8ea?style=for-the-badge)
@@ -15,20 +15,18 @@
   [简体中文](#-简体中文) · [English](#-english) · [下载 Releases](../../releases) · [反馈问题](../../issues/new/choose)
 </div>
 
-> **PocketJ Launcher v1.5**
+> **PocketJ Launcher v1.6**
 >
-> 本次新增集中在模组管理、资源与世界存档工作流、第三方账户、启动诊断，
-> 以及更明确的版本更新提醒。也整理了 PocketJ 的 Java 启动命名和 26.3 SDL
-> 输入状态同步；既有版本兼容能力沿用 v1.4，不重复算作本次新增。
+> 本版加入 iOS 27+ 本机配对，保留电脑配对与文件导入；精简 JIT 界面，
+> 实时更新 LocalDevVPN 连接状态，并补齐配对成功页、完成通知与触感反馈。
+> 同时完善离线中文模组搜索、实例版本固定、设置布局和首页运行 JAR 入口。
 >
-> This release focuses on native mod management, resource and world workflows,
-> third-party accounts, startup diagnostics, and clearer update prompts. It also
-> completes the PocketJ Java namespace migration and SDL 26.3 input-state work;
-> compatibility delivered in v1.4 is retained rather than listed as new here.
+> This release adds on-device pairing on iOS 27+, retains computer pairing and
+> file import, simplifies JIT setup, and refreshes LocalDevVPN reachability live.
+> It also improves pairing feedback, offline Chinese mod search, pinned instance
+> versions, settings layouts, and the home-page Run JAR entry.
 >
-> v1.5 本地 Release 包已构建；Minecraft 26.3 菜单点按与更新弹窗仍需实际使用确认。
-> 本次改动、已知边界和复测步骤见[实施记录](IMPLEMENTATION_v1.5.md)与
-> [验证清单 / Testing](V1.5_TESTING.md)。
+> 完整更新与安装包说明见 [v1.6 更新说明 / Release notes](RELEASE_NOTES.md)。
 
 > [!IMPORTANT]
 > PocketJ Launcher 是社区维护的开源项目，并非 Mojang Studios 或 Microsoft 的官方产品。Minecraft 是 Microsoft Corporation 的商标。
@@ -38,12 +36,14 @@
 # 🇨🇳 简体中文
 
 > [!TIP]
-> ## 🧰 不知道去哪里找配对文件？用 PocketJ 配对工具
-> 配对工具支持 macOS、Windows 和 Linux。连接 iPhone 后可生成配对文件，导出到手机后，在 PocketJ「设置 → 运行环境 → JIT → 导入配对文件」中选择它；也可以直接传入 PocketJ。
+> ## 🧰 两种配对方式，按系统选择
+> **iOS / iPadOS 27 及以上：** 打开「设置 → 运行环境 → JIT → 配对文件 → 本机配对」，按页面引导在系统设置输入通知中的配对码，无需电脑。成功后会显示完成页并发送完成反馈。
+>
+> **电脑配对继续保留：** 在「配对文件」中点击「从电脑导入」打开配对工具发布页；用 macOS、Windows 或 Linux 工具生成文件后，选择「导入已有文件」，也可由工具直接写入 PocketJ。
 >
 > [⬇️ 下载 PocketJ 配对工具 v1.0][pairing-tool-release] · [查看全部 Releases][pairing-tool-releases]
 >
-> 如果工具发布了新版本，优先在配对工具对应的 Release 下载最新版；此处直达链接会随新版本更新，全部 Releases 链接可作为备用入口。
+> 两种方式获得的文件都用于后续 JIT 连接；完成配对后仍需连接 LocalDevVPN。
 
 ## 为什么选择 PocketJ？
 
@@ -51,7 +51,7 @@
 
 同时，PocketJ 不只关注功能完整性，也持续针对 iOS 环境优化启动流程、资源加载和渲染体验。相比早期移动端 Java 启动方案，PocketJ 在保持兼容性的基础上，对启动链路、运行效率和设备适配进行了大量优化，目标是在 iPhone 和 iPad 上提供更快速、更稳定、更接近桌面体验的 Minecraft Java 运行效果。
 
-它基于 GPL-3.0 项目 [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) 持续开发，并继承了 [PojavLauncher](https://github.com/PojavLauncherTeam) 与 Boardwalk 生态的工作。v1.5 延续 v1.4 的 Minecraft 版本兼容基础，重点完善原生模组管理、第三方账户、启动诊断和版本更新流程。
+它基于 GPL-3.0 项目 [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) 持续开发，并继承了 [PojavLauncher](https://github.com/PojavLauncherTeam) 与 Boardwalk 生态的工作。v1.6 延续既有 Minecraft 版本兼容基础，重点完善免电脑配对、JIT 连接体验、中文搜索与原生界面。
 
 ### 📸 查看真实运行截图
 
@@ -63,7 +63,7 @@
 
 | PocketJ 能力 | 你可以做什么 |
 |---|---|
-| ⚡ **内置 JIT 工作流** | 在启动器内导入本机配对文件、检查状态并为 PocketJ 自身开启 JIT；就绪后可从“开始游戏”直接衔接启动 |
+| ⚡ **内置 JIT 工作流** | iOS 27+ 可在本机配对，也可导入电脑生成的文件；实时检查连接状态，再为 PocketJ 开启 JIT |
 | 🧩 **iOS 原生资源中心** | 浏览 Modrinth 与 CurseForge，按实例版本和加载器筛选模组、整合包、光影包、材质包与数据包 |
 | 🎛️ **实例级模组管理** | 查看已安装模组、启用/停用、检查更新、选择具体版本；不兼容项目会被明确标记，但选择权仍交给玩家 |
 | 📦 **统一实例与整合包入口** | 新建实例、导入 ZIP、浏览在线整合包都集中在同一个 `+` 菜单；每个整合包创建独立实例，避免覆盖当前游戏 |
@@ -79,11 +79,12 @@
 <details>
 <summary><strong>⚡ 内置 JIT 是怎样工作的？</strong></summary>
 
-- iOS / iPadOS 17.4 及以上可在 PocketJ 内导入本机 `.plist` 或 `.mobiledevicepairing` 配对文件。
-- 启动 LocalDevVPN 后，可以在 PocketJ 的运行环境页面直接开启 JIT。
-- “等待配置 / 就绪 / 已启动 / 不可用”状态会明确显示，不再只给出模糊的可用提示。
-- 从首页启动时，PocketJ 可先完成 JIT，再继续启动 Minecraft。
-- JIT、扩展虚拟地址空间和更高内存限制是三种不同能力；最终可用性仍取决于系统、签名和 entitlement。
+- iOS / iPadOS 27 及以上可在手机或平板本机完成配对；配对码通过通知显示，保存成功后有明确完成页。
+- 电脑配对工具、已有文件导入、导出和删除均保留，集中在「配对文件」页面。
+- JIT 页面在前台可见时每秒检测一次连接，返回应用立即刷新；点击 LocalDevVPN 优先打开 App，未安装时转到 App Store。
+- iOS 26 及以上使用随包的独立 JIT Helper；17.4–25 的现有入口交给独立 StikDebug，14–17.3 需使用其他受支持的 JIT 方式。
+- 配对成功不等于 JIT 已开启；完成配对后连接 LocalDevVPN，再点击「开启 JIT」。
+- JIT、扩展虚拟地址空间和更高内存限制是不同能力，最终可用性取决于系统、签名和 entitlement。
 
 </details>
 
@@ -93,6 +94,7 @@
 - 内置 Modrinth 与 CurseForge 搜索、项目图标、版本列表与兼容性筛选。
 - 模组、整合包、光影包、材质包和数据包共用原生在线浏览与下载流程。
 - 自动读取当前实例的 Minecraft 版本与 Fabric / Forge / NeoForge / Quilt 元数据。
+- 内置离线中文名称与别名索引，支持简繁体匹配，无需手动导入 CSV；未知词保留原始查询。
 - 对已安装 `.jar` 使用可逆的 `.disabled` 方式开关，不删除原文件。
 - 新建和编辑实例共用统一加载器模型，Minecraft 版本与 Loader 版本不再混为一谈。
 
@@ -100,7 +102,7 @@
 
 ## ✅ Minecraft 兼容基线
 
-以下是 v1.4 已建立、v1.5 继续保留的兼容范围，不作为 v1.5 新增亮点。v1.5 另含 SDL3 输入状态修复；26.3 菜单交互仍需设备复测。
+以下兼容范围沿用 v1.4 / v1.5，不作为 v1.6 新增亮点。不同游戏版本、加载器、模组和设备组合仍应以实际运行结果为准。
 
 | 组合 | 当前定位 |
 |---|---|
@@ -125,8 +127,8 @@
 
 | 文件 | 用途 |
 |---|---|
-| `PocketJLauncher-v1.5-iOS.ipa` | AltStore、SideStore 及兼容的 IPA 侧载方式，由安装工具按需签名 |
-| `PocketJLauncher-v1.5-iOS-TrollStore.tipa` | 适用于受支持的 TrollStore 环境 |
+| `PocketJLauncher-v1.6-iOS.ipa` | AltStore、SideStore 及兼容的 IPA 侧载方式，由安装工具按需签名 |
+| `PocketJLauncher-v1.6-iOS-TrollStore.tipa` | 适用于受支持的 TrollStore 环境 |
 | `SHA256SUMS.txt` | 校验下载文件是否完整、是否与发布产物一致 |
 
 自动检查只识别 PocketJ Launcher 稳定版，配对工具版本不会混入；“关于”中的手动检查会实时查询，并遵循跳过/延后例外规则。
@@ -150,6 +152,9 @@
 - Xcode Command Line Tools
 - Homebrew 中的 `gmake`、`cmake`、`wget`、`ldid`
 - Java 8 Boot JDK（仅用于编译启动器；不等于 Minecraft 实例使用的 Java 版本）
+- Rust 工具链及已安装的 `aarch64-apple-ios` 目标，用于本机配对模块
+- 完整的共享依赖目录 `iOS版本/SharedDependencies/PocketJ/`；其中 `Vendor/PocketJPairing` 复用配对工具 v1.1 的 idevice 源码入口，单独移动 v1.6 时需同时保留其相对链接目标
+- 配对模块 `Cargo.lock` 对应的依赖缓存；构建采用离线锁定模式，不自动安装或更新工具链
 
 ### Xcode
 
@@ -159,6 +164,8 @@
 4. 连接 iPhone / iPad，Clean Build Folder 后运行。
 
 ### Makefile
+
+下面只构建原生 / Java 载荷；完整 JIT Helper、本机配对模块与整包请使用上述 Xcode 入口。
 
 ```bash
 gmake payload PLATFORM=2 BOOTJDK="/path/to/jdk8/bin"
@@ -173,6 +180,8 @@ XcodeRunner/                App、JIT Helper 与构建包装逻辑
 Natives/                    iOS UI、实例、模组、JIT 与原生运行层
 JavaApp/                    Java 启动器及 LWJGL 兼容代码
 Vendor/StikJIT/             内置 JIT 相关组件
+../SharedDependencies/      跨版本共享的运行时、工具与配对模块
+RELEASE_NOTES.md            v1.6 更新与交付说明
 THIRD_PARTY_LICENSES/       第三方许可证
 Makefile                    原生、Java、Runtime 与打包流程
 NOTICE.md                   修改声明及上游归属
@@ -214,12 +223,14 @@ Copyright © 2026 Erico.
 # 🇬🇧🇺🇸 English
 
 > [!TIP]
-> ## 🧰 Need a device pairing file? Use PocketJ Pairing Tool
-> The tool runs on macOS, Windows, and Linux. Connect your iPhone to create a pairing file, export it to your phone, then import it in PocketJ under **Settings → Runtime → JIT → Import Pairing File**. You can also send it directly to PocketJ.
+> ## 🧰 Choose on-device or computer pairing
+> **iOS / iPadOS 27 and later:** Open **Settings → Runtime → JIT → Pairing File → On-device Pairing**, then follow the guide and enter the notification's PIN in system Settings. No computer is needed. Successful saving shows a completion page and feedback.
+>
+> **Computer pairing remains available:** **Import from Computer** opens the pairing-tool release. Generate a file on macOS, Windows, or Linux, then choose **Import an Existing File**, or let the tool write it directly to PocketJ.
 >
 > [⬇️ Download PocketJ Pairing Tool v1.0][pairing-tool-release] · [Browse all Releases][pairing-tool-releases]
 >
-> When a newer tool version is released, use its Release for the latest download. This direct link will be updated with the next version; the Releases page remains a fallback.
+> Both methods prepare credentials for JIT. LocalDevVPN is still needed after pairing.
 
 ## Why PocketJ?
 
@@ -227,7 +238,7 @@ Many mobile Java launchers stop at opening the game. PocketJ aims to bring a com
 
 At the same time, PocketJ focuses not only on feature completeness, but also on improving the iOS Java runtime experience. Compared with earlier mobile Java launcher solutions, PocketJ introduces continuous optimizations across the launch pipeline, resource loading, rendering experience, and device adaptation, aiming to provide a faster, more stable Minecraft Java experience closer to desktop launchers on iPhone and iPad.
 
-PocketJ is developed from the GPL-3.0 licensed [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) project and inherits substantial work from the [PojavLauncher](https://github.com/PojavLauncherTeam) and Boardwalk ecosystems. Version 1.5 retains the Minecraft compatibility baseline from v1.4 and focuses on native mod management, third-party accounts, startup diagnostics, and release updates.
+PocketJ is developed from the GPL-3.0 licensed [Amethyst-iOS](https://github.com/AngelAuraMC/Amethyst-iOS) project and inherits substantial work from the [PojavLauncher](https://github.com/PojavLauncherTeam) and Boardwalk ecosystems. Version 1.6 retains the existing Minecraft compatibility baseline and improves computer-free pairing, JIT connections, Chinese search, and native UI layouts.
 
 ### 📸 See PocketJ running on real devices
 
@@ -239,7 +250,7 @@ Visit the [screenshot gallery](Example/README.md) to browse iOS 27, iPadOS 18, i
 
 | PocketJ capability | What it gives you |
 |---|---|
-| ⚡ **Built-in JIT workflow** | Import this device's pairing file, inspect state, and enable JIT for PocketJ itself without leaving the launcher workflow |
+| ⚡ **Built-in JIT workflow** | Pair on-device on iOS 27+, or import a computer-generated file; inspect live connection state and enable JIT for PocketJ |
 | 🧩 **Native resource center** | Browse Modrinth and CurseForge mods, modpacks, shaders, resource packs, and data packs with instance-aware filtering |
 | 🎛️ **Per-instance mod management** | Inspect installed mods, enable or disable them, check updates, and choose exact versions |
 | 📦 **Unified instance and modpack entry** | Create an instance, import a ZIP, or browse online modpacks from one `+` menu; modpacks are isolated instead of replacing the active instance |
@@ -255,11 +266,12 @@ Visit the [screenshot gallery](Example/README.md) to browse iOS 27, iPadOS 18, i
 <details>
 <summary><strong>⚡ How does built-in JIT work?</strong></summary>
 
-- On iOS / iPadOS 17.4 and later, import this device's `.plist` or `.mobiledevicepairing` file inside PocketJ.
-- Start LocalDevVPN, then enable JIT from PocketJ's Runtime page.
-- PocketJ reports Waiting for Setup, Ready, Enabled, or Unavailable states.
-- Starting from the home screen can enable JIT first and then continue into Minecraft.
-- JIT, extended virtual address space, and increased memory limits are separate capabilities and still depend on the OS, signature, and entitlements.
+- On iOS / iPadOS 27 and later, pair directly on the phone or tablet. The PIN is delivered through a notification, followed by a clear completion page after saving.
+- Computer pairing, existing-file import, export, and deletion remain available under Pairing File.
+- While the JIT page is visible in the foreground, connections are checked every second and immediately on returning to the app. The LocalDevVPN row opens its app first and falls back to the App Store.
+- iOS 26 and later use the bundled independent JIT Helper. The existing iOS 17.4–25 entry hands off to independent StikDebug; iOS 14–17.3 needs another supported JIT method.
+- Pairing completion does not mean JIT is enabled: connect LocalDevVPN, then tap Enable JIT.
+- JIT, extended virtual address space, and increased memory limits are separate capabilities and depend on the OS, signature, and entitlements.
 
 </details>
 
@@ -269,6 +281,7 @@ Visit the [screenshot gallery](Example/README.md) to browse iOS 27, iPadOS 18, i
 - Built-in Modrinth and CurseForge search, icons, version selection, and compatibility filters.
 - One native workflow for mods, modpacks, shaders, resource packs, and data packs.
 - Instance metadata detection for Minecraft and Fabric / Forge / NeoForge / Quilt.
+- A bundled offline Chinese name/alias index with Simplified/Traditional matching; no manual CSV import is required, and unknown queries stay unchanged.
 - Reversible `.disabled` toggles for installed JAR files.
 - One loader model shared by creation and editing, keeping Minecraft versions separate from loader versions.
 
@@ -276,7 +289,7 @@ Visit the [screenshot gallery](Example/README.md) to browse iOS 27, iPadOS 18, i
 
 ## ✅ Minecraft compatibility baseline
 
-The following compatibility was established in v1.4 and is retained in v1.5; it is not presented as new in this release. v1.5 also includes SDL3 input-state fixes, while 26.3 menu interaction still needs device retesting.
+The following compatibility is carried forward from v1.4 / v1.5 and is not new in v1.6. Actual behavior still depends on the game, loader, mods, and device combination.
 
 | Combination | Current status |
 |---|---|
@@ -301,8 +314,8 @@ Get release assets from [Releases](../../releases):
 
 | File | Purpose |
 |---|---|
-| `PocketJLauncher-v1.5-iOS.ipa` | For AltStore, SideStore, and compatible IPA sideloading methods; the installer signs it as needed |
-| `PocketJLauncher-v1.5-iOS-TrollStore.tipa` | Supported TrollStore environments |
+| `PocketJLauncher-v1.6-iOS.ipa` | For AltStore, SideStore, and compatible IPA sideloading methods; the installer signs it as needed |
+| `PocketJLauncher-v1.6-iOS-TrollStore.tipa` | Supported TrollStore environments |
 | `SHA256SUMS.txt` | Verifies release-file integrity |
 
 Automatic checks select stable PocketJ Launcher releases and exclude pairing-tool versions. Manual checks in About query again and bypass the skip/reminder rules.
@@ -326,6 +339,9 @@ Automatic checks select stable PocketJ Launcher releases and exclude pairing-too
 - Xcode Command Line Tools
 - `gmake`, `cmake`, `wget`, and `ldid` from Homebrew
 - A Java 8 Boot JDK for compiling the launcher; this is separate from the Java runtime selected for Minecraft
+- A Rust toolchain with the `aarch64-apple-ios` target already installed
+- The complete `iOS版本/SharedDependencies/PocketJ/` workspace directory; `Vendor/PocketJPairing` reuses the idevice source from pairing tool v1.1, so preserve that relative symlink target when moving v1.6
+- Cached dependencies matching the pairing module's `Cargo.lock`; its build is offline and locked, without automatic toolchain installation or updates
 
 ### Xcode
 
@@ -335,6 +351,8 @@ Automatic checks select stable PocketJ Launcher releases and exclude pairing-too
 4. Connect an iPhone or iPad, Clean Build Folder, and run.
 
 ### Makefile
+
+This builds the native / Java payload only. Use Xcode above for the complete app, independent JIT Helper, and on-device pairing module.
 
 ```bash
 gmake payload PLATFORM=2 BOOTJDK="/path/to/jdk8/bin"
@@ -349,6 +367,8 @@ XcodeRunner/                App, JIT Helper, and build-wrapper logic
 Natives/                    iOS UI, instances, mods, JIT, and native runtime
 JavaApp/                    Java launcher and LWJGL compatibility code
 Vendor/StikJIT/             Built-in JIT components
+../SharedDependencies/      Shared runtimes, tools, and pairing module
+RELEASE_NOTES.md            v1.6 changes and delivery notes
 THIRD_PARTY_LICENSES/       Third-party license texts
 Makefile                    Native, Java, runtime, and packaging pipeline
 NOTICE.md                   Modification notice and upstream attribution

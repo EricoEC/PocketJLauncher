@@ -110,7 +110,10 @@
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellID];
     if (cell == nil) {
         cell = [[UITableViewCell alloc] initWithStyle:cellStyle reuseIdentifier:cellID];
-        cell.textLabel.adjustsFontSizeToFitWidth = YES;
+        // Keep setting titles at their intended size and let the row grow
+        // vertically. Shrinking long labels made different settings sections
+        // appear to have inconsistent widths on compact devices.
+        cell.textLabel.adjustsFontSizeToFitWidth = NO;
         cell.textLabel.numberOfLines = 0;
         cell.textLabel.lineBreakMode = NSLineBreakByWordWrapping;
         cell.detailTextLabel.numberOfLines = 0;
@@ -161,6 +164,27 @@
     [(id)cell.accessoryView setEnabled:cell.userInteractionEnabled];
 
     return cell;
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    // Accessory controls were originally sized from the cell's first frame.
+    // That frame can be zero/temporary before the table's first layout and is
+    // stale after rotation or split-width changes. Recompute from the live
+    // content width so labels and controls share the available space reliably.
+    for (UITableViewCell *cell in self.tableView.visibleCells) {
+        UIView *accessory = cell.accessoryView;
+        if (![accessory isKindOfClass:UITextField.class] &&
+            ![accessory isKindOfClass:DBNumberedSlider.class]) continue;
+        CGFloat contentWidth = CGRectGetWidth(cell.contentView.bounds);
+        if (contentWidth <= 0) continue;
+        CGFloat width = MIN(220.0, MAX(120.0, contentWidth * 0.42));
+        CGRect frame = accessory.frame;
+        if (fabs(frame.size.width - width) > 0.5) {
+            frame.size.width = width;
+            accessory.frame = frame;
+        }
+    }
 }
 
 #pragma mark initViewCreation, showAlert, checkWarn

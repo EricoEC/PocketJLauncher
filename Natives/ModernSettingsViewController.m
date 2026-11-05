@@ -323,7 +323,7 @@ static NSCache<NSString *, UIImage *> *PocketJCreditsImageCache;
         @{
             @"title": localize(@"关于", nil),
             @"items": @[
-                [self fixedItemWithTitle:localize(@"版本", nil) value:@"v1.5" type:ModernSettingTypeInformation icon:@"number" key:@""],
+                [self fixedItemWithTitle:localize(@"版本", nil) value:@"v1.6" type:ModernSettingTypeInformation icon:@"number" key:@""],
                 [self fixedItemWithTitle:@"GitHub" value:PocketJGitHubURLString type:ModernSettingTypeLink icon:@"chevron.left.forwardslash.chevron.right" key:@"github"],
                 [self fixedItemWithTitle:localize(@"兼容系统", nil) value:@"iOS 14–27" type:ModernSettingTypeInformation icon:@"iphone" key:@""],
                 creator,

@@ -17,6 +17,12 @@ PRODUCT_APP="${TARGET_BUILD_DIR}/${WRAPPER_NAME}"
 PAYLOAD_APP="${WORK_ROOT}/artifacts/Payload/PocketJLauncher.app"
 COORDINATOR_FRAMEWORK="${BUILT_PRODUCTS_DIR}/PocketJJITCoordinator.framework"
 JIT_HELPER="${BUILT_PRODUCTS_DIR}/PocketJJITHelper.appex"
+PAIRING_SOURCE="${SHARED_DEPENDENCIES}/Vendor/PocketJPairing"
+PAIRING_CACHE="${POCKETJ_PAIRING_CACHE:-${HOME}/Library/Caches/PocketJPairing/target}"
+
+# Build the additive host module with its pinned lockfile. The existing StikJIT
+# static library and computer pairing workflow are not replaced or upgraded.
+/bin/zsh "${PAIRING_SOURCE}/build-ios.sh"
 
 mkdir -p "${WORK_ROOT}" "${SHARED_DEPENDENCIES}" "${RUNTIME_CACHE}"
 rsync -a --delete \
@@ -125,6 +131,10 @@ fi
 # Restore Xcode-built helper products after the native payload replaces the
 # wrapper. Generic ExtensionFoundation extensions live in Extensions/.
 mkdir -p "${PRODUCT_APP}/Frameworks" "${PRODUCT_APP}/Extensions"
+cp -p "${PAIRING_CACHE}/aarch64-apple-ios/release/libpocketj_pairing.dylib" \
+  "${PRODUCT_APP}/Frameworks/libpocketj_pairing.dylib"
+cp -p "${PAIRING_SOURCE}/THIRD-PARTY-NOTICES.txt" \
+  "${PRODUCT_APP}/PocketJPairing-THIRD-PARTY-NOTICES.txt"
 rsync -a --delete "${COORDINATOR_FRAMEWORK}/" \
   "${PRODUCT_APP}/Frameworks/PocketJJITCoordinator.framework/"
 rsync -a --delete "${JIT_HELPER}/" \
@@ -140,20 +150,35 @@ if [[ "${EXECUTABLE_NAME}" != "PocketJLauncher" ]]; then
 fi
 
 SIGN_IDENTITY="${EXPANDED_CODE_SIGN_IDENTITY:--}"
+# Shared build products may inherit Finder/File Provider metadata on the
+# enclosing app and nested extension bundles. Apple codesign rejects resource
+# forks/Finder info, so strip only metadata from this regenerable product tree.
+/usr/bin/xattr -cr "${PRODUCT_APP}"
 find "${PRODUCT_APP}" -type f | while IFS= read -r ITEM; do
   if file "${ITEM}" | /usr/bin/grep -q "Mach-O"; then
+    # File Provider can reattach metadata while the generated app is scanned.
+    # Clear the binary and its containing directories immediately before signing.
+    SIGN_PATH="${ITEM}"
+    while [[ "${SIGN_PATH}" == "${PRODUCT_APP}"* ]]; do
+      /usr/bin/xattr -c "${SIGN_PATH}" 2>/dev/null || true
+      [[ "${SIGN_PATH}" == "${PRODUCT_APP}" ]] && break
+      SIGN_PATH="${SIGN_PATH:h}"
+    done
     /usr/bin/codesign --force --sign "${SIGN_IDENTITY}" \
       --timestamp=none "${ITEM}"
   fi
 done
 
 # Re-seal nested bundles after their Mach-O files have been signed.
+/usr/bin/xattr -cr "${PRODUCT_APP}/Frameworks/PocketJJITCoordinator.framework"
 /usr/bin/codesign --force --sign "${SIGN_IDENTITY}" --timestamp=none \
   "${PRODUCT_APP}/Frameworks/PocketJJITCoordinator.framework"
 if [[ -d "${PRODUCT_APP}/Extensions/PocketJJITHelper.appex/Frameworks/StikJIT.framework" ]]; then
+  /usr/bin/xattr -cr "${PRODUCT_APP}/Extensions/PocketJJITHelper.appex/Frameworks/StikJIT.framework"
   /usr/bin/codesign --force --sign "${SIGN_IDENTITY}" --timestamp=none \
     "${PRODUCT_APP}/Extensions/PocketJJITHelper.appex/Frameworks/StikJIT.framework"
 fi
+/usr/bin/xattr -cr "${PRODUCT_APP}/Extensions/PocketJJITHelper.appex"
 /usr/bin/codesign --force --sign "${SIGN_IDENTITY}" --timestamp=none \
   "${PRODUCT_APP}/Extensions/PocketJJITHelper.appex"
 

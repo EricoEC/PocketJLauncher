@@ -19,7 +19,7 @@ static NSArray *PJArray(id value) { return [value isKindOfClass:NSArray.class] ?
 - (id)JSON:(NSString *)url method:(NSString *)method body:(NSDictionary *)body error:(NSError **)error {
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:url]];
     request.timeoutInterval = 20; request.HTTPMethod = method ?: @"GET";
-    [request setValue:@"PocketJLauncher/1.5 (Erico; catalog)" forHTTPHeaderField:@"User-Agent"];
+    [request setValue:@"PocketJLauncher/1.6 (Erico; catalog)" forHTTPHeaderField:@"User-Agent"];
     if ([request.URL.host isEqual:@"api.curseforge.com"]) {
         if (!self.key.length) { if (error) *error = PJAPIError(401, @"A CurseForge API key is required."); return nil; }
         [request setValue:self.key forHTTPHeaderField:@"x-api-key"];

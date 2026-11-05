@@ -151,7 +151,6 @@ typedef NS_ENUM(NSInteger, PocketJModSource) {
 @property(nonatomic) NSString *downloadTaskID;
 @property(nonatomic) UIProgressView *downloadProgress;
 @property(nonatomic) PocketJAddonService *addonService;
-@property(nonatomic) BOOL importingSearchIndex;
 @property(nonatomic) NSOperationQueue *iconQueue;
 @property(nonatomic) NSArray<NSDictionary *> *pendingInstallFiles;
 @property(nonatomic) NSUInteger pendingInstallIndex;
@@ -409,8 +408,7 @@ typedef NS_ENUM(NSInteger, PocketJModSource) {
             }];
         UIAction *batch = [UIAction actionWithTitle:localize(@"所选模组操作", nil)
             image:[UIImage systemImageNamed:@"checklist"] identifier:nil handler:^(UIAction *action) { [weakSelf showBatchActions]; }];
-        UIAction *index=[UIAction actionWithTitle:localize(@"导入中文搜索索引",nil) image:[UIImage systemImageNamed:@"character.book.closed"] identifier:nil handler:^(UIAction *action) { [weakSelf importSearchIndex]; }];
-        return [UIMenu menuWithTitle:@"" children:@[updates, batch, index]];
+        return [UIMenu menuWithTitle:@"" children:@[updates, batch]];
     }
     UIAction *compatible = [UIAction
         actionWithTitle:localize(@"仅显示兼容版本", nil)
@@ -507,7 +505,7 @@ typedef NS_ENUM(NSInteger, PocketJModSource) {
     }
     parts.queryItems=query;
     NSMutableURLRequest *request=[NSMutableURLRequest requestWithURL:parts.URL]; request.timeoutInterval=25;
-    [request setValue:@"PocketJLauncher/1.5 (mod catalog)" forHTTPHeaderField:@"User-Agent"];
+    [request setValue:@"PocketJLauncher/1.6 (mod catalog)" forHTTPHeaderField:@"User-Agent"];
     if (cf) [request setValue:POCKETJ_CURSEFORGE_API_KEY forHTTPHeaderField:@"x-api-key"];
     self.loadingMore=append; self.loading=!append;
     if (!append) [self.tableView reloadData];
@@ -1047,24 +1045,11 @@ typedef NS_ENUM(NSInteger, PocketJModSource) {
 
 - (void)importMods {
     if (![self allowModMutation]) return;
-    self.importingSearchIndex=NO;
     UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"public.data", @"com.sun.java-archive"] inMode:UIDocumentPickerModeImport];
     picker.delegate = self; picker.allowsMultipleSelection = YES;
     [self presentViewController:picker animated:YES completion:nil];
 }
-- (void)importSearchIndex {
-    self.importingSearchIndex=YES;
-    UIDocumentPickerViewController *picker=[[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"public.comma-separated-values-text",@"public.text"] inMode:UIDocumentPickerModeImport];
-    picker.delegate=self; [self presentViewController:picker animated:YES completion:nil];
-}
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
-    if (self.importingSearchIndex) {
-        self.importingSearchIndex=NO; NSURL *url=urls.firstObject; if (!url) return;
-        dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{
-            BOOL access=[url startAccessingSecurityScopedResource]; NSError *error=nil; [PocketJModSearchIndex.shared importCSV:url error:&error]; if (access) [url stopAccessingSecurityScopedResource];
-            dispatch_async(dispatch_get_main_queue(),^{ showDialog(localize(error ? @"导入失败":@"导入完成",nil),error.localizedDescription ?: localize(@"中文搜索索引已保存，可离线使用。",nil)); });
-        }); return;
-    }
     if (![self allowModMutation]) return;
     self.loading = YES; [self.tableView reloadData];
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
